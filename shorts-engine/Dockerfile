@@ -1,4 +1,5 @@
-FROM python:3.12-slim
+# Public mirror of Docker Official Images to avoid Docker Hub timeouts in some environments
+FROM public.ecr.aws/docker/library/python:3.12-slim
 
 # Install system dependencies (FFmpeg, fonts, etc.)
 RUN apt-get update && apt-get install -y --no-install-recommends \
