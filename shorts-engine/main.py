@@ -223,6 +223,26 @@ class SettingSetRequest(BaseModel):
     provider: str
     api_key: str
 
+class YouTubeChannelCreateRequest(BaseModel):
+    internal_name: str
+    internal_description: Optional[str] = None
+    default_privacy_status: str = "private"
+    default_category_id: str = "22"
+    default_tags: Optional[Union[List[str], str]] = []
+    default_language: str = "es"
+    notify_subscribers: bool = False
+    status: str = "inactive"
+
+class YouTubeChannelUpdateRequest(BaseModel):
+    internal_name: str
+    internal_description: Optional[str] = None
+    default_privacy_status: str = "private"
+    default_category_id: str = "22"
+    default_tags: Optional[Union[List[str], str]] = []
+    default_language: str = "es"
+    notify_subscribers: bool = False
+    status: str = "inactive"
+
 @app.post("/api/settings")
 async def update_settings(req: SettingSetRequest, session=Depends(get_current_user)):
     db.set_setting(req.provider, req.api_key.strip())
@@ -734,26 +754,6 @@ async def api_get_settings(user: str = Depends(get_current_user)):
 class SaveSettingsRequest(BaseModel):
     provider: str
     api_key: str
-
-class YouTubeChannelCreateRequest(BaseModel):
-    internal_name: str
-    internal_description: Optional[str] = None
-    default_privacy_status: str = "private"
-    default_category_id: str = "22"
-    default_tags: Optional[Union[List[str], str]] = []
-    default_language: str = "es"
-    notify_subscribers: bool = False
-    status: str = "inactive"
-
-class YouTubeChannelUpdateRequest(BaseModel):
-    internal_name: str
-    internal_description: Optional[str] = None
-    default_privacy_status: str = "private"
-    default_category_id: str = "22"
-    default_tags: Optional[Union[List[str], str]] = []
-    default_language: str = "es"
-    notify_subscribers: bool = False
-    status: str = "inactive"
 
 @app.post("/api/settings")
 async def api_save_settings(req: SaveSettingsRequest, user: str = Depends(get_current_user)):
