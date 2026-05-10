@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registros de IA - Shorts Engine</title>
+    <link rel="stylesheet" href="/assets/style.css">
+    <style>
+        .task-card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 1rem; margin-bottom: 1rem; display: flex; gap: 1.5rem; align-items: center; transition: background 0.2s; }
+        .task-card:hover { background: rgba(255,255,255,0.02); }
+        .task-info { flex: 1; }
+        .task-prompt { font-weight: bold; margin-bottom: 5px; color: #fff; }
+        .task-meta { font-size: 0.75rem; color: var(--text-muted); display: flex; gap: 15px; }
+        .task-status { min-width: 120px; text-align: center; }
+        .task-preview { width: 80px; height: 140px; background: #000; border-radius: 8px; overflow: hidden; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border-color); }
+        .task-preview img { width: 100%; height: 100%; object-fit: cover; }
+        
+        .btn-action { padding: 8px 16px; border-radius: 6px; border: none; font-size: 0.8rem; cursor: pointer; font-weight: bold; }
+        .btn-primary { background: var(--primary); color: #000; }
+        .btn-secondary { background: #333; color: #fff; border: 1px solid #444; }
+
+        nav { display: flex; gap: 15px; margin-bottom: 2rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; }
+        nav a { color: var(--text-muted); text-decoration: none; font-size: 0.9rem; padding: 5px 10px; border-radius: 4px; }
+        nav a:hover { color: #fff; background: rgba(255,255,255,0.05); }
+        nav a.active { color: var(--accent); font-weight: bold; background: rgba(188, 140, 255, 0.1); }
+        
+        .pagination { display: flex; justify-content: center; gap: 10px; margin-top: 2rem; }
+        .page-btn { padding: 8px 16px; background: var(--card-bg); border: 1px solid var(--border-color); color: #fff; border-radius: 6px; cursor: pointer; }
+        .page-btn.active { background: var(--primary); border-color: var(--primary); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>✨ Registros de IA</h1>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <button onclick="openGenerateModal()" class="badge" style="background:var(--accent); color:#000; font-weight:bold; border:none; cursor:pointer; padding: 0.6rem 1.2rem;">+ GENERAR NUEVA</button>
+            </div>
+        </header>
+
+        <nav>
+            <a href="/">Panel Control</a>
+            <a href="/discover">Descubrimiento</a>
+            <a href="/jobs">Trabajos</a>
+            <a href="/gallery">Galería</a>
+            <a href="/youtube-channels">YouTube / Canales</a>
+            <a href="/ai-tasks" class="active">Registros IA</a>
+            <a href="/settings">Ajustes</a>
+        </nav>
+
+        <div id="tasks-list">
+            <!-- Cargando -->
+            <div style="text-align:center; padding:3rem; color:var(--text-muted);">Cargando registros...</div>
+        </div>
+
+        <div class="pagination" id="pagination-controls"></div>
+    </div>
+
+    <!-- Generate Modal -->
+    <div id="generateModal" class="modal">
+        <div class="modal-content" style="width: 500px;">
+            <span class="close-modal" onclick="closeGenerateModal()">&times;</span>
+            <h3>✨ Generar Imagen con IA</h3>
+            <textarea id="gen-prompt" placeholder="Escribe lo que deseas ver..." style="width:100%; height:120px; background:#222; border:1px solid #444; color:#fff; padding:12px; border-radius:8px; margin-bottom:15px; font-family:inherit;"></textarea>
+            
+            <label style="font-size:0.8rem; display:block; margin-bottom:5px;">Nicho de destino</label>
+            <select id="gen-niche" style="width:100%; margin-bottom:20px; background:#222; border:1px solid #444; color:#fff; padding:12px; border-radius:8px;">
+                <option value="terror">Terror</option>
+                <option value="curiosidades">Curiosidades</option>
+                <option value="misterio">Misterio</option>
+                <option value="general">General</option>
+            </select>
+            
+            <button id="btn-start-gen" onclick="startGeneration()" style="width:100%; background:var(--primary); color:#000; font-weight:bold; border:none; padding:14px; border-radius:8px; cursor:pointer;">COMENZAR GENERACIÓN</button>
+            <p style="font-size:0.7rem; color:var(--text-muted); text-align:center; margin-top:10px;">La tarea se enviará a Kie.ai y podrás seguir su progreso aquí.</p>
+        </div>
+    </div>
+
+    <div id="previewModal" class="modal" onclick="if(event.target==this) this.classList.remove('active')">
+        <div class="modal-content" style="background:transparent; border:none; box-shadow:none; text-align:center;">
+            <span class="close-modal" onclick="document.getElementById('previewModal').classList.remove('active')" style="color:#fff; background:#000; border-radius:50%; width:30px; height:30px; line-height:30px;">&times;</span>
+            <img id="previewModalImg" style="max-width:90vw; max-height:85vh; border-radius:8px; display:block; margin: 0 auto;">
+        </div>
+    </div>
+
+    <script>
+        let currentPage = 1;
+        let pollingInterval;
+
+        async function fetchTasks(page = 1) {
+            currentPage = page;
+            const res = await fetch(`/api/ai/tasks?page=${page}&limit=25`);
+            const data = await res.json();
+            
+            const list = document.getElementById('tasks-list');
+            list.innerHTML = '';
+
+            if (data.tasks.length === 0) {
+                list.innerHTML = '<div style="text-align:center; padding: 4rem; color: var(--text-muted);">No hay registros de IA aún.</div>';
+                return;
+            }
+
+            data.tasks.forEach(task => {
+                const card = document.createElement('div');
+                card.className = 'task-card';
+                
+                const statusClass = `badge-${task.status}`;
+                const isFinished = task.status === 'completed' || task.status === 'failed';
+                
+                card.innerHTML = `
+                    <div class="task-preview">
+                        ${task.status === 'completed' && task.result_url ? `<img src="${task.result_url}" style="cursor:pointer;" onclick="openPreviewModal('${task.result_url}')">` : '<span style="font-size:1.5rem;">✨</span>'}
+                    </div>
+                    <div class="task-info">
+                        ${task.status === 'draft' ? 
+                            `<textarea id="draft-prompt-${task.task_id}" style="width:100%; height:60px; background:rgba(0,0,0,0.3); color:#fff; border:1px solid var(--border-color); padding:8px; border-radius:4px; resize:vertical;">${task.prompt}</textarea>` : 
+                            `<div class="task-prompt">${task.prompt}</div>`
+                        }
+                        <div class="task-meta">
+                            <span>🆔 Lote: ${task.batch_id || 'N/A'}</span>
+                            <span>👤 Nicho: ${task.niche}</span>
+                            <span>📅 Creado: ${new Date(task.created_at).toLocaleString('es-ES')}</span>
+                        </div>
+                        ${task.status === 'failed' ? `<div style="color:var(--error); font-size:0.7rem; margin-top:5px;">❌ ${task.error_message || 'Error desconocido'}</div>` : ''}
+                    </div>
+                    <div class="task-status">
+                        <span class="badge ${statusClass}">${task.status.toUpperCase()}</span>
+                        ${task.status === 'processing' ? '<div style="font-size:0.6rem; color:var(--text-muted); margin-top:5px;">Generando en Kie...</div>' : ''}
+                    </div>
+                    <div class="task-actions" style="display:flex; flex-direction:column; gap:5px;">
+                        ${task.status === 'draft' ? `<button class="btn-action" style="background:var(--primary); color:#000; font-weight:bold;" onclick="submitDraft('${task.task_id}')">🚀 Enviar a API</button>` : ''}
+                        ${task.status === 'completed' ? `<button class="btn-action btn-secondary" onclick="window.location.href='/gallery?search=${encodeURIComponent(task.prompt.substring(0,10))}'">📂 Ver en Galería</button>` : ''}
+                        ${task.status === 'failed' ? `<button class="btn-action" style="background:#e3b341; color:#000;" onclick="submitDraft('${task.task_id}')">🔄 Reintentar / Enviar</button>` : ''}
+                        <button class="btn-action" style="background:var(--error); color:#fff;" onclick="deleteTask('${task.task_id}')">🗑️ Borrar</button>
+                    </div>
+                `;
+                list.appendChild(card);
+            });
+
+            // If there are processing tasks, poll more frequently
+            const hasProcessing = data.tasks.some(t => t.status === 'processing');
+            if (hasProcessing && !pollingInterval) {
+                pollingInterval = setInterval(() => fetchTasks(currentPage), 5000);
+            } else if (!hasProcessing && pollingInterval) {
+                clearInterval(pollingInterval);
+                pollingInterval = null;
+            }
+
+            renderPagination(data.total, data.page, data.limit);
+        }
+
+        async function submitDraft(taskId) {
+            const btn = event.target;
+            const originalText = btn.innerText;
+            btn.disabled = true;
+            btn.innerText = "⏳ Enviando...";
+
+            const promptEl = document.getElementById(`draft-prompt-${taskId}`);
+            const updatedPrompt = promptEl ? promptEl.value : null;
+
+            try {
+                const res = await fetch(`/api/ai/tasks/${taskId}/submit`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt: updatedPrompt })
+                });
+                
+                if (res.ok) {
+                    fetchTasks(currentPage);
+                } else {
+                    const data = await res.json();
+                    alert("Error: " + (data.detail || "Fallo al enviar a API"));
+                    btn.disabled = false;
+                    btn.innerText = originalText;
+                }
+            } catch(e) {
+                alert("Error de conexión al enviar.");
+                btn.disabled = false;
+                btn.innerText = originalText;
+            }
+        }
+
+        async function deleteTask(taskId) {
+            if(!confirm("¿Estás seguro de borrar este registro de IA? Si tiene una imagen generada, también se eliminará de la galería.")) return;
+            
+            try {
+                const res = await fetch(`/api/ai/tasks/${taskId}`, { method: 'DELETE' });
+                if (res.ok) {
+                    fetchTasks(currentPage);
+                } else {
+                    const data = await res.json();
+                    alert("Error: " + (data.detail || "Fallo al borrar"));
+                }
+            } catch(e) {
+                alert("Error de conexión al borrar.");
+            }
+        }
+
+        function openPreviewModal(url) {
+            document.getElementById('previewModalImg').src = url;
+            document.getElementById('previewModal').classList.add('active');
+        }
+
+        function renderPagination(total, page, limit) {
+            const controls = document.getElementById('pagination-controls');
+            controls.innerHTML = '';
+            const totalPages = Math.ceil(total / limit);
+            if (totalPages <= 1) return;
+
+            const prevBtn = document.createElement('button');
+            prevBtn.className = 'page-btn';
+            prevBtn.innerText = '←';
+            prevBtn.disabled = page === 1;
+            prevBtn.onclick = () => fetchTasks(page - 1);
+            controls.appendChild(prevBtn);
+
+            const nextBtn = document.createElement('button');
+            nextBtn.className = 'page-btn';
+            nextBtn.innerText = '→';
+            nextBtn.disabled = page === totalPages;
+            nextBtn.onclick = () => fetchTasks(page + 1);
+            controls.appendChild(nextBtn);
+        }
+
+        function openGenerateModal() {
+            document.getElementById('generateModal').classList.add('active');
+        }
+
+        function closeGenerateModal() {
+            document.getElementById('generateModal').classList.remove('active');
+        }
+
+        async function startGeneration() {
+            const prompt = document.getElementById('gen-prompt').value;
+            const niche = document.getElementById('gen-niche').value;
+            if (!prompt) return alert("Escribe un prompt");
+
+            const btn = document.getElementById('btn-start-gen');
+            btn.disabled = true;
+            btn.innerText = "ESPERANDO API...";
+
+            try {
+                const res = await fetch('/api/ai/generate', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ prompt, niche })
+                });
+                
+                if (res.ok) {
+                    closeGenerateModal();
+                    fetchTasks(1);
+                    document.getElementById('gen-prompt').value = '';
+                } else {
+                    const err = await res.json();
+                    alert("Error: " + (err.detail || "Fallo al iniciar tarea"));
+                }
+            } catch(e) {
+                alert("Error de conexión");
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "COMENZAR GENERACIÓN";
+            }
+        }
+
+        fetchTasks();
+    </script>
+</body>
+</html>

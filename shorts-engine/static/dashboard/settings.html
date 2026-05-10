@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ajustes - Shorts Engine</title>
+    <link rel="stylesheet" href="/assets/style.css">
+    <style>
+        .grid-settings { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 1.5rem; margin-top: 1rem; }
+        .setting-card { border: 1px solid var(--border-color); padding: 1.5rem; border-radius: 12px; background: var(--card-bg); display: flex; flex-direction: column; gap: 1rem; }
+        .setting-card h4 { margin: 0; color: var(--primary); display:flex; align-items:center; gap:8px; }
+        .setting-card label { font-size: 0.7rem; text-transform: uppercase; opacity: 0.6; letter-spacing: 0.05rem; }
+        nav { display: flex; gap: 15px; margin-bottom: 2rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; }
+        nav a { color: var(--text-muted); text-decoration: none; font-size: 0.9rem; padding: 5px 10px; border-radius: 4px; }
+        nav a:hover { color: #fff; background: rgba(255,255,255,0.05); }
+        nav a.active { color: var(--accent); font-weight: bold; background: rgba(188, 140, 255, 0.1); }
+        input[type="password"] { border-radius: 6px; padding: 10px; background: #000; border: 1px solid #444; color: #fff; width: 100%; }
+        .save-btn { background: var(--primary); color: #000; font-weight: bold; padding: 10px 15px; border-radius: 6px; border: none; cursor: pointer; white-space: nowrap; }
+
+        /* Credit panel styles */
+        .credits-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem; margin-top: 1rem; }
+        .credit-card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 10px; padding: 1.2rem; text-align: center; transition: border-color 0.3s; }
+        .credit-card.ok { border-color: #238636; }
+        .credit-card.low { border-color: #e3b341; }
+        .credit-card.empty { border-color: #f85149; }
+        .credit-card.not_configured { opacity: 0.4; }
+        .credit-badge { font-size: 2rem; font-weight: bold; margin: 0.5rem 0; }
+        .credit-label { font-size: 0.75rem; color: var(--text-muted); }
+        .credit-bar { width: 100%; height: 6px; background: #333; border-radius: 3px; margin-top: 8px; overflow: hidden; }
+        .credit-bar-fill { height: 100%; border-radius: 3px; transition: width 0.5s; }
+        .credit-status { font-size: 0.7rem; margin-top: 6px; font-weight: bold; padding: 2px 8px; border-radius: 10px; display: inline-block; }
+        .status-ok { background: rgba(35,134,54,0.2); color: #3fb950; }
+        .status-low { background: rgba(227,179,65,0.2); color: #e3b341; }
+        .status-empty { background: rgba(248,81,73,0.2); color: #f85149; }
+        .status-nc { background: rgba(255,255,255,0.05); color: #555; }
+        .current-key { border: 2px solid var(--accent) !important; }
+        .current-key-label { font-size: 0.65rem; color: var(--accent); font-weight: bold; margin-bottom: 4px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>⚙️ Ajustes de Sistema</h1>
+            <div id="2fa-control" class="badge" style="cursor: pointer; padding: 0.6rem 1.2rem; font-weight: bold; font-size: 0.8rem;">Cargando Seguridad...</div>
+        </header>
+
+        <nav>
+            <a href="/">Panel Control</a>
+            <a href="/discover">Descubrimiento</a>
+            <a href="/jobs">Trabajos</a>
+            <a href="/gallery">Galería</a>
+            <a href="/youtube-channels">YouTube / Canales</a>
+            <a href="/ai-tasks">Registros IA</a>
+            <a href="/settings" class="active">Ajustes</a>
+        </nav>
+
+        <!-- CREDITS SECTION -->
+        <section class="card" style="margin-bottom: 2rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                <div>
+                    <h2 style="margin:0;">💳 Créditos de Kie.ai</h2>
+                    <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 5px;">
+                        Saldo disponible por cuenta. Se actualiza al pulsar "Consultar".
+                    </p>
+                </div>
+                <button onclick="loadCredits(true)" id="btn-refresh-credits" style="background: var(--accent); color: #000; font-weight: bold;">
+                    🔄 Consultar Créditos
+                </button>
+            </div>
+            <div id="credits-section" class="credits-grid">
+                <div style="grid-column: 1/-1; text-align:center; padding: 2rem; color: var(--text-muted); font-size: 0.85rem;">
+                    Pulsa "Consultar Créditos" para ver el saldo de cada cuenta.
+                </div>
+            </div>
+        </section>
+
+
+        <!-- API KEYS SECTION -->
+        <section class="card">
+            <div style="margin-bottom: 1.5rem;">
+                <h2 style="margin:0;">🔑 Configuración de Llaves API</h2>
+                <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 5px;">
+                    Configura las credenciales de los proveedores de IA para el motor de renderizado y generación de imágenes.
+                </p>
+            </div>
+            <div id="keys-list" class="grid-settings">
+                <!-- Generado dinámicamente -->
+            </div>
+        </section>
+    </div>
+
+    <script>
+        let is2FAEnabled = true;
+        let currentKieKeyIndex = 1;
+
+        async function loadSettings() {
+            try {
+                const res = await fetch('/api/settings');
+                const data = await res.json();
+                
+                currentKieKeyIndex = parseInt(data['KIE_CURRENT_KEY_INDEX'] || '1') || 1;
+                // The current key is the LAST used (before increment), so subtract 1
+                const activeKey = currentKieKeyIndex === 1 ? 5 : currentKieKeyIndex - 1;
+
+                // 2FA Control
+                is2FAEnabled = data["2FA_ENABLED"] !== "false";
+                const ctrl = document.getElementById('2fa-control');
+                if (is2FAEnabled) {
+                    ctrl.innerHTML = '🛡️ 2FA ACTIVADO';
+                    ctrl.style.background = 'rgba(35, 134, 54, 0.2)';
+                    ctrl.style.color = '#3fb950';
+                } else {
+                    ctrl.innerHTML = '🔓 2FA DESACTIVADO';
+                    ctrl.style.background = 'rgba(248, 81, 73, 0.2)';
+                    ctrl.style.color = '#f85149';
+                }
+                ctrl.onclick = toggle2FA;
+
+
+                // API Keys
+                const keysContainer = document.getElementById('keys-list');
+                keysContainer.innerHTML = '';
+                const providers = [
+                    'GROQ', 'OPENAI', 'DEEPSEEK', 'OPENROUTER',
+                    'KIE_API_KEY_1', 'KIE_API_KEY_2', 'KIE_API_KEY_3', 'KIE_API_KEY_4', 'KIE_API_KEY_5'
+                ];
+                
+                providers.forEach(p => {
+                    const isConfigured = data[p] === '********';
+                    const statusText = isConfigured ? '✅ Configurada' : '⏳ Pendiente';
+                    const statusColor = isConfigured ? '#3fb950' : '#e3b341';
+                    
+                    keysContainer.innerHTML += `
+                        <div class="setting-card">
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <h4>${p}</h4>
+                                <small style="color:${statusColor}">${statusText}</small>
+                            </div>
+                            <div>
+                                <label>Llave API</label>
+                                <div style="display: flex; gap: 8px; margin-top:5px;">
+                                    <input type="password" id="key-${p}" placeholder="${isConfigured ? '••••••••••••••••' : 'Pega tu API Key aquí'}">
+                                    <button class="save-btn" onclick="saveKey('${p}')">Guardar</button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+            } catch (e) {
+                alert("Error crítico cargando ajustes: " + e.message);
+                console.error("Error cargando ajustes", e);
+            }
+        }
+
+        async function loadCredits(showLoading = false) {
+            const btn = document.getElementById('btn-refresh-credits');
+            if (showLoading) {
+                btn.disabled = true;
+                btn.innerText = '⏳ Consultando...';
+            }
+
+            try {
+                const res = await fetch('/api/kie/credits');
+                const data = await res.json();
+                
+                // Get current active key
+                const settingsRes = await fetch('/api/settings');
+                const settings = await settingsRes.json();
+                const nextIndex = parseInt(settings['KIE_CURRENT_KEY_INDEX'] || '1') || 1;
+                const activeIndex = nextIndex === 1 ? 5 : nextIndex - 1;
+
+                const container = document.getElementById('credits-section');
+                container.innerHTML = '';
+
+                // Compute max credits for relative bar
+                const maxCredits = Math.max(...data.keys.map(k => k.credits || 0), 100);
+
+                data.keys.forEach(k => {
+                    const credits = k.credits || 0;
+                    let statusClass = 'not_configured';
+                    let statusLabel = 'No configurada';
+                    let barColor = '#555';
+                    let badgeClass = 'status-nc';
+
+                    if (k.configured) {
+                        if (credits > 50) { statusClass = 'ok'; statusLabel = 'Disponible'; barColor = '#3fb950'; badgeClass = 'status-ok'; }
+                        else if (credits > 10) { statusClass = 'low'; statusLabel = '⚠️ Bajo'; barColor = '#e3b341'; badgeClass = 'status-low'; }
+                        else { statusClass = 'empty'; statusLabel = '❌ Agotada'; barColor = '#f85149'; badgeClass = 'status-empty'; }
+                    }
+
+                    const isActive = k.key_index === activeIndex;
+                    const barPct = k.configured ? Math.min((credits / maxCredits) * 100, 100) : 0;
+
+                    container.innerHTML += `
+                        <div class="credit-card ${statusClass} ${isActive ? 'current-key' : ''}">
+                            ${isActive ? '<div class="current-key-label">▶ CUENTA ACTIVA</div>' : ''}
+                            <div class="credit-label">${k.key_name}</div>
+                            <div class="credit-badge" style="color: ${barColor}">${k.configured ? credits.toLocaleString() : '—'}</div>
+                            <div class="credit-label">créditos</div>
+                            <div class="credit-bar">
+                                <div class="credit-bar-fill" style="width: ${barPct}%; background: ${barColor};"></div>
+                            </div>
+                            <div class="credit-status ${badgeClass}">${k.error || statusLabel}</div>
+                        </div>
+                    `;
+                });
+            } catch(e) {
+                document.getElementById('credits-section').innerHTML = `
+                    <div style="grid-column:1/-1; color: var(--error); text-align:center; padding: 1rem;">
+                        Error al consultar créditos: ${e.message}
+                    </div>`;
+            } finally {
+                btn.disabled = false;
+                btn.innerText = '🔄 Consultar Créditos';
+            }
+        }
+
+        async function toggle2FA() {
+            const newState = !is2FAEnabled;
+            if(!confirm(`¿Seguro que quieres ${newState ? 'ACTIVAR' : 'DESACTIVAR'} el 2FA?`)) return;
+            await fetch('/api/settings', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ provider: '2FA_ENABLED', api_key: newState ? "true" : "false" })
+            });
+            loadSettings();
+        }
+
+        async function saveKey(provider) {
+            const val = document.getElementById(`key-${provider}`).value;
+            if(!val) return alert("Escribe la llave primero");
+            
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerText = "⏳";
+
+            try {
+                const res = await fetch('/api/settings', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ provider, api_key: val })
+                });
+                if(res.ok) {
+                    alert(`Llave de ${provider} guardada correctamente.`);
+                    document.getElementById(`key-${provider}`).value = '';
+                    loadSettings();
+                } else {
+                    alert("Error al guardar la llave.");
+                }
+            } catch(e) {
+                alert("Error de conexión.");
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "Guardar";
+            }
+        }
+
+
+        loadSettings();
+    </script>
+</body>
+</html>

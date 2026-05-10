@@ -1,0 +1,13 @@
+__pycache__/
+*.py[cod]
+*$py.class
+.env
+.venv
+env/
+venv/
+ENV/
+storage/
+temp_subs.srt
+.n8n_config.json
+*.mp3
+*.mp4

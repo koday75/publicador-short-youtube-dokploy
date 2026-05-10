@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Shorts Engine</title>
+    <link rel="stylesheet" href="/assets/style.css">
+    <style>
+        .quick-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin-top: 2rem; }
+        .action-card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.5rem; text-decoration: none; color: inherit; transition: all 0.2s; cursor: pointer; }
+        .action-card:hover { transform: translateY(-5px); border-color: var(--accent); box-shadow: 0 10px 20px rgba(0,0,0,0.2); }
+        .action-card h3 { margin: 0 0 10px 0; display: flex; align-items: center; gap: 10px; }
+        .action-card p { margin: 0; font-size: 0.85rem; color: var(--text-muted); line-height: 1.4; }
+        
+        nav { display: flex; gap: 15px; margin-bottom: 2rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; }
+        nav a { color: var(--text-muted); text-decoration: none; font-size: 0.9rem; padding: 5px 10px; border-radius: 4px; }
+        nav a:hover { color: #fff; background: rgba(255,255,255,0.05); }
+        nav a.active { color: var(--accent); font-weight: bold; background: rgba(188, 140, 255, 0.1); }
+        
+        .recent-list { margin-top: 3rem; }
+        .recent-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🚀 Shorts Engine Studio</h1>
+            <div id="engine-status" class="badge">Online</div>
+        </header>
+
+        <nav>
+            <a href="/" class="active">Panel Control</a>
+            <a href="/discover">Descubrimiento</a>
+            <a href="/jobs">Trabajos</a>
+            <a href="/gallery">Galería</a>
+            <a href="/youtube-channels">YouTube / Canales</a>
+            <a href="/ai-tasks">Registros IA</a>
+            <a href="/settings">Ajustes</a>
+        </nav>
+
+        <div class="stats-grid">
+            <div class="card">
+                <div class="stat-label">Videos Realizados</div>
+                <div id="stat-total" class="stat-value">0</div>
+            </div>
+            <div class="card">
+                <div class="stat-label">Activos en Galería</div>
+                <div id="stat-gallery" class="stat-value">0</div>
+            </div>
+            <div class="card">
+                <div class="stat-label">Tareas de IA</div>
+                <div id="stat-ai" class="stat-value">0</div>
+            </div>
+        </div>
+
+        <div class="quick-actions">
+            <a href="/discover" class="action-card">
+                <h3>🔥 Descubrimiento Viral</h3>
+                <p>Explora tendencias actuales de Reddit, Hacker News y Wikipedia. Encuentra historias épicas antes que nadie.</p>
+            </a>
+            <a href="/storyboard" class="action-card">
+                <h3>🎬 Cinema Pro Editor</h3>
+                <p>Crea, edita y renderiza videos cortos de alta calidad con subtítulos automáticos y música.</p>
+            </a>
+            <a href="/ai-tasks" class="action-card">
+                <h3>✨ Generador de IA</h3>
+                <p>Crea imágenes únicas para tus fondos usando Seedream 5.0 y sigue su progreso paso a paso.</p>
+            </a>
+            <a href="/gallery" class="action-card">
+                <h3>📂 Banco de Assets</h3>
+                <p>Gestiona tus nichos, sube videos de fondo y organiza tu contenido para la automatización.</p>
+            </a>
+        </div>
+
+        <section class="recent-list">
+            <div class="recent-header">
+                <h2>Últimos Trabajos</h2>
+                <a href="/jobs" style="color: var(--primary); font-size: 0.8rem; text-decoration: none;">Ver todos →</a>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Título</th>
+                        <th>Estado</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="recent-jobs">
+                    <!-- Dinámico -->
+                </tbody>
+            </table>
+        </section>
+    </div>
+
+    <script>
+        async function fetchDashboard() {
+            const res = await fetch('/api/stats');
+            const stats = await res.json();
+            document.getElementById('stat-total').innerText = stats.total_jobs;
+            
+            // Fetch gallery count
+            const gRes = await fetch('/api/gallery?limit=1');
+            const gData = await gRes.json();
+            document.getElementById('stat-gallery').innerText = gData.total;
+
+            // Fetch AI tasks count
+            const aiRes = await fetch('/api/ai/tasks?limit=1');
+            const aiData = await aiRes.json();
+            document.getElementById('stat-ai').innerText = aiData.total;
+
+            // Fetch recent jobs
+            const jRes = await fetch('/api/jobs?limit=5');
+            const jData = await jRes.json();
+            const table = document.getElementById('recent-jobs');
+            table.innerHTML = '';
+            
+            jData.jobs.forEach(job => {
+                const row = document.createElement('tr');
+                const displayTitle = job.title || (job.text ? job.text.substring(0, 40) + '...' : 'Storyboard');
+                row.innerHTML = `
+                    <td style="font-family:monospace; font-size:0.8rem;">${job.job_id.substring(0,10)}</td>
+                    <td title="${job.title || job.text || ''}">${displayTitle}</td>
+                    <td><span class="badge badge-${job.status}">${job.status}</span></td>
+                    <td>
+                        <button class="badge" style="background:#333; cursor:pointer;" onclick="window.location.href='/storyboard?job_id=${job.job_id}'">Ver detalles</button>
+                    </td>
+                `;
+                table.appendChild(row);
+            });
+        }
+
+        fetchDashboard();
+        setInterval(fetchDashboard, 15000);
+    </script>
+</body>
+</html>

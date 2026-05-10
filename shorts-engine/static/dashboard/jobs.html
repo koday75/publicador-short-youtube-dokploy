@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Historial de Trabajos - Shorts Engine</title>
+    <link rel="stylesheet" href="/assets/style.css">
+    <style>
+        .search-bar { display: flex; gap: 10px; margin-bottom: 2rem; }
+        .search-bar input { flex: 1; padding: 10px; background: var(--card-bg); border: 1px solid var(--border-color); color: #fff; border-radius: 6px; }
+        .pagination { display: flex; justify-content: center; gap: 10px; margin-top: 2rem; align-items: center; }
+        .page-btn { padding: 6px 12px; background: var(--card-bg); border: 1px solid var(--border-color); color: #fff; border-radius: 4px; cursor: pointer; }
+        .page-btn.active { background: var(--primary); border-color: var(--primary); }
+        .page-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+        .action-btn { padding: 4px 10px; font-size: 0.75rem; border-radius: 5px; cursor: pointer; border: none; }
+        .btn-delete { background: rgba(248,81,73,0.2); color: #f85149; border: 1px solid #f85149; }
+        .btn-view { background: rgba(88,166,255,0.15); color: #58a6ff; border: 1px solid #58a6ff; }
+        nav { display: flex; gap: 15px; margin-bottom: 2rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; }
+        nav a { color: var(--text-muted); text-decoration: none; font-size: 0.9rem; padding: 5px 10px; border-radius: 4px; }
+        nav a:hover { color: #fff; background: rgba(255,255,255,0.05); }
+        nav a.active { color: var(--accent); font-weight: bold; background: rgba(188, 140, 255, 0.1); }
+        .badge-draft { background: rgba(50,100,200,0.25); color: #79b8ff; border: 1px solid #79b8ff; }
+        .badge-rendered { background: rgba(255,165,0,0.2); color: #ffa500; border: 1px solid #ffa500; }
+        .badge-completed { background: rgba(63,185,80,0.2); color: #3fb950; border: 1px solid #3fb950; }
+        .status-select {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            color: #fff;
+            border-radius: 6px;
+            padding: 3px 6px;
+            font-size: 0.75rem;
+            cursor: pointer;
+        }
+        .status-select:focus { outline: none; border-color: var(--primary); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎬 Historial de Trabajos</h1>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <a href="/storyboard" class="badge" style="text-decoration: none; background: var(--accent); color: #000; padding: 0.5rem 1.5rem; font-weight: bold;">+ NUEVO PROYECTO</a>
+            </div>
+        </header>
+
+        <nav>
+            <a href="/">Panel Control</a>
+            <a href="/discover">Descubrimiento</a>
+            <a href="/jobs" class="active">Trabajos</a>
+            <a href="/gallery">Galería</a>
+            <a href="/youtube-channels">YouTube / Canales</a>
+            <a href="/ai-tasks">Registros IA</a>
+            <a href="/settings">Ajustes</a>
+        </nav>
+
+        <section class="search-bar">
+            <input type="text" id="job-search" placeholder="Buscar por texto, ID o nicho..." oninput="debounceSearch()">
+            <button onclick="fetchJobs(1)">Buscar</button>
+        </section>
+
+        <section class="history">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Título</th>
+                        <th>Estado</th>
+                        <th>Creado</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="jobs-table">
+                    <!-- Filas dinámicas -->
+                </tbody>
+            </table>
+
+            <div class="pagination" id="pagination-controls">
+                <!-- Botones de paginación -->
+            </div>
+        </section>
+    </div>
+
+    <!-- Modal View -->
+    <div id="videoModal" class="modal">
+        <div class="modal-content" style="width: 400px; padding: 1rem;">
+            <span class="close-modal" onclick="closeVideoModal()">&times;</span>
+            <div style="width: 100%; aspect-ratio: 9/16; background: #000; border-radius: 8px; overflow: hidden;">
+                <video id="previewPlayer" controls style="width: 100%; height: 100%; object-fit: contain;"></video>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn" onclick="downloadCurrentVideo()" style="background: var(--secondary);">⬇ Descargar</button>
+                <button class="modal-btn" onclick="shareCurrentVideo()" style="background: var(--primary);">🔗 Compartir</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentPage = 1;
+        let searchTimeout;
+
+        function debounceSearch() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => fetchJobs(1), 500);
+        }
+
+        async function fetchJobs(page = 1) {
+            currentPage = page;
+            const search = document.getElementById('job-search').value;
+            const res = await fetch(`/api/jobs?page=${page}&limit=25&search=${encodeURIComponent(search)}`);
+            const data = await res.json();
+            
+            const table = document.getElementById('jobs-table');
+            table.innerHTML = '';
+
+            if(data.jobs.length === 0) {
+                table.innerHTML = '<tr><td colspan="5" style="text-align:center; color: var(--text-muted); padding: 2rem;">No se encontraron trabajos.</td></tr>';
+                return;
+            }
+
+            data.jobs.forEach(job => {
+                const row = document.createElement('tr');
+                
+                // Priorizar el título sobre la descripción genérica
+                const displayTitle = job.title || (job.text ? job.text.substring(0, 50) + '...' : job.job_id);
+                
+                const canPlay = job.status === 'rendered' || job.status === 'completed';
+                
+                // Status selector - only show for rendered jobs (allow promoting to completed or back)
+                const statusCell = job.status === 'rendered'
+                    ? `<select class="status-select" id="sel-${job.job_id}" onchange="updateStatus('${job.job_id}', this.value)">
+                            <option value="rendered" ${job.status === 'rendered' ? 'selected' : ''}>⏳ Renderizado</option>
+                            <option value="completed" ${job.status === 'completed' ? 'selected' : ''}>✅ Completado</option>
+                       </select>`
+                    : `<span class="badge badge-${job.status}">${job.status}</span>`;
+
+                row.innerHTML = `
+                    <td style="font-family:monospace; font-size:0.8rem;">${job.job_id.substring(0,12)}</td>
+                    <td style="max-width:300px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${job.title || job.text || ''}">${displayTitle}</td>
+                    <td>${statusCell}</td>
+                    <td style="font-size:0.85rem; color:var(--text-muted);">${new Date(job.created_at).toLocaleString('es-ES')}</td>
+                    <td style="display:flex; gap:6px;">
+                        <button class="action-btn" style="background:#333; color:#fff;" onclick="window.location.href='/storyboard?job_id=${job.job_id}'">✏️</button>
+                        ${canPlay ? `<button class="action-btn btn-view" onclick="previewVideo('${job.video_url}')">▶</button>` : ''}
+                        <button class="action-btn btn-delete" onclick="deleteJob('${job.job_id}')">🗑</button>
+                    </td>
+                `;
+                table.appendChild(row);
+            });
+
+            renderPagination(data.total, data.page, data.limit);
+        }
+
+        async function updateStatus(jobId, newStatus) {
+            const sel = document.getElementById(`sel-${jobId}`);
+            try {
+                const res = await fetch(`/api/jobs/${jobId}/status`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: newStatus })
+                });
+                if (!res.ok) {
+                    alert('Error al actualizar el estado');
+                    sel.value = sel.dataset.original || 'rendered';
+                } else {
+                    // Small visual confirmation
+                    const checkIcon = document.createElement('span');
+                    checkIcon.innerText = ' ✅';
+                    checkIcon.style.color = '#3fb950';
+                    checkIcon.style.fontSize = '0.8rem';
+                    sel.parentNode.appendChild(checkIcon);
+                    setTimeout(() => checkIcon.remove(), 2000);
+                    if (newStatus === 'completed') {
+                        setTimeout(() => fetchJobs(currentPage), 1500);
+                    }
+                }
+            } catch(e) {
+                alert('Error de conexión');
+            }
+        }
+
+        function renderPagination(total, page, limit) {
+            const controls = document.getElementById('pagination-controls');
+            controls.innerHTML = '';
+            const totalPages = Math.ceil(total / limit);
+
+            if (totalPages <= 1) return;
+
+            const prevBtn = document.createElement('button');
+            prevBtn.className = 'page-btn';
+            prevBtn.innerText = '←';
+            prevBtn.disabled = page === 1;
+            prevBtn.onclick = () => fetchJobs(page - 1);
+            controls.appendChild(prevBtn);
+
+            for (let i = 1; i <= totalPages; i++) {
+                if (i === 1 || i === totalPages || (i >= page - 2 && i <= page + 2)) {
+                    const btn = document.createElement('button');
+                    btn.className = `page-btn ${i === page ? 'active' : ''}`;
+                    btn.innerText = i;
+                    btn.onclick = () => fetchJobs(i);
+                    controls.appendChild(btn);
+                } else if (i === page - 3 || i === page + 3) {
+                    const dots = document.createElement('span');
+                    dots.innerText = '...';
+                    controls.appendChild(dots);
+                }
+            }
+
+            const nextBtn = document.createElement('button');
+            nextBtn.className = 'page-btn';
+            nextBtn.innerText = '→';
+            nextBtn.disabled = page === totalPages;
+            nextBtn.onclick = () => fetchJobs(page + 1);
+            controls.appendChild(nextBtn);
+        }
+
+        async function deleteJob(jobId) {
+            if(!confirm('¿Borrar permanentemente?')) return;
+            const res = await fetch(`/api/jobs/${jobId}`, { method: 'DELETE' });
+            if(res.ok) fetchJobs(currentPage);
+        }
+
+        function previewVideo(url) {
+            const modal = document.getElementById('videoModal');
+            const player = document.getElementById('previewPlayer');
+            player.src = url;
+            modal.classList.add('active');
+            player.play();
+        }
+
+        function closeVideoModal() {
+            document.getElementById('videoModal').classList.remove('active');
+            document.getElementById('previewPlayer').pause();
+        }
+
+        function downloadCurrentVideo() {
+            const url = document.getElementById('previewPlayer').src;
+            if(!url) return;
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = url.split('/').pop();
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+
+        async function shareCurrentVideo() {
+            const url = document.getElementById('previewPlayer').src;
+            if(!url) return;
+            const absoluteUrl = url.startsWith('http') ? url : window.location.origin + url;
+            try {
+                if (navigator.share) {
+                    await navigator.share({ title: 'Short Video', text: 'Mira este video generado por Shorts Engine', url: absoluteUrl });
+                } else {
+                    await navigator.clipboard.writeText(absoluteUrl);
+                    alert("Enlace copiado al portapapeles: " + absoluteUrl);
+                }
+            } catch (err) {
+                console.error("Error al compartir:", err);
+            }
+        }
+
+        fetchJobs();
+    </script>
+</body>
+</html>

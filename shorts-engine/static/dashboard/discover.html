@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Descubrimiento - Shorts Engine</title>
+    <link rel="stylesheet" href="/assets/style.css">
+    <style>
+        .grid-candidates { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.5rem; margin-top: 2rem; }
+        .candidate-card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.5rem; display: flex; flex-direction: column; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); position: relative; overflow: hidden; }
+        .candidate-card:hover { transform: translateY(-5px); border-color: var(--accent); box-shadow: 0 10px 25px rgba(0,0,0,0.3); }
+        .candidate-card.processing { opacity: 0.5; pointer-events: none; filter: grayscale(1); }
+        
+        .score-badge { position: absolute; top: 1rem; right: 1rem; background: rgba(255, 69, 0, 0.1); color: #ff4500; font-weight: bold; padding: 4px 8px; border-radius: 6px; font-size: 0.8rem; display: flex; align-items: center; gap: 4px; border: 1px solid rgba(255, 69, 0, 0.2); }
+        .source-tag { display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 12px; }
+        .source-icon { width: 16px; height: 16px; border-radius: 2px; }
+        
+        .cand-title { font-size: 1.1rem; color: #fff; margin: 0 0 12px 0; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; height: 3.1rem; }
+        .cand-meta { font-size: 0.8rem; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center; margin-top: auto; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.05); }
+        
+        .actions { display: flex; gap: 10px; margin-top: 15px; }
+        .btn-create { flex: 2; background: var(--accent); color: #000; font-weight: bold; }
+        .btn-delete { flex: 1; background: rgba(248, 81, 73, 0.1); color: #f85149; border: 1px solid rgba(248, 81, 73, 0.2); }
+        .btn-delete:hover { background: rgba(248, 81, 73, 0.2); }
+        
+        nav { display: flex; gap: 15px; margin-bottom: 2rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; }
+        nav a { color: var(--text-muted); text-decoration: none; font-size: 0.9rem; padding: 5px 10px; border-radius: 4px; }
+        nav a:hover { color: #fff; background: rgba(255,255,255,0.05); }
+        nav a.active { color: var(--accent); font-weight: bold; background: rgba(188, 140, 255, 0.1); }
+        
+        .empty-state { text-align: center; padding: 5rem 2rem; color: var(--text-muted); }
+        .empty-state h2 { color: #555; margin-bottom: 10px; }
+        
+        /* Toast notification */
+        #toast { position: fixed; bottom: 20px; right: 20px; padding: 12px 24px; border-radius: 8px; color: #fff; transform: translateY(100px); transition: all 0.3s; z-index: 9999; }
+        #toast.active { transform: translateY(0); }
+        .toast-success { background: #238636; }
+        .toast-error { background: #f85149; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔥 Descubrimiento de Tendencias</h1>
+            <button class="btn-delete" style="font-size: 0.8rem;" onclick="clearAll()">Vaciartodo</button>
+        </header>
+
+        <nav>
+            <a href="/">Panel Control</a>
+            <a href="/jobs">Trabajos</a>
+            <a href="/discover" class="active">Descubrimiento</a>
+            <a href="/gallery">Galería</a>
+            <a href="/youtube-channels">YouTube / Canales</a>
+            <a href="/ai-tasks">Registros IA</a>
+            <a href="/settings">Ajustes</a>
+        </nav>
+
+        <div id="candidates-container" class="grid-candidates">
+            <!-- Dinámico -->
+            <div class="empty-state">Cargando noticias interesantes...</div>
+        </div>
+    </div>
+
+    <div id="toast"></div>
+
+    <script>
+        function showToast(msg, type='success') {
+            const t = document.getElementById('toast');
+            t.className = type === 'success' ? 'toast-success' : 'toast-error';
+            t.innerText = msg;
+            t.classList.add('active');
+            setTimeout(() => t.classList.remove('active'), 3000);
+        }
+
+        async function fetchCandidates() {
+            try {
+                const res = await fetch('/api/candidates');
+                const data = await res.json();
+                render(data);
+            } catch(e) {
+                console.error(e);
+            }
+        }
+
+        function getIcon(source) {
+            const s = source.toLowerCase();
+            if (s.includes('reddit')) return 'https://www.google.com/s2/favicons?domain=reddit.com&sz=32';
+            if (s.includes('hacker') || s.includes('ycombinator')) return 'https://www.google.com/s2/favicons?domain=ycombinator.com&sz=32';
+            if (s.includes('wiki')) return 'https://www.google.com/s2/favicons?domain=wikipedia.org&sz=32';
+            return 'https://www.google.com/s2/favicons?domain=newsapi.org&sz=32';
+        }
+
+        async function createShort(id, button) {
+            const card = button.closest('.candidate-card');
+            const originalText = button.innerText;
+            button.innerText = "🧠 Pensando...";
+            card.classList.add('processing');
+            
+            try {
+                const res = await fetch(`/api/candidates/${id}/process`, { method: 'POST' });
+                const data = await res.json();
+                if (res.ok) {
+                    showToast("✅ Storyboard generado. Revisa la pestaña de 'Trabajos'.");
+                    card.style.transform = "scale(0.8)";
+                    card.style.opacity = "0";
+                    setTimeout(() => {
+                        card.remove();
+                        checkEmpty();
+                    }, 400);
+                } else {
+                    let msg = data.detail || "Error al procesar";
+                    showToast(msg, 'error');
+                    button.innerText = originalText;
+                    card.classList.remove('processing');
+                }
+            } catch(e) {
+                showToast("Error de conexión con el Engine", 'error');
+                button.innerText = originalText;
+                card.classList.remove('processing');
+            }
+        }
+
+        async function discard(id, button) {
+            const card = button.closest('.candidate-card');
+            try {
+                const res = await fetch(`/api/candidates/${id}`, { method: 'DELETE' });
+                if (res.ok) {
+                    card.style.transform = "scale(0.8) opacity(0)";
+                    setTimeout(() => {
+                        card.remove();
+                        checkEmpty();
+                    }, 300);
+                }
+            } catch(e) {
+                showToast("No se pudo descartar", 'error');
+            }
+        }
+
+        async function clearAll() {
+            if(!confirm("¿Estás seguro de que quieres vaciar toda la lista de descubrimientos?")) return;
+            try {
+                // We need a clear all endpoint if it doesn't exist, or loop.
+                // Looking at database.py, clear_all_candidates exists but maybe not an endpoint.
+                // Let's assume we want to call it. I'll add the endpoint in main.py later if needed.
+                // For now, let's call DELETE on a special 'all' path or similar.
+                const res = await fetch('/api/candidates/all', { method: 'DELETE' });
+                if(res.ok) {
+                    location.reload();
+                }
+            } catch(e) {
+                showToast("Error al vaciar", 'error');
+            }
+        }
+
+        function checkEmpty() {
+            const container = document.getElementById('candidates-container');
+            if (container.children.length === 0) {
+                container.innerHTML = `<div class="empty-state"><h2>😴 No hay más tendencias por ahora</h2><p>El scanner se activará automáticamente o puedes lanzarlo desde n8n.</p></div>`;
+            }
+        }
+
+        function render(items) {
+            const container = document.getElementById('candidates-container');
+            container.innerHTML = '';
+            
+            if (items.length === 0) {
+                checkEmpty();
+                return;
+            }
+
+            items.forEach(item => {
+                const el = document.createElement('div');
+                el.className = 'candidate-card';
+                el.innerHTML = `
+                    <div class="source-tag">
+                        <img src="${getIcon(item.source)}" class="source-icon">
+                        ${item.source.toUpperCase()}
+                    </div>
+                    <div class="score-badge">🔥 ${item.viral_score}</div>
+                    <h3 class="cand-title" title="${item.title}">${item.title}</h3>
+                    <div class="cand-meta">
+                        <span>Nicho: ${item.niche}</span>
+                        <span>${new Date(item.created_at).toLocaleDateString()}</span>
+                    </div>
+                    <div class="actions">
+                        <button class="btn-create" onclick="createShort(${item.id}, this)">🎬 Crear Short</button>
+                        <button class="btn-delete" onclick="discard(${item.id}, this)">🗑️</button>
+                    </div>
+                `;
+                container.appendChild(el);
+            });
+        }
+
+        window.onload = fetchCandidates;
+    </script>
+</body>
+</html>

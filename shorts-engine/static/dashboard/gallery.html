@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Galería de Medios - Shorts Engine</title>
+    <link rel="stylesheet" href="/assets/style.css">
+    <style>
+        .controls { display: flex; gap: 10px; margin-bottom: 2rem; align-items: center; }
+        .search-input { flex: 1; padding: 10px; background: var(--card-bg); border: 1px solid var(--border-color); color: #fff; border-radius: 6px; }
+        .filter-select { padding: 10px; background: var(--card-bg); border: 1px solid var(--border-color); color: #fff; border-radius: 6px; }
+        
+        .gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1.5rem; }
+        .gallery-item { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; overflow: hidden; position: relative; transition: transform 0.2s; }
+        .gallery-item:hover { transform: translateY(-4px); border-color: var(--primary); }
+        .gallery-thumb { width: 100%; height: 220px; object-fit: cover; background: #000; cursor: pointer; }
+        .gallery-info { padding: 12px; }
+        .gallery-info .name { font-size: 0.8rem; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 4px; }
+        .gallery-info .meta { font-size: 0.7rem; color: var(--text-muted); }
+        .ai-badge { position: absolute; top: 8px; right: 8px; background: var(--accent); color: #000; padding: 2px 8px; font-size: 0.65rem; font-weight: bold; border-radius: 4px; }
+        
+        .gallery-actions { display: flex; gap: 4px; padding: 8px; background: rgba(0,0,0,0.5); }
+        .action-btn { flex: 1; padding: 6px; font-size: 0.75rem; border-radius: 4px; border: 1px solid var(--border-color); background: transparent; color: #fff; cursor: pointer; }
+        .action-btn:hover { background: rgba(255,255,255,0.1); }
+        .btn-delete:hover { background: var(--error); border-color: var(--error); }
+
+        .pagination { display: flex; justify-content: center; gap: 10px; margin-top: 3rem; align-items: center; }
+        .page-btn { padding: 8px 16px; background: var(--card-bg); border: 1px solid var(--border-color); color: #fff; border-radius: 6px; cursor: pointer; }
+        .page-btn.active { background: var(--primary); border-color: var(--primary); }
+        .page-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+        nav { display: flex; gap: 15px; margin-bottom: 2rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; }
+        nav a { color: var(--text-muted); text-decoration: none; font-size: 0.9rem; padding: 5px 10px; border-radius: 4px; }
+        nav a:hover { color: #fff; background: rgba(255,255,255,0.05); }
+        nav a.active { color: var(--accent); font-weight: bold; background: rgba(188, 140, 255, 0.1); }
+        .audio-placeholder { width: 100%; height: 220px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #1a1a1a; color: var(--accent); cursor: pointer; }
+        .audio-placeholder span { font-size: 3rem; margin-bottom: 10px; }
+        .file-type-badge { font-size: 0.6rem; background: rgba(255,255,255,0.1); padding: 2px 5px; border-radius: 3px; font-family: monospace; text-transform: uppercase; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🖼️ Galería de Medios</h1>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <input type="file" id="media-upload" style="display:none" onchange="uploadMedia(this)">
+                <button onclick="document.getElementById('media-upload').click()" class="badge" style="background:var(--primary); color:#000; font-weight:bold; border:none; cursor:pointer; padding: 0.6rem 1.2rem;">+ SUBIR ARCHIVO</button>
+            </div>
+        </header>
+
+        <nav>
+            <a href="/">Panel Control</a>
+            <a href="/discover">Descubrimiento</a>
+            <a href="/jobs">Trabajos</a>
+            <a href="/gallery" class="active">Galería</a>
+            <a href="/youtube-channels">YouTube / Canales</a>
+            <a href="/ai-tasks">Registros IA</a>
+            <a href="/settings">Ajustes</a>
+        </nav>
+
+        <section class="controls">
+            <input type="text" id="gallery-search" class="search-input" placeholder="Buscar por nombre, prompt o nicho..." oninput="debounceSearch()">
+            <select id="gallery-filter" class="filter-select" onchange="fetchGallery(1)">
+                <option value="">Todos los tipos</option>
+                <option value="video">Videos</option>
+                <option value="image">Imágenes</option>
+                <option value="audio">Audios</option>
+            </select>
+        </section>
+
+        <div id="gallery-grid" class="gallery-grid">
+            <!-- Grid dinámico -->
+        </div>
+
+        <div class="pagination" id="pagination-controls"></div>
+    </div>
+
+    <!-- Tagging Modal -->
+    <div id="tagModal" class="modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <span class="close-modal" onclick="closeTagModal()">&times;</span>
+            <h3>🏷️ Etiquetar Asset</h3>
+            <input type="hidden" id="tag-media-id">
+            <label style="font-size:0.8rem; display:block; margin-bottom:5px;">Prompt / Descripción</label>
+            <input type="text" id="tag-prompt" style="width:100%; margin-bottom:15px; background:#222; border:1px solid #444; color:#fff; padding:10px; border-radius:6px;">
+            <label style="font-size:0.8rem; display:block; margin-bottom:5px;">Nicho</label>
+            <select id="tag-niche" style="width:100%; margin-bottom:20px; background:#222; border:1px solid #444; color:#fff; padding:10px; border-radius:6px;">
+                <option value="terror">Terror</option>
+                <option value="curiosidades">Curiosidades</option>
+                <option value="misterio">Misterio</option>
+                <option value="general">General</option>
+            </select>
+            <button onclick="saveTag()" style="width:100%; background:var(--accent); color:#000; font-weight:bold; border:none; padding:12px; border-radius:6px; cursor:pointer;">GUARDAR CAMBIOS</button>
+        </div>
+    </div>
+
+    <!-- Preview Modal -->
+    <div id="videoModal" class="modal">
+        <div class="modal-content" style="width: 400px; padding: 1rem;">
+            <span class="close-modal" onclick="closeVideoModal()">&times;</span>
+            <div id="preview-container" style="width: 100%; aspect-ratio: 9/16; background: #000; border-radius: 8px; overflow: hidden;">
+                <!-- Dinámico -->
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn" id="btn-download" onclick="downloadCurrentMedia()" style="background: var(--secondary);">⬇ Descargar</button>
+                <button class="modal-btn" id="btn-share" onclick="shareCurrentMedia()" style="background: var(--primary);">🔗 Compartir</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentPage = 1;
+        let searchTimeout;
+
+        function debounceSearch() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => fetchGallery(1), 500);
+        }
+
+        async function fetchGallery(page = 1) {
+            currentPage = page;
+            const search = document.getElementById('gallery-search').value;
+            const type = document.getElementById('gallery-filter').value;
+            
+            const res = await fetch(`/api/gallery?page=${page}&limit=25&search=${encodeURIComponent(search)}&type=${type}`);
+            const data = await res.json();
+            
+            const grid = document.getElementById('gallery-grid');
+            grid.innerHTML = '';
+
+            if (data.items.length === 0) {
+                grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding: 3rem; color: var(--text-muted);">No se encontraron archivos en la galería.</div>';
+                return;
+            }
+
+            data.items.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'gallery-item';
+                const isTagged = item.asset_id != null;
+                
+                let thumbHtml = '';
+                if(item.file_type && item.file_type.includes('video')) {
+                    thumbHtml = `<video class="gallery-thumb" src="/static/uploads/${item.filename}" muted onclick="previewMedia('video', '/static/uploads/${item.filename}')"></video>`;
+                } else if(item.file_type && item.file_type.includes('image')) {
+                    thumbHtml = `<img class="gallery-thumb" src="/static/uploads/${item.filename}" onclick="previewMedia('image', '/static/uploads/${item.filename}')">`;
+                } else {
+                    // Audio
+                    thumbHtml = `
+                    <div class="audio-placeholder" onclick="previewMedia('audio', '/static/uploads/${item.filename}')">
+                        <span>🎵</span>
+                        <div style="font-size:0.7rem; color:var(--text-muted)">Archivo de Audio</div>
+                    </div>`;
+                }
+
+                const extension = item.filename.split('.').pop();
+                
+                div.innerHTML = `
+                    ${isTagged ? '<div class="ai-badge">ASSET</div>' : ''}
+                    ${thumbHtml}
+                    <div class="gallery-info">
+                        <div class="name" title="${item.original_name}">${item.original_name}</div>
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:5px;">
+                            <span class="file-type-badge">${extension}</span>
+                            <div class="meta">${item.niche ? '🏷️ ' + item.niche : 'Sin nicho'}</div>
+                        </div>
+                    </div>
+                    <div class="gallery-actions">
+                        <button class="action-btn" onclick="openTagModal(${item.id}, '${item.prompt || ''}', '${item.niche || 'general'}')">🏷️ Editar</button>
+                        <button class="action-btn btn-delete" onclick="deleteMedia(${item.id})">🗑 Borrar</button>
+                    </div>
+                `;
+                grid.appendChild(div);
+            });
+
+            renderPagination(data.total, data.page, data.limit);
+        }
+
+        function renderPagination(total, page, limit) {
+            const controls = document.getElementById('pagination-controls');
+            controls.innerHTML = '';
+            const totalPages = Math.ceil(total / limit);
+
+            if (totalPages <= 1) return;
+
+            const prevBtn = document.createElement('button');
+            prevBtn.className = 'page-btn';
+            prevBtn.innerText = '← Anterior';
+            prevBtn.disabled = page === 1;
+            prevBtn.onclick = () => fetchGallery(page - 1);
+            controls.appendChild(prevBtn);
+
+            const pageInfo = document.createElement('span');
+            pageInfo.innerText = `Página ${page} de ${totalPages}`;
+            pageInfo.style.color = "var(--text-muted)";
+            controls.appendChild(pageInfo);
+
+            const nextBtn = document.createElement('button');
+            nextBtn.className = 'page-btn';
+            nextBtn.innerText = 'Siguiente →';
+            nextBtn.disabled = page === totalPages;
+            nextBtn.onclick = () => fetchGallery(page + 1);
+            controls.appendChild(nextBtn);
+        }
+
+        async function uploadMedia(input) {
+            if(!input.files.length) return;
+            const file = input.files[0];
+            const formData = new FormData();
+            formData.append('file', file);
+            const res = await fetch('/api/gallery/upload', { method: 'POST', body: formData });
+            if(res.ok) fetchGallery(1);
+        }
+
+        async function deleteMedia(id) {
+            if(!confirm("¿Borrar definitivamente?")) return;
+            await fetch(`/api/gallery/${id}`, { method: 'DELETE' });
+            fetchGallery(currentPage);
+        }
+
+        function previewMedia(type, url) {
+            const modal = document.getElementById('videoModal');
+            const container = document.getElementById('preview-container');
+            container.innerHTML = '';
+            
+            if (type === 'video') {
+                const v = document.createElement('video');
+                v.src = url;
+                v.controls = true;
+                v.style.width = '100%';
+                v.style.height = '100%';
+                v.style.objectFit = 'contain';
+                container.appendChild(v);
+                v.play();
+            } else if (type === 'audio') {
+                container.style.display = 'flex';
+                container.style.flexDirection = 'column';
+                container.style.alignItems = 'center';
+                container.style.justifyContent = 'center';
+                container.innerHTML = `
+                    <div style="font-size:4rem; margin-bottom:20px;">🎵</div>
+                    <audio src="${url}" controls style="width:80%"></audio>
+                    <div style="margin-top:20px; color:var(--text-muted); font-size:0.8rem;">Reproduciendo Audio</div>
+                `;
+            } else {
+                const img = document.createElement('img');
+                img.src = url;
+                img.style.width = '100%';
+                img.style.height = '100%';
+                img.style.objectFit = 'contain';
+                container.appendChild(img);
+            }
+            modal.classList.add('active'); // Centrado con flex
+            // Guardar URL actual para descarga/compartir
+            modal.dataset.currentUrl = url;
+            
+            // Ajustar aspect ratio si es audio
+            const containerBox = document.getElementById('preview-container');
+            if (type === 'audio') {
+                containerBox.style.aspectRatio = 'auto';
+                containerBox.style.height = 'auto';
+                containerBox.style.padding = '20px 0';
+            } else {
+                containerBox.style.aspectRatio = '9/16';
+                containerBox.style.height = '';
+                containerBox.style.padding = '0';
+            }
+        }
+
+        function closeVideoModal() {
+            document.getElementById('videoModal').classList.remove('active');
+        }
+
+        function downloadCurrentMedia() {
+            const url = document.getElementById('videoModal').dataset.currentUrl;
+            if(!url) return;
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = url.split('/').pop();
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+
+        async function shareCurrentMedia() {
+            const url = document.getElementById('videoModal').dataset.currentUrl;
+            if(!url) return;
+            
+            const absoluteUrl = url.startsWith('http') ? url : window.location.origin + url;
+            
+            try {
+                if (navigator.share && window.isSecureContext) {
+                    await navigator.share({
+                        title: 'Media Asset',
+                        text: 'Mira este archivo de Shorts Engine',
+                        url: absoluteUrl
+                    });
+                } else {
+                    const tempInput = document.createElement('input');
+                    tempInput.value = absoluteUrl;
+                    document.body.appendChild(tempInput);
+                    tempInput.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(tempInput);
+                    alert("Enlace copiado al portapapeles: " + absoluteUrl);
+                }
+            } catch (err) {
+                console.error("Error al compartir:", err);
+                alert("No se pudo compartir via Web Share API, pero lo intentamos copiar. URL: " + absoluteUrl);
+            }
+        }
+
+        function openTagModal(id, prompt, niche) {
+            document.getElementById('tag-media-id').value = id;
+            document.getElementById('tag-prompt').value = prompt;
+            document.getElementById('tag-niche').value = niche;
+            document.getElementById('tagModal').classList.add('active');
+        }
+
+        function closeTagModal() {
+            document.getElementById('tagModal').classList.remove('active');
+        }
+
+        async function saveTag() {
+            const media_id = document.getElementById('tag-media-id').value;
+            const prompt = document.getElementById('tag-prompt').value;
+            const niche = document.getElementById('tag-niche').value;
+
+            await fetch('/api/ai/assets/tag', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ media_id, prompt, niche, is_ai: 0 })
+            });
+            closeTagModal();
+            fetchGallery(currentPage);
+        }
+
+        fetchGallery();
+    </script>
+</body>
+</html>

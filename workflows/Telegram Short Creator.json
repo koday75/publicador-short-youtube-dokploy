@@ -1,0 +1,227 @@
+{
+  "name": "Telegram Short Creator (Handler)",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": ["callback_query"],
+        "additionalFields": {}
+      },
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.1,
+      "position": [128, 304],
+      "id": "tg-trigger-001",
+      "webhookId": "telegram-shorts-callback",
+      "credentials": {
+        "telegramApi": {
+          "id": "REEMPLAZAR_CON_TU_CREDENTIAL_ID",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extrae session_id, index y metadata del callback_query de Telegram\nconst update = $json;\nconst callback = update.callback_query;\n\nif (!callback || !callback.data) {\n  throw new Error('No es un callback_query válido.');\n}\n\nconst dataParts = callback.data.split(':');\nif (dataParts.length !== 2) {\n  throw new Error(`callback_data inválido: ${callback.data}`);\n}\n\nconst [session_id, indexStr] = dataParts;\nconst index = parseInt(indexStr);\n\nif (isNaN(index)) {\n  throw new Error(`Índice inválido: ${indexStr}`);\n}\n\nconst chat_id    = String(callback.message?.chat?.id || callback.from?.id || '8147167995');\nconst message_id = callback.message?.message_id;\nconst callback_query_id = callback.id;\nconst user_name = callback.from?.first_name || 'Usuario';\n\nconsole.log(`Callback: session=${session_id}, index=${index}, user=${user_name}`);\n\nreturn [{ json: {\n  session_id,\n  index,\n  callback_query_id,\n  chat_id,\n  message_id,\n  user_name\n}}];"
+      },
+      "id": "tg-parse-001",
+      "name": "Parsear Callback",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [328, 304]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.telegram.org/bot8598261043:AAE4i6Hi5vDYUsDl0qFx_H2nzp_tNIAqMsM/answerCallbackQuery",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"callback_query_id\": \"{{ $json.callback_query_id }}\", \"text\": \"⏳ Creando Short...\", \"show_alert\": false}",
+        "options": {}
+      },
+      "id": "tg-answer-001",
+      "name": "Responder Callback Query",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [528, 304]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=http://192.168.1.49:8000/api/jobs/candidate/{{ $('Parsear Callback').first().json.session_id }}/{{ $('Parsear Callback').first().json.index }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "X-API-Key", "value": "1275" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "tg-get-candidate-001",
+      "name": "Obtener Candidato",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [728, 304]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Transforma este post en un guion viral en español para vídeo multipantalla: {{ $json.title }}\n\n{{ $json.content }}",
+        "options": {
+          "systemMessage": "Eres un director de YouTube Shorts virales. Convierte la historia a español. NO devuelvas texto normal. Responde EXCLUSIVAMENTE con un JSON valido sin texto adicional. Divide la historia en entre 4 y 6 escenas cortas (1-2 frases cada una). Los image_prompt deben estar en INGLÉS, ser muy visuales, cinematográficos y NO contener contenido violento, armas ni NSFW. Estructura requerida exacta: {\"scenes\": [{\"text\": \"Texto de la escena hablado\", \"image_prompt\": \"Detailed visual description in English, cinematic style, 9:16 format\", \"subtitle_pos\": \"center\", \"subtitle_size\": \"large\"}]}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [928, 304],
+      "id": "tg-agent-001",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": "llama-3.3-70b-versatile",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [928, 504],
+      "id": "tg-groq-001",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "labCn1j0XxlYNmXA",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "let aiText = $input.item.json.output || '';\naiText = aiText.replace(/```json/g, '').replace(/```/g, '').trim();\nlet storyboard;\ntry {\n    storyboard = JSON.parse(aiText);\n} catch(e) {\n    storyboard = { scenes: [ { text: aiText.substring(0, 800), image_prompt: \"abstract cinematic background\", subtitle_pos: \"center\", subtitle_size: \"large\" } ] };\n}\n// Título desde el candidato elegido\nstoryboard.title = $('Obtener Candidato').first().json.title;\nreturn storyboard;"
+      },
+      "id": "tg-parse-json-001",
+      "name": "Parse JSON IA",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [1128, 304]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.49:8000/api/ai/batch-generate",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  draft_mode: true,\n  scenes: $json.scenes.map(s => ({\n    prompt: s.image_prompt,\n    niche: $('Obtener Candidato').first().json.niche,\n    model: \"seedream/5-lite-text-to-image\"\n  }))\n}) }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "X-API-Key", "value": "1275" }
+          ]
+        }
+      },
+      "id": "tg-batch-001",
+      "name": "Crear Borradores Imágenes",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1328, 304]
+    },
+    {
+      "parameters": {
+        "jsCode": "const storyboard = $('Parse JSON IA').item.json;\nconst batchResult = $input.item.json;\nconst candidato   = $('Obtener Candidato').first().json;\n\nfor (let i = 0; i < storyboard.scenes.length; i++) {\n    storyboard.scenes[i].media_filename = \"NICHE\";\n    storyboard.scenes[i].subtitle_pos   = storyboard.scenes[i].subtitle_pos  || \"center\";\n    storyboard.scenes[i].subtitle_size  = storyboard.scenes[i].subtitle_size || 48;\n}\n\nreturn {\n  title:     storyboard.title,\n  scenes:    storyboard.scenes,\n  niche:     candidato.niche,\n  voice_id:  candidato.voice_id,\n  tts_engine: \"edge-tts\",\n  tts_speed:  1.1,\n  batch_id:   batchResult.batch_id\n};"
+      },
+      "id": "tg-assemble-001",
+      "name": "Ensamblar Storyboard",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [1528, 304]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.49:8000/api/storyboard/draft",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "X-API-Key", "value": "1275" }
+          ]
+        }
+      },
+      "id": "tg-save-draft-001",
+      "name": "Guardar Short como Borrador",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1728, 304]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.telegram.org/bot8598261043:AAE4i6Hi5vDYUsDl0qFx_H2nzp_tNIAqMsM/sendMessage",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  chat_id: $('Parsear Callback').first().json.chat_id,\n  text: '✅ *Short creado en borrador*\\n\\n📝 ' + $('Obtener Candidato').first().json.title + '\\n\\nRevísalo en el dashboard para renderizarlo.',\n  parse_mode: 'Markdown'\n}) }}",
+        "options": {}
+      },
+      "id": "tg-confirm-001",
+      "name": "Confirmar por Telegram",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1928, 304]
+    }
+  ],
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [{ "node": "Parsear Callback", "type": "main", "index": 0 }]
+      ]
+    },
+    "Parsear Callback": {
+      "main": [
+        [{ "node": "Responder Callback Query", "type": "main", "index": 0 }]
+      ]
+    },
+    "Responder Callback Query": {
+      "main": [
+        [{ "node": "Obtener Candidato", "type": "main", "index": 0 }]
+      ]
+    },
+    "Obtener Candidato": {
+      "main": [
+        [{ "node": "AI Agent", "type": "main", "index": 0 }]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [{ "node": "AI Agent", "type": "ai_languageModel", "index": 0 }]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [{ "node": "Parse JSON IA", "type": "main", "index": 0 }]
+      ]
+    },
+    "Parse JSON IA": {
+      "main": [
+        [{ "node": "Crear Borradores Imágenes", "type": "main", "index": 0 }]
+      ]
+    },
+    "Crear Borradores Imágenes": {
+      "main": [
+        [{ "node": "Ensamblar Storyboard", "type": "main", "index": 0 }]
+      ]
+    },
+    "Ensamblar Storyboard": {
+      "main": [
+        [{ "node": "Guardar Short como Borrador", "type": "main", "index": 0 }]
+      ]
+    },
+    "Guardar Short como Borrador": {
+      "main": [
+        [{ "node": "Confirmar por Telegram", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

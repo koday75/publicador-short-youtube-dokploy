@@ -1,0 +1,593 @@
+{
+  "name": "Reddit Shorts Automation - V3",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 12
+            }
+          ]
+        }
+      },
+      "name": "Cron Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        128,
+        192
+      ],
+      "id": "f0a3956e-2f42-433e-ad22-c6346bd78487"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [\n  {\n    json: {\n      niche: \"curiosidades\",\n      subreddit: \"todayilearned\",\n      voice_id: \"pNInz6obpgnuM07pZNoR\",\n      bg_video: \"default.mp4\",\n      active: true\n    }\n  },\n  {\n    json: {\n      niche: \"terror\",\n      subreddit: \"nosleep\",\n      voice_id: \"N2lVS1wzXKqndD17Yv7d\",\n      bg_video: \"horror_bg.mp4\",\n      active: true\n    }\n  }\n];"
+      },
+      "name": "Mapeo de Nichos",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        352,
+        304
+      ],
+      "id": "f1d5afdb-7a54-4c0f-9b2a-3e0f8b1f14e1"
+    },
+    {
+      "parameters": {
+        "url": "=https://www.reddit.com/r/{{ $json.subreddit }}/top.json?limit=10&t=day",
+        "options": {}
+      },
+      "name": "Reddit API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        608,
+        304
+      ],
+      "id": "26eb6dbf-632f-4b6d-b7d7-4516ac59dea2"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Seleccionamos hasta 5 posts candidatos (no fijados, no +18)\n// y devolvemos el primero válido con su índice\nconst posts = items[0].json.data.children;\nconst candidates = posts.filter(p => !p.data.stickied && !p.data.over_18);\n\nif (candidates.length === 0) {\n  throw new Error('No hay posts válidos en Reddit hoy.');\n}\n\n// Guardamos todos para usarlos en el reintento si el título está duplicado\nconst allTitles = candidates.map((p, i) => ({ \n  index: i,\n  title: p.data.title, \n  content: p.data.selftext || p.data.title \n}));\n\n// Intentamos con el primero (índice 0)\nconst post = candidates[0];\nreturn { \n  title: post.data.title, \n  content: post.data.selftext || post.data.title,\n  allCandidates: allTitles,\n  candidateIndex: 0\n};"
+      },
+      "name": "Seleccionar Post",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        880,
+        304
+      ],
+      "id": "db85294f-2ef9-45aa-8186-17f7675a07dc"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=http://192.168.1.49:8000/api/jobs/check-title?title={{ encodeURIComponent($json.title) }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "admin123"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Verificar Titulo Duplicado",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1060,
+        304
+      ],
+      "id": "check-title-001"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Si el título está duplicado, intentamos con el siguiente candidato\nconst checkResult = $input.item.json;\nconst seleccionado = $('Seleccionar Post').item.json;\n\nif (checkResult.exists === true) {\n  // El título ya existe → intentamos con el siguiente candidato\n  const candidates = seleccionado.allCandidates || [];\n  const nextIndex = (seleccionado.candidateIndex || 0) + 1;\n  \n  if (nextIndex < candidates.length) {\n    const nextPost = candidates[nextIndex];\n    return {\n      title: nextPost.title,\n      content: nextPost.content,\n      allCandidates: candidates,\n      candidateIndex: nextIndex,\n      _titleDuplicated: true,\n      _retryCount: nextIndex\n    };\n  } else {\n    // No quedan más candidatos → paramos\n    throw new Error(`TODOS_DUPLICADOS: Los ${candidates.length} posts de hoy ya tienen un Short creado. No se gastaron créditos.`);\n  }\n}\n\n// Título disponible → continuamos con el flujo normal\nreturn {\n  title: seleccionado.title,\n  content: seleccionado.content,\n  _titleDuplicated: false\n};"
+      },
+      "name": "Evaluar Duplicado",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        1240,
+        304
+      ],
+      "id": "eval-duplicate-001"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json._titleDuplicated }}",
+              "value2": false
+            }
+          ]
+        }
+      },
+      "name": "Titulo Disponible?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1420,
+        304
+      ],
+      "id": "if-title-ok-001"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Transforma este post en un guion viral en español para vídeo multipantalla: {{ $json.title }}\n\n{{ $json.content }}",
+        "options": {
+          "systemMessage": "Eres un director de YouTube Shorts virales. Convierte la historia a español. NO devuelvas texto normal. Responde EXCLUSIVAMENTE con un JSON valido sin texto adicional. Divide la historia en entre 4 y 6 escenas cortas (1-2 frases cada una). Estructura requerida exacta: {\"scenes\": [{\"text\": \"Texto de la escena hablado\", \"image_prompt\": \"Descripción visual detallada para generar la imagen de esta escena en inglés, muy visual, estilo fotorealista o cinematográfico, formato 9:16\", \"subtitle_pos\": \"center\", \"subtitle_size\": \"large\"}]}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1600,
+        200
+      ],
+      "id": "c2afa1c6-cd77-4031-854d-7ac7974ca2d9",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": "llama-3.3-70b-versatile",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        1600,
+        400
+      ],
+      "id": "f96ee01d-b180-4048-99eb-790587e346a0",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "labCn1j0XxlYNmXA",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "let aiText = $input.item.json.output || '';\naiText = aiText.replace(/```json/g, '').replace(/```/g, '').trim();\nlet storyboard;\ntry {\n    storyboard = JSON.parse(aiText);\n} catch(e) {\n    storyboard = { scenes: [ { text: aiText.substring(0, 800), image_prompt: \"abstract background cinematic\", subtitle_pos: \"center\", subtitle_size: \"medium\" } ] };\n}\n\n// Inyectamos el título original del post para pasarlo al Engine\nstoryboard._postTitle = $('Titulo Disponible?').item.json.title;\n\nreturn storyboard;"
+      },
+      "id": "2aa8e06d-75a5-4e8e-a23c-d401a995195d",
+      "name": "Parse JSON IA",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        1800,
+        200
+      ]
+    },
+    {
+      "id": "wait-after-render-001",
+      "name": "Esperar Render",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        3200,
+        200
+      ],
+      "parameters": {
+        "unit": "seconds",
+        "amount": 60
+      }
+    },
+    {
+      "id": "poll-job-status-001",
+      "name": "Consultar Estado Job",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        3400,
+        200
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "=http://192.168.1.49:8000/api/jobs/{{ $('Llamada al Engine').item.json.job_id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "1275"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "f3065a75-2522-4e0b-805d-1c9b3f1a09fc",
+      "name": "Generar Imagenes Lote",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        2000,
+        200
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.49:8000/api/ai/batch-generate",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ \nJSON.stringify({\n  scenes: $json.scenes.map(s => ({\n    prompt: s.image_prompt,\n    niche: $('Mapeo de Nichos').item.json.niche,\n    model: \"seedream/5-lite-text-to-image\"\n  }))\n})\n}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "1275"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "8074c1a8-149f-4cd4-aba4-fe0bd2f9e7cc",
+      "name": "Espera Batch",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        2200,
+        200
+      ],
+      "parameters": {
+        "unit": "seconds",
+        "amount": 20
+      }
+    },
+    {
+      "id": "9079cd34-4a2e-4fc8-b79e-f3ceac9aef61",
+      "name": "Consultar Batch",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        2400,
+        200
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "=http://192.168.1.49:8000/api/ai/batch-status/{{ $('Generar Imagenes Lote').item.json.batch_id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "1275"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "754f722b-d93b-4178-84b5-7d7becabcfb2",
+      "name": "If Batch Terminado",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        2600,
+        200
+      ],
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.status }}",
+              "operation": "notEqual",
+              "value2": "processing"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "a2c3e68e-3e44-4dfb-a10f-c6794449665e",
+      "name": "Ensamblar Storyboard",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        2800,
+        200
+      ],
+      "parameters": {
+        "jsCode": "const originalStoryboard = $('Parse JSON IA').item.json;\nconst batchResult = $input.item.json;\n\n// Asignar los archivos a las escenas\nif (batchResult.files && batchResult.files.length > 0) {\n    for (let i = 0; i < originalStoryboard.scenes.length; i++) {\n        originalStoryboard.scenes[i].media_filename = batchResult.files[i] || \"NICHE\";\n    }\n} else {\n    for (let i = 0; i < originalStoryboard.scenes.length; i++) {\n        originalStoryboard.scenes[i].media_filename = \"NICHE\";\n    }\n}\nreturn originalStoryboard;"
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.49:8000/api/storyboard/draft",
+        "sendBody": true,
+        "options": {},
+        "specifyBody": "json",
+        "jsonBody": "={{ \nJSON.stringify({\n  niche: $('Mapeo de Nichos').item.json.niche,\n  voice_id: $('Mapeo de Nichos').item.json.voice_id,\n  music_filename: null,\n  title: $('Parse JSON IA').item.json._postTitle,\n  scenes: $json.scenes || []\n})\n}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "admin123"
+            }
+          ]
+        }
+      },
+      "name": "Llamada al Engine",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        3000,
+        200
+      ],
+      "id": "3d056eba-5636-4131-ba30-0af9fd8ee295"
+    },
+    {
+      "parameters": {
+        "url": "=http://192.168.1.49:8000{{ $json.video_url }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "name": "Descargar Video",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        3600,
+        200
+      ],
+      "id": "4264a8ee-944c-40a0-bce7-e4b04621ad63"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        128,
+        416
+      ],
+      "id": "bf8bf2ba-145f-4072-bdc0-2a4892172d8b",
+      "name": "When clicking 'Execute workflow'"
+    }
+  ],
+  "connections": {
+    "Cron Trigger": {
+      "main": [
+        [
+          {
+            "node": "Mapeo de Nichos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mapeo de Nichos": {
+      "main": [
+        [
+          {
+            "node": "Reddit API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reddit API": {
+      "main": [
+        [
+          {
+            "node": "Seleccionar Post",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Seleccionar Post": {
+      "main": [
+        [
+          {
+            "node": "Verificar Titulo Duplicado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verificar Titulo Duplicado": {
+      "main": [
+        [
+          {
+            "node": "Evaluar Duplicado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Evaluar Duplicado": {
+      "main": [
+        [
+          {
+            "node": "Titulo Disponible?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Titulo Disponible?": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Llamada al Engine": {
+      "main": [
+        [
+          {
+            "node": "Esperar Render",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Descargar Video": {
+      "main": [
+        []
+      ]
+    },
+    "When clicking 'Execute workflow'": {
+      "main": [
+        [
+          {
+            "node": "Mapeo de Nichos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Parse JSON IA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse JSON IA": {
+      "main": [
+        [
+          {
+            "node": "Generar Imagenes Lote",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Esperar Render": {
+      "main": [
+        [
+          {
+            "node": "Consultar Estado Job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consultar Estado Job": {
+      "main": [
+        [
+          {
+            "node": "Descargar Video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generar Imagenes Lote": {
+      "main": [
+        [
+          {
+            "node": "Espera Batch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Espera Batch": {
+      "main": [
+        [
+          {
+            "node": "Consultar Batch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consultar Batch": {
+      "main": [
+        [
+          {
+            "node": "If Batch Terminado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Batch Terminado": {
+      "main": [
+        [
+          {
+            "node": "Ensamblar Storyboard",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Espera Batch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ensamblar Storyboard": {
+      "main": [
+        [
+          {
+            "node": "Llamada al Engine",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

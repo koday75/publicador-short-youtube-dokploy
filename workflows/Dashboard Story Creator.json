@@ -1,0 +1,129 @@
+{
+  "name": "Dashboard Story Creator (Handler)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "story-creator",
+        "options": {}
+      },
+      "id": "db-webhook-001",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [100, 300]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Transforma este post en un guion viral en español para vídeo multipantalla: {{ $json.body.title }}\n\n{{ $json.body.content }}",
+        "options": {
+          "systemMessage": "Eres un director de YouTube Shorts virales. Convierte la historia a español. NO devuelvas texto normal. Responde EXCLUSIVAMENTE con un JSON valido sin texto adicional. Divide la historia en entre 4 y 6 escenas cortas (1-2 frases cada una). Los image_prompt deben estar en INGLÉS, ser muy visuales, cinematográficos y NO contener contenido violento, armas ni NSFW. Estructura requerida exacta: {\"scenes\": [{\"text\": \"Texto de la escena hablado\", \"image_prompt\": \"Detailed visual description in English, cinematic style, 9:16 format\", \"subtitle_pos\": \"center\", \"subtitle_size\": \"large\"}]}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [350, 300],
+      "id": "db-agent-001",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": "llama-3.3-70b-versatile",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [350, 500],
+      "id": "db-groq-001",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "labCn1j0XxlYNmXA",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "let aiText = $input.item.json.output || '';\naiText = aiText.replace(/```json/g, '').replace(/```/g, '').trim();\nlet storyboard;\ntry {\n    storyboard = JSON.parse(aiText);\n} catch(e) {\n    storyboard = { scenes: [ { text: aiText.substring(0, 800), image_prompt: \"abstract cinematic background\", subtitle_pos: \"center\", subtitle_size: \"large\" } ] };\n}\n// Título desde el input original\nstoryboard.title = $('Webhook Trigger').first().json.body.title;\nreturn storyboard;"
+      },
+      "id": "db-parse-json-001",
+      "name": "Parse JSON IA",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [550, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.49:8000/api/ai/batch-generate",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  draft_mode: true,\n  scenes: $json.scenes.map(s => ({\n    prompt: s.image_prompt,\n    niche: $('Webhook Trigger').first().json.body.niche || \"general\",\n    model: \"seedream/5-lite-text-to-image\"\n  }))\n}) }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "X-API-Key", "value": "1275" }
+          ]
+        }
+      },
+      "id": "db-batch-001",
+      "name": "Crear Borradores Imágenes",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [750, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const storyboard = $('Parse JSON IA').item.json;\nconst batchResult = $input.item.json;\nconst originalData = $('Webhook Trigger').first().json.body;\n\nfor (let i = 0; i < storyboard.scenes.length; i++) {\n    storyboard.scenes[i].media_filename = \"NICHE\";\n    storyboard.scenes[i].subtitle_pos   = 5; // center\n    storyboard.scenes[i].subtitle_size  = 48;\n}\n\nreturn {\n  title:     storyboard.title,\n  scenes:    storyboard.scenes,\n  niche:     originalData.niche || \"general\",\n  voice_id:  originalData.voice_id || \"es-ES-AlvaroNeural\",\n  tts_engine: \"edge-tts\",\n  tts_speed:  1.1,\n  batch_id:   batchResult.batch_id\n};"
+      },
+      "id": "db-assemble-001",
+      "name": "Ensamblar Storyboard",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [950, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.49:8000/api/storyboard/draft",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "X-API-Key", "value": "1275" }
+          ]
+        }
+      },
+      "id": "db-save-draft-001",
+      "name": "Guardar Short como Borrador",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1150, 300]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [[{ "node": "AI Agent", "type": "main", "index": 0 }]]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [[{ "node": "AI Agent", "type": "ai_languageModel", "index": 0 }]]
+    },
+    "AI Agent": {
+      "main": [[{ "node": "Parse JSON IA", "type": "main", "index": 0 }]]
+    },
+    "Parse JSON IA": {
+      "main": [[{ "node": "Crear Borradores Imágenes", "type": "main", "index": 0 }]]
+    },
+    "Crear Borradores Imágenes": {
+      "main": [[{ "node": "Ensamblar Storyboard", "type": "main", "index": 0 }]]
+    },
+    "Ensamblar Storyboard": {
+      "main": [[{ "node": "Guardar Short como Borrador", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" }
+}

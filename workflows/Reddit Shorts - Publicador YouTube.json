@@ -1,0 +1,123 @@
+{
+  "name": "Reddit Shorts - Publicador YouTube",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": { "interval": [{ "field": "hours", "minutesInterval": 1 }] }
+      },
+      "id": "node-cron",
+      "name": "Revisar Cada Hora",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [100, 300]
+    },
+    {
+      "parameters": {
+        "url": "=http://192.168.1.192:8000/api/jobs?status=completed&limit=5",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "node-fetch",
+      "name": "Buscar Shorts Completados",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [300, 300],
+      "credentials": { "httpHeaderAuth": { "id": "ENGINE_AUTH_ID", "name": "Engine Cookie Auth" } }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "check-pending",
+              "leftValue": "={{ $json.jobs.length }}",
+              "rightValue": 0,
+              "operator": { "type": "number", "operation": "gt" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "node-if",
+      "name": "¿Hay Shorts?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "jobs",
+        "options": {}
+      },
+      "id": "node-split",
+      "name": "Separar Shorts",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [700, 200]
+    },
+    {
+      "parameters": {
+        "url": "={{ 'http://192.168.1.192:8000' + $json.video_url }}",
+        "options": {
+          "response": { "response": { "responseFormat": "file" } }
+        }
+      },
+      "id": "node-download",
+      "name": "Descargar Video",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 200]
+    },
+    {
+      "parameters": {
+        "title": "=Short del día - {{ $('Separar Shorts').item.json.job_id }}",
+        "description": "Video generado automáticamente por Shorts Engine.",
+        "privacyStatus": "public",
+        "options": {
+          "tags": ["shorts", "curiosidades", "viral"],
+          "categoryId": "22"
+        }
+      },
+      "id": "node-youtube",
+      "name": "Subir a YouTube",
+      "type": "n8n-nodes-base.youTube",
+      "typeVersion": 1,
+      "position": [1100, 200],
+      "credentials": { "youTubeOAuth2Api": { "id": "YOUTUBE_CREDENTIAL_ID", "name": "YouTube OAuth2" } }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=http://192.168.1.192:8000/api/jobs/{{ $('Separar Shorts').item.json.job_id }}/status",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{ \"status\": \"published\" }",
+        "options": {}
+      },
+      "id": "node-mark-published",
+      "name": "Marcar como Publicado",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1300, 200],
+      "credentials": { "httpHeaderAuth": { "id": "ENGINE_AUTH_ID", "name": "Engine Cookie Auth" } }
+    }
+  ],
+  "connections": {
+    "Revisar Cada Hora": { "main": [[{ "node": "Buscar Shorts Completados", "type": "main", "index": 0 }]] },
+    "Buscar Shorts Completados": { "main": [[{ "node": "¿Hay Shorts?", "type": "main", "index": 0 }]] },
+    "¿Hay Shorts?": {
+      "main": [
+        [{ "node": "Separar Shorts", "type": "main", "index": 0 }],
+        []
+      ]
+    },
+    "Separar Shorts": { "main": [[{ "node": "Descargar Video", "type": "main", "index": 0 }]] },
+    "Descargar Video": { "main": [[{ "node": "Subir a YouTube", "type": "main", "index": 0 }]] },
+    "Subir a YouTube": { "main": [[{ "node": "Marcar como Publicado", "type": "main", "index": 0 }]] }
+  }
+}

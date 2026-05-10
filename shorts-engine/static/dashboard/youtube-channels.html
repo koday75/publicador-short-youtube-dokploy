@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube / Canales - Shorts Engine</title>
+    <link rel="stylesheet" href="/assets/style.css">
+    <style>
+        .hero {
+            display: flex;
+            justify-content: space-between;
+            gap: 1rem;
+            align-items: flex-start;
+            margin-bottom: 1.5rem;
+        }
+        .hero p {
+            color: var(--text-muted);
+            margin: 0.4rem 0 0;
+            max-width: 780px;
+            line-height: 1.5;
+        }
+        .toolbar {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+        .layout {
+            display: grid;
+            grid-template-columns: 1.15fr 0.85fr;
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+        .stack {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 1rem;
+        }
+        .field {
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+        }
+        .field.full {
+            grid-column: 1 / -1;
+        }
+        .field label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+        }
+        input, select, textarea {
+            background: rgba(0, 0, 0, 0.25);
+            border: 1px solid var(--border-color);
+            color: #fff;
+            border-radius: 8px;
+            padding: 0.85rem 0.9rem;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        textarea { min-height: 108px; resize: vertical; }
+        .inline-row {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+        .inline-row .pill {
+            border: 1px solid var(--border-color);
+            background: rgba(255,255,255,0.03);
+            color: var(--text-muted);
+            padding: 0.4rem 0.75rem;
+            border-radius: 999px;
+            font-size: 0.78rem;
+        }
+        .status-box {
+            border-radius: 16px;
+            border: 1px solid rgba(88, 166, 255, 0.25);
+            background: linear-gradient(180deg, rgba(88, 166, 255, 0.08), rgba(255,255,255,0.03));
+            padding: 1.25rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.9rem;
+        }
+        .status-box.connected {
+            border-color: rgba(63, 185, 80, 0.3);
+            background: linear-gradient(180deg, rgba(63, 185, 80, 0.10), rgba(255,255,255,0.03));
+        }
+        .status-box.error {
+            border-color: rgba(248, 81, 73, 0.35);
+            background: linear-gradient(180deg, rgba(248, 81, 73, 0.08), rgba(255,255,255,0.03));
+        }
+        .status-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+        .channel-avatar {
+            width: 72px;
+            height: 72px;
+            border-radius: 18px;
+            overflow: hidden;
+            background: #111;
+            border: 1px solid var(--border-color);
+            flex: 0 0 auto;
+        }
+        .channel-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .channel-meta {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+        .channel-meta h3 { margin: 0; }
+        .channel-meta p { margin: 0.25rem 0 0; color: var(--text-muted); font-size: 0.9rem; }
+        .info-list {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 0.75rem;
+        }
+        .info-item {
+            padding: 0.85rem 0.95rem;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            background: rgba(0,0,0,0.18);
+        }
+        .info-item small {
+            display: block;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-size: 0.7rem;
+            margin-bottom: 0.3rem;
+        }
+        .status-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            border-radius: 999px;
+            padding: 0.35rem 0.8rem;
+            font-size: 0.78rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        .status-tag.connected { background: rgba(63,185,80,0.15); color: #3fb950; }
+        .status-tag.disconnected { background: rgba(120,120,120,0.12); color: #b6b6b6; }
+        .status-tag.error, .status-tag.expired, .status-tag.revoked {
+            background: rgba(248,81,73,0.12);
+            color: #f85149;
+        }
+        .status-tag.inactive { background: rgba(255,255,255,0.05); color: var(--text-muted); }
+        .btn-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+        }
+        .btn-secondary {
+            background: rgba(255,255,255,0.05);
+            color: #fff;
+            border: 1px solid var(--border-color);
+        }
+        .btn-danger {
+            background: rgba(248,81,73,0.15);
+            color: #ff8a80;
+            border: 1px solid rgba(248,81,73,0.35);
+        }
+        .message {
+            border-radius: 12px;
+            padding: 0.85rem 1rem;
+            border: 1px solid transparent;
+        }
+        .message.success {
+            border-color: rgba(63,185,80,0.3);
+            background: rgba(63,185,80,0.12);
+            color: #b7f5c5;
+        }
+        .message.error {
+            border-color: rgba(248,81,73,0.35);
+            background: rgba(248,81,73,0.12);
+            color: #ffb4af;
+        }
+        .hidden { display: none !important; }
+        nav { display: flex; gap: 15px; margin-bottom: 2rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; flex-wrap: wrap; }
+        nav a { color: var(--text-muted); text-decoration: none; font-size: 0.9rem; padding: 5px 10px; border-radius: 4px; }
+        nav a:hover { color: #fff; background: rgba(255,255,255,0.05); }
+        nav a.active { color: var(--accent); font-weight: bold; background: rgba(188, 140, 255, 0.1); }
+        @media (max-width: 1100px) {
+            .layout { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 720px) {
+            .hero { flex-direction: column; }
+            .form-grid { grid-template-columns: 1fr; }
+            table { display: block; overflow-x: auto; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div>
+                <h1>📺 Canales de YouTube</h1>
+                <p style="margin:0.35rem 0 0; color: var(--text-muted);">Configura canales internos, autoriza OAuth con Google y deja listo el motor para publicar vídeos en canales ya existentes.</p>
+            </div>
+            <div class="toolbar">
+                <button class="btn-secondary" onclick="newChannel()">+ Nuevo canal</button>
+                <button onclick="loadChannels()">↻ Recargar</button>
+            </div>
+        </header>
+
+        <nav>
+            <a href="/">Panel Control</a>
+            <a href="/discover">Descubrimiento</a>
+            <a href="/jobs">Trabajos</a>
+            <a href="/gallery">Galería</a>
+            <a href="/youtube-channels" class="active">YouTube / Canales</a>
+            <a href="/ai-tasks">Registros IA</a>
+            <a href="/settings">Ajustes</a>
+        </nav>
+
+        <div id="page-message" class="message hidden"></div>
+
+        <div class="layout">
+            <section class="card stack">
+                <div class="status-head">
+                    <div>
+                        <h2 id="form-title" style="margin:0;">Nuevo canal</h2>
+                        <p style="margin:0.4rem 0 0; color: var(--text-muted);">Datos internos del canal y configuración por defecto para futuras publicaciones.</p>
+                    </div>
+                    <span id="connection-pill" class="status-tag disconnected">No conectado</span>
+                </div>
+
+                <div class="form-grid">
+                    <div class="field full">
+                        <label for="internal_name">Nombre interno del canal</label>
+                        <input id="internal_name" type="text" placeholder="Canal principal Estrellita Studio">
+                    </div>
+                    <div class="field full">
+                        <label for="internal_description">Descripción interna</label>
+                        <textarea id="internal_description" placeholder="Notas internas, objetivo del canal, nicho, etc."></textarea>
+                    </div>
+                    <div class="field">
+                        <label for="status">Estado</label>
+                        <select id="status">
+                            <option value="active">Activo</option>
+                            <option value="inactive">Inactivo</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label for="default_privacy_status">Privacidad por defecto</label>
+                        <select id="default_privacy_status">
+                            <option value="private">private</option>
+                            <option value="unlisted">unlisted</option>
+                            <option value="public">public</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label for="default_category_id">Category ID</label>
+                        <input id="default_category_id" type="text" value="22" placeholder="22">
+                    </div>
+                    <div class="field">
+                        <label for="default_language">Idioma por defecto</label>
+                        <input id="default_language" type="text" value="es" placeholder="es">
+                    </div>
+                    <div class="field full">
+                        <label for="default_tags">Etiquetas por defecto</label>
+                        <textarea id="default_tags" placeholder="terror, curiosidades, shorts, viral"></textarea>
+                    </div>
+                    <div class="field full">
+                        <label>
+                            <input id="notify_subscribers" type="checkbox" style="width:auto; margin-right:0.5rem;">
+                            Notificar a suscriptores
+                        </label>
+                    </div>
+                </div>
+
+                <div class="btn-row">
+                    <button onclick="saveChannel()" id="save-btn">Guardar configuración</button>
+                    <button class="btn-secondary" onclick="connectChannel()" id="connect-btn">Conectar con Google / YouTube</button>
+                    <button class="btn-secondary" onclick="reconnectChannel()" id="reconnect-btn">Reconectar cuenta</button>
+                    <button class="btn-secondary" onclick="testChannel()" id="test-btn">Probar conexión</button>
+                    <button class="btn-danger" onclick="revokeChannel()" id="revoke-btn">Revocar conexión</button>
+                    <button class="btn-danger" onclick="deleteChannel()" id="delete-btn">Eliminar canal</button>
+                </div>
+
+                <div id="form-note" class="message hidden"></div>
+            </section>
+
+            <aside class="status-box" id="status-box">
+                <div class="status-head">
+                    <div class="channel-meta">
+                        <div class="channel-avatar">
+                            <img id="thumbnail_preview" src="" alt="Avatar" class="hidden">
+                        </div>
+                        <div>
+                            <h3 id="status_title">Canal no seleccionado</h3>
+                            <p id="status_subtitle">Selecciona un canal para ver su estado y datos reales de YouTube.</p>
+                        </div>
+                    </div>
+                    <span id="status_connection" class="status-tag disconnected">No conectado</span>
+                </div>
+
+                <div class="info-list">
+                    <div class="info-item">
+                        <small>Mensaje</small>
+                        <div id="status_message">Este canal aún no está conectado con Google. Conéctalo para permitir que la app publique vídeos.</div>
+                    </div>
+                    <div class="info-item">
+                        <small>Canal real</small>
+                        <div id="real_channel_name">-</div>
+                    </div>
+                    <div class="info-item">
+                        <small>ID de canal</small>
+                        <div id="real_channel_id">-</div>
+                    </div>
+                    <div class="info-item">
+                        <small>Handle / URL</small>
+                        <div id="real_channel_url">-</div>
+                    </div>
+                    <div class="info-item">
+                        <small>Email conectado</small>
+                        <div id="google_email">-</div>
+                    </div>
+                    <div class="info-item">
+                        <small>Scopes concedidos</small>
+                        <div id="scopes_granted">-</div>
+                    </div>
+                    <div class="info-item">
+                        <small>Última prueba</small>
+                        <div id="last_test">-</div>
+                    </div>
+                    <div class="info-item">
+                        <small>Expira</small>
+                        <div id="token_expires_at">-</div>
+                    </div>
+                    <div class="info-item">
+                        <small>Error de conexión</small>
+                        <div id="last_error">-</div>
+                    </div>
+                </div>
+            </aside>
+        </div>
+
+        <section class="card" style="margin-top: 1.5rem;">
+            <div style="display:flex; justify-content:space-between; gap:1rem; align-items:flex-start; flex-wrap:wrap;">
+                <div>
+                    <h2 style="margin:0 0 0.3rem;">Canales conectados</h2>
+                    <p style="margin:0; color: var(--text-muted);">Tabla de administración para revisar estado, conectar, probar y revocar cada canal.</p>
+                </div>
+            </div>
+            <div style="overflow:auto; margin-top:1rem;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Nombre interno</th>
+                            <th>Canal de YouTube</th>
+                            <th>Estado</th>
+                            <th>Conexión</th>
+                            <th>Privacidad</th>
+                            <th>Última prueba</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="channels-table">
+                        <tr><td colspan="7" style="text-align:center; color: var(--text-muted);">Cargando canales...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        let channels = [];
+        let currentChannelId = null;
+
+        function formatDate(value) {
+            if (!value) return '—';
+            const d = new Date(value);
+            if (Number.isNaN(d.getTime())) return value;
+            return d.toLocaleString('es-ES');
+        }
+
+        function parseTags(text) {
+            if (!text) return [];
+            return text.split(',').map(v => v.trim()).filter(Boolean);
+        }
+
+        function showMessage(text, type = 'success') {
+            const box = document.getElementById('page-message');
+            box.textContent = text;
+            box.className = `message ${type}`;
+            box.classList.remove('hidden');
+        }
+
+        function showFormNote(text, type = 'success') {
+            const box = document.getElementById('form-note');
+            box.textContent = text;
+            box.className = `message ${type}`;
+            box.classList.remove('hidden');
+        }
+
+        function clearFormNote() {
+            const box = document.getElementById('form-note');
+            box.className = 'message hidden';
+            box.textContent = '';
+        }
+
+        function updateStatusBox(channel) {
+            const statusBox = document.getElementById('status-box');
+            const connectionPill = document.getElementById('connection-pill');
+            const statusConnection = document.getElementById('status_connection');
+            const title = document.getElementById('status_title');
+            const subtitle = document.getElementById('status_subtitle');
+            const thumb = document.getElementById('thumbnail_preview');
+
+            if (!channel) {
+                statusBox.className = 'status-box';
+                connectionPill.className = 'status-tag disconnected';
+                connectionPill.textContent = 'No conectado';
+                statusConnection.className = 'status-tag disconnected';
+                statusConnection.textContent = 'No conectado';
+                title.textContent = 'Canal no seleccionado';
+                subtitle.textContent = 'Selecciona un canal para ver su estado y datos reales de YouTube.';
+                thumb.classList.add('hidden');
+                thumb.removeAttribute('src');
+                document.getElementById('status_message').textContent = 'Este canal aún no está conectado con Google. Conéctalo para permitir que la app publique vídeos.';
+                document.getElementById('real_channel_name').textContent = '-';
+                document.getElementById('real_channel_id').textContent = '-';
+                document.getElementById('real_channel_url').textContent = '-';
+                document.getElementById('google_email').textContent = '-';
+                document.getElementById('scopes_granted').textContent = '-';
+                document.getElementById('last_test').textContent = '-';
+                document.getElementById('token_expires_at').textContent = '-';
+                document.getElementById('last_error').textContent = '-';
+                return;
+            }
+
+            const connected = channel.connection_status === 'connected';
+            const status = channel.connection_status || 'disconnected';
+            statusBox.className = `status-box ${connected ? 'connected' : (status === 'error' || status === 'expired' || status === 'revoked' ? 'error' : '')}`;
+            connectionPill.className = `status-tag ${status}`;
+            connectionPill.textContent = status === 'connected' ? 'Conectado' : status === 'expired' ? 'Token caducado' : status === 'revoked' ? 'Revocado' : status === 'error' ? 'Error' : 'No conectado';
+            statusConnection.className = `status-tag ${status}`;
+            statusConnection.textContent = connectionPill.textContent;
+            title.textContent = channel.internal_name || 'Canal sin nombre';
+            subtitle.textContent = channel.internal_description || 'Canal interno preparado para conectar con YouTube.';
+            if (channel.thumbnail_url) {
+                thumb.src = channel.thumbnail_url;
+                thumb.classList.remove('hidden');
+            } else {
+                thumb.classList.add('hidden');
+            }
+
+            document.getElementById('status_message').textContent = connected
+                ? 'Canal conectado correctamente'
+                : 'Este canal aún no está conectado con Google. Conéctalo para permitir que la app publique vídeos.';
+            document.getElementById('real_channel_name').textContent = channel.youtube_channel_title || '-';
+            document.getElementById('real_channel_id').textContent = channel.youtube_channel_id || '-';
+            document.getElementById('real_channel_url').textContent = channel.youtube_channel_handle || channel.youtube_channel_url || '-';
+            document.getElementById('google_email').textContent = channel.connected_google_email || '-';
+            document.getElementById('scopes_granted').textContent = channel.scopes_granted || '-';
+            document.getElementById('last_test').textContent = formatDate(channel.last_connection_test_at);
+            document.getElementById('token_expires_at').textContent = formatDate(channel.token_expires_at);
+            document.getElementById('last_error').textContent = channel.last_connection_error || '-';
+        }
+
+        function fillForm(channel) {
+            currentChannelId = channel ? channel.id : null;
+            document.getElementById('form-title').textContent = channel ? 'Editar canal' : 'Nuevo canal';
+            document.getElementById('internal_name').value = channel?.internal_name || '';
+            document.getElementById('internal_description').value = channel?.internal_description || '';
+            document.getElementById('status').value = channel?.status || 'inactive';
+            document.getElementById('default_privacy_status').value = channel?.default_privacy_status || 'private';
+            document.getElementById('default_category_id').value = channel?.default_category_id || '22';
+            document.getElementById('default_language').value = channel?.default_language || 'es';
+            document.getElementById('default_tags').value = Array.isArray(channel?.default_tags) ? channel.default_tags.join(', ') : (channel?.default_tags || '');
+            document.getElementById('notify_subscribers').checked = Boolean(channel?.notify_subscribers);
+            document.getElementById('connect-btn').textContent = channel && channel.connection_status === 'connected'
+                ? 'Conectar / Reautorizar'
+                : 'Conectar con Google / YouTube';
+            updateStatusBox(channel);
+            clearFormNote();
+        }
+
+        function newChannel() {
+            currentChannelId = null;
+            fillForm(null);
+        }
+
+        async function loadChannels() {
+            const res = await fetch('/api/youtube/channels');
+            const data = await res.json();
+            channels = data.items || [];
+            renderTable();
+            const selected = currentChannelId ? channels.find(ch => ch.id === currentChannelId) : channels[0];
+            if (selected) {
+                fillForm(selected);
+            } else {
+                fillForm(null);
+            }
+        }
+
+        function connectionLabel(status) {
+            if (status === 'connected') return 'Conectado';
+            if (status === 'error') return 'Error';
+            if (status === 'expired') return 'Token caducado';
+            if (status === 'revoked') return 'Revocado';
+            if (status === 'inactive') return 'Inactivo';
+            return 'No conectado';
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('channels-table');
+            if (!channels.length) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color: var(--text-muted);">No hay canales creados todavía.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = channels.map(channel => `
+                <tr>
+                    <td>
+                        <div style="font-weight:bold;">${channel.internal_name || ''}</div>
+                        <div style="color:var(--text-muted); font-size:0.8rem;">${channel.internal_description || ''}</div>
+                    </td>
+                    <td>
+                        <div>${channel.youtube_channel_title || 'No conectado'}</div>
+                        <div style="color:var(--text-muted); font-size:0.8rem;">${channel.youtube_channel_id || ''}</div>
+                    </td>
+                    <td><span class="status-tag ${channel.status || 'inactive'}">${channel.status || 'inactive'}</span></td>
+                    <td><span class="status-tag ${channel.connection_status || 'disconnected'}">${connectionLabel(channel.connection_status)}</span></td>
+                    <td>${channel.default_privacy_status || 'private'}</td>
+                    <td>${formatDate(channel.last_connection_test_at)}</td>
+                    <td>
+                        <div class="inline-row">
+                            <button class="btn-secondary" onclick="editChannel(${channel.id})">Editar</button>
+                            <button class="btn-secondary" onclick="connectChannel(${channel.id})">Conectar</button>
+                            <button class="btn-secondary" onclick="testChannel(${channel.id})">Probar</button>
+                            <button class="btn-danger" onclick="revokeChannel(${channel.id})">Revocar</button>
+                            <button class="btn-danger" onclick="deleteChannel(${channel.id})">Eliminar</button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        async function editChannel(channelId) {
+            const channel = channels.find(ch => ch.id === channelId);
+            if (!channel) return;
+            currentChannelId = channelId;
+            fillForm(channel);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function buildPayload() {
+            const internal_name = document.getElementById('internal_name').value.trim();
+            const internal_description = document.getElementById('internal_description').value.trim();
+            const default_privacy_status = document.getElementById('default_privacy_status').value;
+            const default_category_id = document.getElementById('default_category_id').value.trim() || '22';
+            const default_language = document.getElementById('default_language').value.trim() || 'es';
+            const default_tags = parseTags(document.getElementById('default_tags').value);
+            const notify_subscribers = document.getElementById('notify_subscribers').checked;
+            const status = document.getElementById('status').value;
+
+            if (!internal_name) {
+                throw new Error('El nombre interno es obligatorio.');
+            }
+            if (!['private', 'unlisted', 'public'].includes(default_privacy_status)) {
+                throw new Error('La privacidad por defecto no es válida.');
+            }
+            if (!default_category_id) {
+                throw new Error('Category ID es obligatorio.');
+            }
+
+            return {
+                internal_name,
+                internal_description,
+                default_privacy_status,
+                default_category_id,
+                default_tags,
+                default_language,
+                notify_subscribers,
+                status,
+            };
+        }
+
+        async function saveChannel(silent = false) {
+            try {
+                clearFormNote();
+                const payload = buildPayload();
+                const method = currentChannelId ? 'PUT' : 'POST';
+                const url = currentChannelId ? `/api/youtube/channels/${currentChannelId}` : '/api/youtube/channels';
+                const res = await fetch(url, {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    throw new Error(data.detail || data.message || 'No se pudo guardar el canal.');
+                }
+                currentChannelId = data.channel.id;
+                if (!silent) {
+                    showFormNote('Configuración guardada correctamente.', 'success');
+                }
+                await loadChannels();
+                return data.channel;
+            } catch (error) {
+                showFormNote(error.message, 'error');
+                throw error;
+            }
+        }
+
+        async function connectChannel(channelId = null) {
+            try {
+                const targetId = channelId || currentChannelId;
+                if (!targetId) {
+                    const saved = await saveChannel(true);
+                    window.location.href = `/api/youtube/channels/${saved.id}/connect`;
+                    return;
+                }
+                if (!currentChannelId || currentChannelId === targetId) {
+                    await saveChannel(true);
+                }
+                window.location.href = `/api/youtube/channels/${targetId}/connect`;
+            } catch (error) {
+                showFormNote(error.message, 'error');
+            }
+        }
+
+        async function reconnectChannel() {
+            return connectChannel(currentChannelId);
+        }
+
+        async function testChannel(channelId = null) {
+            try {
+                const targetId = channelId || currentChannelId;
+                if (!targetId) {
+                    const saved = await saveChannel(true);
+                    return testChannel(saved.id);
+                }
+                const btn = document.getElementById('test-btn');
+                btn.disabled = true;
+                btn.textContent = 'Probando...';
+                const res = await fetch(`/api/youtube/channels/${targetId}/test`, { method: 'POST' });
+                const data = await res.json();
+                if (!res.ok) {
+                    throw new Error(data.detail || data.error || 'No se pudo probar la conexión.');
+                }
+                if (data.ok) {
+                    const extra = data.refreshed ? 'Token caducado, se ha renovado correctamente.' : 'Conexión correcta.';
+                    showFormNote(extra, 'success');
+                } else {
+                    throw new Error(data.error || 'No se pudo conectar.');
+                }
+                await loadChannels();
+            } catch (error) {
+                showFormNote(error.message, 'error');
+            } finally {
+                const btn = document.getElementById('test-btn');
+                btn.disabled = false;
+                btn.textContent = 'Probar conexión';
+            }
+        }
+
+        async function revokeChannel(channelId = null) {
+            try {
+                const targetId = channelId || currentChannelId;
+                if (!targetId) throw new Error('Selecciona o crea un canal antes de revocar.');
+                if (!confirm('¿Quieres revocar la conexión de este canal?')) return;
+                const res = await fetch(`/api/youtube/channels/${targetId}/revoke`, { method: 'POST' });
+                const data = await res.json();
+                if (!res.ok) {
+                    throw new Error(data.detail || data.error || 'No se pudo revocar.');
+                }
+                showFormNote('Conexión revocada correctamente.', 'success');
+                await loadChannels();
+            } catch (error) {
+                showFormNote(error.message, 'error');
+            }
+        }
+
+        async function deleteChannel(channelId = null) {
+            try {
+                const targetId = channelId || currentChannelId;
+                if (!targetId) throw new Error('Selecciona un canal para eliminar.');
+                if (!confirm('¿Eliminar este canal de forma permanente?')) return;
+                const res = await fetch(`/api/youtube/channels/${targetId}`, { method: 'DELETE' });
+                const data = await res.json();
+                if (!res.ok) {
+                    throw new Error(data.detail || data.error || 'No se pudo eliminar.');
+                }
+                currentChannelId = null;
+                showFormNote('Canal eliminado correctamente.', 'success');
+                await loadChannels();
+            } catch (error) {
+                showFormNote(error.message, 'error');
+            }
+        }
+
+        function applyOAuthMessage() {
+            const params = new URLSearchParams(window.location.search);
+            const oauth = params.get('oauth');
+            const message = params.get('message');
+            const id = params.get('id');
+            if (!oauth) return;
+            if (oauth === 'success') {
+                showMessage(id ? 'Canal conectado correctamente.' : 'Conexión completada.', 'success');
+            } else {
+                showMessage(message ? decodeURIComponent(message) : 'No se pudo completar la conexión OAuth.', 'error');
+            }
+        }
+
+        applyOAuthMessage();
+        loadChannels().catch(err => showMessage(err.message, 'error'));
+    </script>
+</body>
+</html>

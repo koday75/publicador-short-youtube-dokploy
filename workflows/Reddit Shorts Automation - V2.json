@@ -1,0 +1,342 @@
+{
+  "name": "Reddit Shorts Automation - V2",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 12
+            }
+          ]
+        }
+      },
+      "name": "Cron Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        128,
+        192
+      ],
+      "id": "f0a3956e-2f42-433e-ad22-c6346bd78487"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [\n  {\n    json: {\n      niche: \"curiosidades\",\n      subreddit: \"todayilearned\",\n      voice_id: \"pNInz6obpgnuM07pZNoR\",\n      bg_video: \"default.mp4\",\n      active: true\n    }\n  },\n  {\n    json: {\n      niche: \"terror\",\n      subreddit: \"nosleep\",\n      voice_id: \"N2lVS1wzXKqndD17Yv7d\",\n      bg_video: \"horror_bg.mp4\",\n      active: true\n    }\n  }\n];"
+      },
+      "name": "Mapeo de Nichos",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        352,
+        304
+      ],
+      "id": "f1d5afdb-7a54-4c0f-9b2a-3e0f8b1f14e1"
+    },
+    {
+      "parameters": {
+        "url": "=https://www.reddit.com/r/{{ $json.subreddit }}/top.json?limit=5&t=day",
+        "options": {}
+      },
+      "name": "Reddit API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        608,
+        304
+      ],
+      "id": "26eb6dbf-632f-4b6d-b7d7-4516ac59dea2"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Seleccionamos el primer post que no sea un post fijado o anuncio\nconst posts = items[0].json.data.children;\nconst topPost = posts.find(p => !p.data.stickied && !p.data.over_18);\nreturn { \n  title: topPost.data.title, \n  content: topPost.data.selftext || topPost.data.title \n};"
+      },
+      "name": "Seleccionar Post",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        880,
+        304
+      ],
+      "id": "db85294f-2ef9-45aa-8186-17f7675a07dc"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.49:8000/api/storyboard/render",
+        "sendBody": true,
+        "options": {},
+        "specifyBody": "json",
+        "jsonBody": "={{ \nJSON.stringify({\n  niche: $('Mapeo de Nichos').item.json.niche,\n  voice_id: $('Mapeo de Nichos').item.json.voice_id,\n  music_filename: null,\n  scenes: $json.scenes || []\n})\n}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "admin123"
+            }
+          ]
+        }
+      },
+      "name": "Llamada al Engine",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1600,
+        300
+      ],
+      "id": "3d056eba-5636-4131-ba30-0af9fd8ee295"
+    },
+    {
+      "parameters": {
+        "url": "=http://192.168.1.49:8000{{ $json.video_url }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "name": "Descargar Video",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        2200,
+        300
+      ],
+      "id": "4264a8ee-944c-40a0-bce7-e4b04621ad63"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        128,
+        416
+      ],
+      "id": "bf8bf2ba-145f-4072-bdc0-2a4892172d8b",
+      "name": "When clicking \u2018Execute workflow\u2019"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Transforma este post en un guion viral en espa\u00f1ol para v\u00eddeo multipantalla: {{ $json.title }}\\n\\n{{ $json.content }}",
+        "options": {
+          "systemMessage": "Eres un director de YouTube Shorts virales. Convierte la historia a espa\u00f1ol. NO devuelvas texto normal. Responde EXCLUSIVAMENTE con un JSON valido sin texto adicional. Divide la historia en entre 4 y 6 escenas cortas (1-2 frases cada una). REGLA IMPORTANTE: El campo media_filename SIEMPRE debe ser exactamente la palabra: NICHE (en mayusculas, sin comillas adicionales ni variaciones). Estructura requerida exacta: {\"scenes\": [{\"text\": \"Texto de la escena\", \"media_filename\": \"NICHE\", \"subtitle_pos\": \"center\", \"subtitle_size\": \"large\"}]}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1152,
+        304
+      ],
+      "id": "c2afa1c6-cd77-4031-854d-7ac7974ca2d9",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": "llama-3.3-70b-versatile",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        1152,
+        512
+      ],
+      "id": "f96ee01d-b180-4048-99eb-790587e346a0",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "labCn1j0XxlYNmXA",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "let aiText = $input.item.json.output || '';\naiText = aiText.replace(/```json/g, '').replace(/```/g, '').trim();\nlet storyboard;\ntry {\n    storyboard = JSON.parse(aiText);\n} catch(e) {\n    storyboard = { scenes: [ { text: aiText.substring(0, 800), media_filename: \"NICHE\", subtitle_pos: \"center\", subtitle_size: \"medium\" } ] };\n}\nreturn storyboard;"
+      },
+      "id": "2aa8e06d-75a5-4e8e-a23c-d401a995195d",
+      "name": "Parse JSON IA",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        1350,
+        300
+      ]
+    },
+    {
+      "id": "wait-after-render-001",
+      "name": "Esperar Render",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1800,
+        300
+      ],
+      "parameters": {
+        "unit": "seconds",
+        "amount": 60
+      }
+    },
+    {
+      "id": "poll-job-status-001",
+      "name": "Consultar Estado Job",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        2000,
+        300
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "=http://192.168.1.49:8000/api/jobs/{{ $('Llamada al Engine').item.json.job_id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "1275"
+            }
+          ]
+        },
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Cron Trigger": {
+      "main": [
+        [
+          {
+            "node": "Mapeo de Nichos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mapeo de Nichos": {
+      "main": [
+        [
+          {
+            "node": "Reddit API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reddit API": {
+      "main": [
+        [
+          {
+            "node": "Seleccionar Post",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Seleccionar Post": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Llamada al Engine": {
+      "main": [
+        [
+          {
+            "node": "Esperar Render",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Descargar Video": {
+      "main": [
+        []
+      ]
+    },
+    "When clicking \u2018Execute workflow\u2019": {
+      "main": [
+        [
+          {
+            "node": "Mapeo de Nichos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Parse JSON IA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse JSON IA": {
+      "main": [
+        [
+          {
+            "node": "Llamada al Engine",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Esperar Render": {
+      "main": [
+        [
+          {
+            "node": "Consultar Estado Job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consultar Estado Job": {
+      "main": [
+        [
+          {
+            "node": "Descargar Video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Shorts Engine</title>
+    <link rel="stylesheet" href="/assets/style.css">
+    <style>
+        body { background-color: #0d1117; color: #fff; }
+        .login-box {
+            max-width: 400px;
+            margin: 10% auto;
+            text-align: center;
+        }
+        input {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            background: var(--bg-color);
+            border: 1px solid var(--border-color);
+            color: #fff;
+            border-radius: 6px;
+        }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div class="login-box card">
+        <h1>🔓 Acceso Seguro</h1>
+        <div id="step-1">
+            <p>Introduce la contraseña maestra</p>
+            <input type="password" id="password" placeholder="Contraseña">
+            <button onclick="login()">Continuar</button>
+        </div>
+        <div id="step-2" class="hidden">
+            <p>Introduce el código 2FA</p>
+            <input type="text" id="otp" placeholder="000000" maxlength="6">
+            <button onclick="verify2fa()">Verificar</button>
+        </div>
+        <p id="error" style="color: var(--error); margin-top: 1rem;"></p>
+    </div>
+
+    <script>
+        let temp_token = "";
+
+        async function login() {
+            const password = document.getElementById('password').value;
+            const btnEl = document.querySelector('#step-1 button');
+            btnEl.innerText = "Verificando...";
+            
+            const res = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ password })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                // Si el servidor devuelve status:success, el 2FA está desactivado → login directo
+                if (data.status === 'success') {
+                    window.location.href = '/dashboard';
+                    return;
+                }
+                // Si devuelve temp_token, el 2FA está activo
+                temp_token = data.temp_token;
+                document.getElementById('step-1').classList.add('hidden');
+                document.getElementById('step-2').classList.remove('hidden');
+                document.getElementById('error').innerText = "";
+            } else {
+                document.getElementById('error').innerText = data.detail || "Error al conectar";
+                btnEl.innerText = "Continuar";
+            }
+        }
+
+        async function verify2fa() {
+            const code = document.getElementById('otp').value;
+            const res = await fetch('/api/auth/verify-2fa', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ temp_token, code })
+            });
+            if (res.ok) {
+                window.location.href = '/dashboard';
+            } else {
+                document.getElementById('error').innerText = "Código incorrecto";
+            }
+        }
+
+        // Permitir Enter en los inputs
+        document.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                if (!document.getElementById('step-2').classList.contains('hidden')) verify2fa();
+                else login();
+            }
+        });
+    </script>
+</body>
+</html>

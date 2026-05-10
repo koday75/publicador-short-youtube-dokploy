@@ -1,0 +1,226 @@
+{
+  "name": "Reddit Shorts Automation - V1",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 12
+            }
+          ]
+        }
+      },
+      "name": "Cron Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        200,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [\n  {\n    json: {\n      niche: \"curiosidades\",\n      subreddit: \"todayilearned\",\n      voice_id: \"pNInz6obpgnuM07pZNoR\",\n      bg_video: \"default.mp4\",\n      active: true\n    }\n  },\n  {\n    json: {\n      niche: \"terror\",\n      subreddit: \"nosleep\",\n      voice_id: \"N2lVS1wzXKqndD17Yv7d\",\n      bg_video: \"horror_bg.mp4\",\n      active: true\n    }\n  }\n];"
+      },
+      "name": "Mapeo de Nichos",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        400,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://www.reddit.com/r/{{ $json.subreddit }}/top.json?limit=5&t=day",
+        "options": {}
+      },
+      "name": "Reddit API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        600,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Seleccionamos el primer post que no sea un post fijado o anuncio\nconst posts = items[0].json.data.children;\nconst topPost = posts.find(p => !p.data.stickied && !p.data.over_18);\nreturn { \n  title: topPost.data.title, \n  content: topPost.data.selftext || topPost.data.title \n};"
+      },
+      "name": "Seleccionar Post",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        800,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_GROQ_API_KEY"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"llama3-70b-8192\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"Eres un guionista experto en YouTube Shorts virales. Tu objetivo es transformar historias de Reddit en guiones de 50 segundos. Usa un tono narrativo, intrigante y directo. No uses presentaciones ni despedidas. Solo el guion.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Transforma este post en un guion viral en español: {{ $node[\\\"Seleccionar Post\\\"].json.title }}\\n\\n{{ $node[\\\"Seleccionar Post\\\"].json.content }}\"\n    }\n  ]\n}",
+        "options": {}
+      },
+      "name": "Groq AI - Guion",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1000,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://TU_IP_DEL_MOTOR:8000/render",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"text\": \"{{ $json.choices[0].message.content }}\",\n  \"background_video_name\": \"{{ $node[\\\"Mapeo de Nichos\\\"].json.bg_video }}\",\n  \"niche\": \"{{ $node[\\\"Mapeo de Nichos\\\"].json.niche }}\",\n  \"voice_id\": \"{{ $node[\\\"Mapeo de Nichos\\\"].json.voice_id }}\"\n}",
+        "options": {}
+      },
+      "name": "Llamada al Engine",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1200,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=http://TU_IP_DEL_MOTOR:8000{{ $json.video_url }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "name": "Descargar Video",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1400,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "title": "={{ $node[\"Seleccionar Post\"].json.title }} #shorts #reddit",
+        "description": "Historia extraída de Reddit. #curiosidades #historia",
+        "binaryPropertyName": "data"
+      },
+      "name": "YouTube",
+      "type": "n8n-nodes-base.googleYouTube",
+      "typeVersion": 1,
+      "position": [
+        1600,
+        300
+      ],
+      "credentials": {
+        "googleYouTubeOAuth2Api": {
+          "id": "CAMBIAR_POR_TU_ID"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Cron Trigger": {
+      "main": [
+        [
+          {
+            "node": "Mapeo de Nichos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mapeo de Nichos": {
+      "main": [
+        [
+          {
+            "node": "Reddit API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reddit API": {
+      "main": [
+        [
+          {
+            "node": "Seleccionar Post",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Seleccionar Post": {
+      "main": [
+        [
+          {
+            "node": "Groq AI - Guion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq AI - Guion": {
+      "main": [
+        [
+          {
+            "node": "Llamada al Engine",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Llamada al Engine": {
+      "main": [
+        [
+          {
+            "node": "Descargar Video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Descargar Video": {
+      "main": [
+        [
+          {
+            "node": "YouTube",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {}
+}

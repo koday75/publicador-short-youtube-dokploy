@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+.env
+.venv
+env/
+venv/
+.n8n_config.json
+storage/
+shorts-engine/storage/
+shorts-engine/temp_subs.srt
+*.mp3
+*.mp4
+.DS_Store
+.vscode/
+.idea/

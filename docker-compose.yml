@@ -1,0 +1,23 @@
+services:
+  editor:
+    build:
+      context: ./shorts-engine
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-8000}:8000"
+    environment:
+      PYTHONUNBUFFERED: "1"
+      DASHBOARD_PASSWORD: ${DASHBOARD_PASSWORD}
+      DASHBOARD_TOTP_SECRET: ${DASHBOARD_TOTP_SECRET}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI}
+      YOUTUBE_SCOPES: ${YOUTUBE_SCOPES}
+      YOUTUBE_TOKEN_ENCRYPTION_KEY: ${YOUTUBE_TOKEN_ENCRYPTION_KEY}
+      ELEVEN_LABS_KEYS: ${ELEVEN_LABS_KEYS}
+    volumes:
+      - editor_storage:/app/storage
+
+volumes:
+  editor_storage:
