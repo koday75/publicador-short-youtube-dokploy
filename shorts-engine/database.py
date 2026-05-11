@@ -197,6 +197,7 @@ class JobDatabase:
                     youtube_channel_handle TEXT,
                     youtube_channel_url TEXT,
                     thumbnail_url TEXT,
+                    subscriber_count INTEGER,
                     connected_google_email TEXT,
                     default_privacy_status TEXT NOT NULL DEFAULT 'private',
                     default_category_id TEXT NOT NULL DEFAULT '22',
@@ -219,6 +220,7 @@ class JobDatabase:
                 ("google_client_id", "TEXT"),
                 ("google_client_secret", "TEXT"),
                 ("google_redirect_uri", "TEXT"),
+                ("subscriber_count", "INTEGER"),
             ]:
                 try:
                     conn.execute(f"ALTER TABLE youtube_channels ADD COLUMN {column_def[0]} {column_def[1]}")
@@ -790,6 +792,7 @@ class JobDatabase:
         allowed = [
             "internal_name", "internal_description", "youtube_channel_id", "youtube_channel_title",
             "youtube_channel_handle", "youtube_channel_url", "thumbnail_url", "connected_google_email",
+            "subscriber_count",
             "google_client_id", "google_client_secret", "google_redirect_uri",
             "default_privacy_status", "default_category_id", "default_tags", "default_language",
             "notify_subscribers", "status", "connection_status", "scopes_granted",

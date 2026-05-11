@@ -24,6 +24,22 @@
             gap: 0.75rem;
             flex-wrap: wrap;
         }
+        .toolbar-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            text-decoration: none;
+            border-radius: 999px;
+            padding: 0.65rem 0.95rem;
+            font-weight: 700;
+            border: 1px solid var(--border-color);
+            background: rgba(255,255,255,0.05);
+            color: #fff;
+        }
+        .toolbar-link:hover {
+            border-color: rgba(88, 166, 255, 0.35);
+            background: rgba(88, 166, 255, 0.12);
+        }
         .channel-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
@@ -153,8 +169,8 @@
                 <p>Empieza por elegir un canal. Cada canal abre su propio workspace con las herramientas de creación, galería, trabajos y publicación.</p>
             </div>
             <div class="toolbar">
-                <a href="/youtube-channels" class="badge" style="text-decoration:none; background:rgba(255,255,255,0.05); color:#fff;">Gestionar canales</a>
-                <a href="/overview" class="badge" style="text-decoration:none; background:rgba(255,255,255,0.05); color:#fff;">Ver resumen global</a>
+                <a href="/channels" class="toolbar-link">📺 Canales</a>
+                <a href="/settings" class="toolbar-link">⚙ Ajustes</a>
             </div>
         </header>
 
@@ -210,6 +226,13 @@
             return 'disconnected';
         }
 
+        function formatSubscribers(value) {
+            if (value === null || value === undefined || value === '') return '—';
+            const num = Number(value);
+            if (!Number.isFinite(num)) return String(value);
+            return new Intl.NumberFormat('es-ES').format(num);
+        }
+
         async function reloadChannels() {
             const grid = document.getElementById('channel-grid');
             grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:2rem; color: var(--text-muted);">Cargando canales...</div>';
@@ -259,6 +282,10 @@
                             <div class="meta-item">
                                 <small>Privacidad</small>
                                 <strong>${channel.default_privacy_status || 'private'}</strong>
+                            </div>
+                            <div class="meta-item">
+                                <small>Suscriptores</small>
+                                <strong>${formatSubscribers(channel.subscriber_count)}</strong>
                             </div>
                         </div>
 

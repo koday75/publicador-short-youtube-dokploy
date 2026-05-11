@@ -259,7 +259,19 @@ async def get_settings(session=Depends(get_current_user)):
 
 @app.get("/api/youtube/channels")
 async def api_list_youtube_channels(user: str = Depends(get_current_user)):
-    channels = [serialize_youtube_channel(ch) for ch in db.list_youtube_channels()]
+    raw_channels = db.list_youtube_channels()
+    channels = []
+    for ch in raw_channels:
+        if (
+            ch.get("connection_status") == "connected"
+            and ch.get("subscriber_count") is None
+            and ch.get("access_token_encrypted")
+        ):
+            try:
+                ch = youtube_manager.refresh_channel_snapshot(int(ch["id"]))
+            except Exception:
+                ch = db.get_youtube_channel(int(ch["id"]))
+        channels.append(serialize_youtube_channel(ch))
     return {"items": channels}
 
 @app.post("/api/youtube/channels")

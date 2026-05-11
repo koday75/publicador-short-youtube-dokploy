@@ -201,6 +201,7 @@ class YouTubeChannelService:
             "youtube_channel_handle": channel_handle,
             "youtube_channel_url": channel_url,
             "thumbnail_url": self._extract_thumbnail(channel_info),
+            "subscriber_count": self._parse_int(channel_info.get("statistics", {}).get("subscriberCount")),
             "connected_google_email": profile.get("email"),
             "scopes_granted": token_payload.get("scope") or " ".join(self.scopes),
             "access_token_encrypted": self.encrypt_token(token_payload.get("access_token")),
@@ -220,6 +221,14 @@ class YouTubeChannelService:
             if thumbnails.get(key, {}).get("url"):
                 return thumbnails[key]["url"]
         return None
+
+    def _parse_int(self, value: Any) -> Optional[int]:
+        try:
+            if value in (None, ""):
+                return None
+            return int(value)
+        except Exception:
+            return None
 
     def generate_auth_url(self, channel_id: int, redirect_uri: str | None = None, force_consent: bool = True) -> dict[str, Any]:
         self.reload_oauth_config()
@@ -306,10 +315,10 @@ class YouTubeChannelService:
     def get_authenticated_channel(self, access_token: str) -> dict[str, Any]:
         self.reload_oauth_config()
         params = {
-            "part": "snippet",
+            "part": "snippet,statistics",
             "mine": "true",
             "maxResults": 1,
-            "fields": "items(id,snippet(title,customUrl,thumbnails))",
+            "fields": "items(id,snippet(title,customUrl,thumbnails),statistics(subscriberCount,viewCount,videoCount))",
             "key": os.getenv("GOOGLE_API_KEY", "").strip() or None,
         }
         params = {k: v for k, v in params.items() if v is not None}
@@ -488,6 +497,25 @@ class YouTubeChannelService:
             )
             return {"ok": False, "error": "No se pudo verificar la conexión."}
 
+    def refresh_channel_snapshot(self, channel_id: int) -> dict[str, Any]:
+        self.reload_oauth_config()
+        self._resolve_channel_oauth_config(channel_id)
+        auth = self.get_authorized_client(channel_id)
+        access_token = auth["access_token"]
+        channel_info = self.get_authenticated_channel(access_token)
+        profile = self.get_google_profile(access_token)
+        return self._store_connection_result(
+            channel_id,
+            {
+                "access_token": access_token,
+                "refresh_token": auth["credentials"].get("refresh_token"),
+                "scope": " ".join(auth["credentials"].get("scopes") or self.scopes),
+                "expires_in": int((auth["credentials"].get("expiry") - self._now()).total_seconds()) if auth["credentials"].get("expiry") else 3600,
+            },
+            profile,
+            channel_info,
+        )
+
     def revoke_connection(self, channel_id: int) -> dict[str, Any]:
         self.reload_oauth_config()
         self._resolve_channel_oauth_config(channel_id)
@@ -510,6 +538,7 @@ class YouTubeChannelService:
                 "youtube_channel_handle": None,
                 "youtube_channel_url": None,
                 "thumbnail_url": None,
+                "subscriber_count": None,
                 "connected_google_email": None,
                 "scopes_granted": None,
                 "access_token_encrypted": None,
