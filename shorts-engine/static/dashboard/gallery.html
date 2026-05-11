@@ -165,8 +165,9 @@
             currentPage = page;
             const search = document.getElementById('gallery-search').value;
             const type = document.getElementById('gallery-filter').value;
+            const channelId = getChannelIdFromQuery();
             
-            const res = await fetch(`/api/gallery?page=${page}&limit=25&search=${encodeURIComponent(search)}&type=${type}`);
+            const res = await fetch(`/api/gallery?page=${page}&limit=25&search=${encodeURIComponent(search)}&type=${type}${channelId ? `&channel_id=${channelId}` : ''}`);
             const data = await res.json();
             
             const grid = document.getElementById('gallery-grid');
@@ -251,7 +252,8 @@
             const file = input.files[0];
             const formData = new FormData();
             formData.append('file', file);
-            const res = await fetch('/api/gallery/upload', { method: 'POST', body: formData });
+            const channelId = getChannelIdFromQuery();
+            const res = await fetch(channelId ? `/api/gallery/upload?channel_id=${channelId}` : '/api/gallery/upload', { method: 'POST', body: formData });
             if(res.ok) fetchGallery(1);
         }
 

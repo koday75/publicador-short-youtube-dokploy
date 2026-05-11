@@ -170,6 +170,7 @@ class StoryboardRequest(BaseModel):
     music_filename: Optional[str] = None
     voice_id: Optional[str] = None
     niche: str = "default"
+    channel_id: Optional[int] = None
     job_id: Optional[str] = None
     tts_engine: Optional[str] = None
     tts_speed: Optional[float] = None
@@ -447,14 +448,14 @@ def serialize_youtube_channel(channel: dict | None) -> dict | None:
 
 # Dashboard API Data
 @app.get("/api/jobs/check-title")
-async def api_check_title(title: str, exclude: str = None, user: str = Depends(get_current_user)):
+async def api_check_title(title: str, exclude: str = None, channel_id: int = None, user: str = Depends(get_current_user)):
     """
     Verifica si ya existe un job con este título exacto.
     Usado por n8n ANTES de crear un nuevo Short para evitar duplicados y ahorrar créditos.
     Responde con {"exists": true/false, "title": "..."}.
     Si exists=true, n8n debe buscar una historia diferente.
     """
-    exists = db.check_title_exists(title, exclude_job_id=exclude)
+    exists = db.check_title_exists(title, exclude_job_id=exclude, channel_id=channel_id)
     return {
         "exists": exists,
         "title": title,
@@ -592,10 +593,10 @@ async def api_process_candidate(cand_id: int, request: Request, background_tasks
         raise HTTPException(status_code=500, detail=f"Error en la generación IA: {str(e)}")
 
 @app.get("/api/jobs")
-async def api_get_jobs(page: int = 1, limit: int = 25, search: str = None, user: str = Depends(get_current_user)):
+async def api_get_jobs(page: int = 1, limit: int = 25, search: str = None, channel_id: int = None, user: str = Depends(get_current_user)):
     offset = (page - 1) * limit
-    jobs = db.get_recent_jobs(limit=limit, offset=offset, search=search)
-    total = db.count_jobs(search=search)
+    jobs = db.get_recent_jobs(limit=limit, offset=offset, search=search, channel_id=channel_id)
+    total = db.count_jobs(search=search, channel_id=channel_id)
     return {
         "jobs": jobs,
         "total": total,
@@ -682,17 +683,17 @@ async def api_delete_job(job_id: str, user: str = Depends(get_current_user)):
     raise HTTPException(status_code=404, detail="Trabajo no encontrado")
 
 @app.get("/api/stats")
-async def api_get_stats(user: str = Depends(get_current_user)):
-    stats = db.get_stats()
+async def api_get_stats(channel_id: int = None, user: str = Depends(get_current_user)):
+    stats = db.get_stats(channel_id=channel_id)
     return stats
 
 # --- STUDIO PRO API ---
 
 @app.get("/api/gallery")
-async def api_get_gallery(page: int = 1, limit: int = 25, search: str = None, type: str = None, user: str = Depends(get_current_user)):
+async def api_get_gallery(page: int = 1, limit: int = 25, search: str = None, type: str = None, channel_id: int = None, user: str = Depends(get_current_user)):
     offset = (page - 1) * limit
-    items = db.get_gallery(limit=limit, offset=offset, search=search, file_type=type)
-    total = db.count_gallery(search=search, file_type=type)
+    items = db.get_gallery(limit=limit, offset=offset, search=search, file_type=type, channel_id=channel_id)
+    total = db.count_gallery(search=search, file_type=type, channel_id=channel_id)
     return {
         "items": items,
         "total": total,
@@ -701,7 +702,7 @@ async def api_get_gallery(page: int = 1, limit: int = 25, search: str = None, ty
     }
 
 @app.post("/api/gallery/upload")
-async def api_upload_media(file: UploadFile = File(...), user: str = Depends(get_current_user)):
+async def api_upload_media(file: UploadFile = File(...), channel_id: int = None, user: str = Depends(get_current_user)):
     file_id = str(uuid.uuid4())
     ext = os.path.splitext(file.filename)[1]
     filename = f"{file_id}{ext}"
@@ -715,7 +716,7 @@ async def api_upload_media(file: UploadFile = File(...), user: str = Depends(get
                 "image" if ext.lower() in [".jpg", ".jpeg", ".png", ".webp"] else \
                 "audio" if ext.lower() in [".mp3", ".wav"] else "other"
                 
-    db.add_media(filename, file.filename, file_type, file_path, os.path.getsize(file_path))
+    db.add_media(filename, file.filename, file_type, file_path, os.path.getsize(file_path), channel_id=channel_id)
     return {"status": "success", "filename": filename}
 
 @app.delete("/api/gallery/{media_id}")
@@ -1071,7 +1072,7 @@ async def api_tag_asset(req: AIAssetTagRequest, user: str = Depends(get_current_
 async def api_render_storyboard(req: StoryboardRequest, background_tasks: BackgroundTasks, user: str = Depends(get_current_user)):
     
     # ---- Verificación de título único ANTES de renderizar ----
-    if req.title and db.check_title_exists(req.title, exclude_job_id=req.job_id):
+    if req.title and db.check_title_exists(req.title, exclude_job_id=req.job_id, channel_id=req.channel_id):
         raise HTTPException(
             status_code=409,
             detail=f"TITULO_DUPLICADO: Ya existe un trabajo con el título '{req.title}'. Busca otra historia viral."
@@ -1122,7 +1123,8 @@ async def api_render_storyboard(req: StoryboardRequest, background_tasks: Backgr
         music_filename=req.music_filename,
         tts_engine=req.tts_engine,
         tts_speed=req.tts_speed,
-        title=req.title
+        title=req.title,
+        channel_id=req.channel_id
     )
     
     # Run in background as it takes time (Cloudinary + FFmpeg)
@@ -1134,7 +1136,7 @@ async def api_draft_storyboard(req: StoryboardRequest, background_tasks: Backgro
     """Guarda un Short como borrador sin generar vídeos automáticamente."""
 
     # ---- Verificación de título único ANTES de crear el borrador ----
-    if req.title and db.check_title_exists(req.title, exclude_job_id=req.job_id):
+    if req.title and db.check_title_exists(req.title, exclude_job_id=req.job_id, channel_id=req.channel_id):
         raise HTTPException(
             status_code=409,
             detail=f"TITULO_DUPLICADO: Ya existe un trabajo con el título '{req.title}'. Busca otra historia viral."
@@ -1162,7 +1164,8 @@ async def api_draft_storyboard(req: StoryboardRequest, background_tasks: Backgro
         music_filename=req.music_filename or db.get_setting("DEFAULT_MUSIC_FILENAME"),
         tts_engine=req.tts_engine or db.get_setting("DEFAULT_TTS_ENGINE") or "edge-tts",
         tts_speed=req.tts_speed or float(db.get_setting("DEFAULT_TTS_SPEED") or 1.0),
-        title=req.title
+        title=req.title,
+        channel_id=req.channel_id
     )
     
     return {"status": "draft", "job_id": job_id, "title": req.title}
@@ -1180,10 +1183,12 @@ async def api_update_job_status(job_id: str, req: JobStatusRequest, user: str = 
     return {"status": "success"}
 
 @app.get("/api/jobs/{job_id}")
-async def api_get_job_details(job_id: str, user: str = Depends(get_current_user)):
+async def api_get_job_details(job_id: str, channel_id: int = None, user: str = Depends(get_current_user)):
     job = db.get_job(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Trabajo no encontrado")
+    if channel_id is not None and job.get("channel_id") != channel_id:
+        raise HTTPException(status_code=404, detail="Trabajo no encontrado para este canal")
         
     import json
     try:
@@ -1193,10 +1198,15 @@ async def api_get_job_details(job_id: str, user: str = Depends(get_current_user)
         
     return job
 
-def resolve_background_video(niche: str, bg_name: str, custom_id: str = None) -> str:
+def resolve_background_video(niche: str, bg_name: str, custom_id: str = None, channel_id: int = None) -> str:
     """Resuelve la ruta definitiva del vídeo o imagen de fondo."""
     if bg_name == "NICHE":
         bg_name = None
+
+    def iter_galleries():
+        if channel_id is not None:
+            yield db.get_gallery(limit=2000, channel_id=channel_id)
+        yield db.get_gallery(limit=2000)
 
     # 1. Por ID directo
     if custom_id:
@@ -1204,15 +1214,15 @@ def resolve_background_video(niche: str, bg_name: str, custom_id: str = None) ->
         if os.path.exists(custom_path):
             return custom_path
             
-    # 2. Buscar en la galería completa (sin límite pequeño de 25)
+    # 2. Buscar en la galería del canal y, si no aparece, en la galería global
     if bg_name:
-        gallery = db.get_gallery(limit=2000)
-        for media in gallery:
-            # Primero intentar coincidencia exacta con el nombre de archivo (más seguro)
-            if media["filename"] == bg_name or media["original_name"] == bg_name:
-                path = os.path.join(UPLOAD_DIR, media["filename"])
-                if os.path.exists(path):
-                    return path
+        for gallery in iter_galleries():
+            for media in gallery:
+                # Primero intentar coincidencia exacta con el nombre de archivo (más seguro)
+                if media["filename"] == bg_name or media["original_name"] == bg_name:
+                    path = os.path.join(UPLOAD_DIR, media["filename"])
+                    if os.path.exists(path):
+                        return path
                     
     # 3. Buscar en la carpeta backgrounds física por nicho
     if niche and bg_name:
@@ -1221,14 +1231,14 @@ def resolve_background_video(niche: str, bg_name: str, custom_id: str = None) ->
             return niche_path
             
     # 4. Fallback: Buscar CUALQUIER vídeo en la galería marcados con ese nicho o en general
-    gallery = db.get_gallery(limit=2000, file_type="video")
-    if gallery:
-        import random
-        # Try to find one matching the name "NICHE" loosely or just pick a random one
-        chosen = random.choice(gallery)
-        path = os.path.join(UPLOAD_DIR, chosen["filename"])
-        if os.path.exists(path):
-            return path
+    for gallery in iter_galleries():
+        filtered = [m for m in gallery if m.get("file_type") == "video"]
+        if filtered:
+            import random
+            chosen = random.choice(filtered)
+            path = os.path.join(UPLOAD_DIR, chosen["filename"])
+            if os.path.exists(path):
+                return path
 
     # 5. Fallbacks estáticos
     fallbacks = [
@@ -1242,12 +1252,12 @@ def resolve_background_video(niche: str, bg_name: str, custom_id: str = None) ->
             return fallback
 
     # 6. Último recurso: El primer vídeo que encontremos en la galería
-    gallery = db.get_gallery()
-    for media in gallery:
-        if media["file_type"] == "video":
-            path = os.path.join(UPLOAD_DIR, media["filename"])
-            if os.path.exists(path):
-                return path
+    for gallery in iter_galleries():
+        for media in gallery:
+            if media["file_type"] == "video":
+                path = os.path.join(UPLOAD_DIR, media["filename"])
+                if os.path.exists(path):
+                    return path
             
     return None
 
@@ -1281,7 +1291,7 @@ async def process_storyboard_job(job_id, req: StoryboardRequest):
             
             # Try exact match via gallery/filesystem first (only if it looks like a real filename)
             if media_name and media_name != "NICHE" and ("." in media_name):
-                bg_path = resolve_background_video(req.niche, media_name)
+                bg_path = resolve_background_video(req.niche, media_name, channel_id=req.channel_id)
             
             # If not found (or NICHE or AI sent a descriptive word), pick any random niche video
             if not bg_path:
@@ -1338,6 +1348,7 @@ class RenderRequest(BaseModel):
     text: str
     background_video_name: str = "default.mp4"
     niche: str = "default"
+    channel_id: Optional[int] = None
     voice_id: str = "pNInz6obpgnuM07pZNoR"
     music_filename: str = None
     music_volume: float = 0.2
@@ -1357,10 +1368,10 @@ async def render_short(request: RenderRequest, background_tasks: BackgroundTasks
     output_path = os.path.join(BASE_DIR, "shorts", output_filename)
 
     # Log start to DB
-    db.add_job(job_id, request.text, request.niche, request.voice_id)
+    db.add_job(job_id, request.text, request.niche, request.voice_id, channel_id=request.channel_id)
 
     # Background Selection Logic (Unified)
-    bg_path = resolve_background_video(request.niche, request.background_video_name, request.custom_background_filename)
+    bg_path = resolve_background_video(request.niche, request.background_video_name, request.custom_background_filename, channel_id=request.channel_id)
 
     music_path = os.path.join(UPLOAD_DIR, request.music_filename) if request.music_filename else None
     logo_path = os.path.join(UPLOAD_DIR, request.logo_filename) if request.logo_filename else None

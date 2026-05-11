@@ -150,7 +150,8 @@
         async function fetchJobs(page = 1) {
             currentPage = page;
             const search = document.getElementById('job-search').value;
-            const res = await fetch(`/api/jobs?page=${page}&limit=25&search=${encodeURIComponent(search)}`);
+            const channelId = getChannelIdFromQuery();
+            const res = await fetch(`/api/jobs?page=${page}&limit=25&search=${encodeURIComponent(search)}${channelId ? `&channel_id=${channelId}` : ''}`);
             const data = await res.json();
             
             const table = document.getElementById('jobs-table');

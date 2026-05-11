@@ -35,6 +35,7 @@ class JobDatabase:
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS media (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    channel_id INTEGER,
                     filename TEXT,
                     original_name TEXT,
                     file_type TEXT,
@@ -72,6 +73,11 @@ class JobDatabase:
             
                 
             try:
+                conn.execute("ALTER TABLE media ADD COLUMN channel_id INTEGER")
+            except Exception:
+                pass
+
+            try:
                 conn.execute("ALTER TABLE jobs ADD COLUMN scenes_json TEXT")
             except Exception:
                 pass  # La columna ya existe
@@ -96,6 +102,10 @@ class JobDatabase:
                 conn.execute("ALTER TABLE jobs ADD COLUMN title TEXT")
             except Exception:
                 pass  # Column already exists
+            try:
+                conn.execute("ALTER TABLE jobs ADD COLUMN channel_id INTEGER")
+            except Exception:
+                pass
             try:
                 conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_jobs_title ON jobs(title) WHERE title IS NOT NULL")
             except Exception:
@@ -243,11 +253,11 @@ class JobDatabase:
                 conn.commit()
 
     # Multimedia Gallery Methods
-    def add_media(self, filename, original_name, file_type, file_path, size_bytes):
+    def add_media(self, filename, original_name, file_type, file_path, size_bytes, channel_id=None):
         with self._get_connection() as conn:
             cursor = conn.execute(
-                "INSERT INTO media (filename, original_name, file_type, file_path, size_bytes) VALUES (?, ?, ?, ?, ?)",
-                (filename, original_name, file_type, file_path, size_bytes)
+                "INSERT INTO media (channel_id, filename, original_name, file_type, file_path, size_bytes) VALUES (?, ?, ?, ?, ?, ?)",
+                (channel_id, filename, original_name, file_type, file_path, size_bytes)
             )
             media_id = cursor.lastrowid
             conn.commit()
@@ -270,7 +280,7 @@ class JobDatabase:
             )
             conn.commit()
 
-    def get_gallery(self, limit=25, offset=0, search=None, file_type=None):
+    def get_gallery(self, limit=25, offset=0, search=None, file_type=None, channel_id=None):
         with self._get_connection() as conn:
             conn.row_factory = sqlite3.Row
             query = """
@@ -280,6 +290,9 @@ class JobDatabase:
                 WHERE 1=1
             """
             params = []
+            if channel_id is not None:
+                query += " AND m.channel_id = ?"
+                params.append(channel_id)
             if search:
                 query += " AND (m.original_name LIKE ? OR a.prompt LIKE ? OR a.niche LIKE ?)"
                 params.extend([f"%{search}%", f"%{search}%", f"%{search}%"])
@@ -293,10 +306,13 @@ class JobDatabase:
             cursor = conn.execute(query, params)
             return [dict(row) for row in cursor.fetchall()]
 
-    def count_gallery(self, search=None, file_type=None):
+    def count_gallery(self, search=None, file_type=None, channel_id=None):
         with self._get_connection() as conn:
             query = "SELECT COUNT(*) FROM media m LEFT JOIN ai_assets a ON m.id = a.media_id WHERE 1=1"
             params = []
+            if channel_id is not None:
+                query += " AND m.channel_id = ?"
+                params.append(channel_id)
             if search:
                 query += " AND (m.original_name LIKE ? OR a.prompt LIKE ? OR a.niche LIKE ?)"
                 params.extend([f"%{search}%", f"%{search}%", f"%{search}%"])
@@ -366,13 +382,16 @@ class JobDatabase:
             cursor = conn.execute("SELECT * FROM templates")
             return [dict(row) for row in cursor.fetchall()]
 
-    def check_title_exists(self, title: str, exclude_job_id: str = None) -> bool:
+    def check_title_exists(self, title: str, exclude_job_id: str = None, channel_id: int | None = None) -> bool:
         """Returns True if a job with this exact title already exists (excluding a specific job_id if provided)."""
         if not title or not title.strip():
             return False
         with self._get_connection() as conn:
             query = "SELECT COUNT(*) FROM jobs WHERE LOWER(TRIM(title)) = LOWER(TRIM(?))"
             params = [title]
+            if channel_id is not None:
+                query += " AND channel_id = ?"
+                params.append(channel_id)
             
             if exclude_job_id:
                 query += " AND job_id != ?"
@@ -381,11 +400,11 @@ class JobDatabase:
             cursor = conn.execute(query, params)
             return cursor.fetchone()[0] > 0
 
-    def add_job(self, job_id, text, niche, voice_id, status="processing", scenes_json=None, music_filename=None, tts_engine=None, tts_speed=None, title=None):
+    def add_job(self, job_id, text, niche, voice_id, status="processing", scenes_json=None, music_filename=None, tts_engine=None, tts_speed=None, title=None, channel_id=None):
         with self._get_connection() as conn:
             conn.execute(
-                "INSERT INTO jobs (job_id, title, text, niche, voice_id, status, scenes_json, music_filename, tts_engine, tts_speed) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                (job_id, title, text, niche, voice_id, status, scenes_json, music_filename, tts_engine, tts_speed)
+                "INSERT INTO jobs (job_id, channel_id, title, text, niche, voice_id, status, scenes_json, music_filename, tts_engine, tts_speed) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (job_id, channel_id, title, text, niche, voice_id, status, scenes_json, music_filename, tts_engine, tts_speed)
             )
             conn.commit()
 
@@ -405,11 +424,14 @@ class JobDatabase:
             )
             conn.commit()
 
-    def get_recent_jobs(self, limit=25, offset=0, search=None):
+    def get_recent_jobs(self, limit=25, offset=0, search=None, channel_id=None):
         with self._get_connection() as conn:
             conn.row_factory = sqlite3.Row
             query = "SELECT * FROM jobs WHERE 1=1"
             params = []
+            if channel_id is not None:
+                query += " AND channel_id = ?"
+                params.append(channel_id)
             if search:
                 query += " AND (title LIKE ? OR text LIKE ? OR job_id LIKE ? OR niche LIKE ?)"
                 params.extend([f"%{search}%", f"%{search}%", f"%{search}%", f"%{search}%"])
@@ -420,10 +442,13 @@ class JobDatabase:
             cursor = conn.execute(query, params)
             return [dict(row) for row in cursor.fetchall()]
 
-    def count_jobs(self, search=None):
+    def count_jobs(self, search=None, channel_id=None):
         with self._get_connection() as conn:
             query = "SELECT COUNT(*) FROM jobs WHERE 1=1"
             params = []
+            if channel_id is not None:
+                query += " AND channel_id = ?"
+                params.append(channel_id)
             if search:
                 query += " AND (title LIKE ? OR text LIKE ? OR job_id LIKE ? OR niche LIKE ?)"
                 params.extend([f"%{search}%", f"%{search}%", f"%{search}%", f"%{search}%"])
@@ -562,11 +587,16 @@ class JobDatabase:
             conn.commit()
             return result.rowcount > 0
 
-    def get_stats(self):
+    def get_stats(self, channel_id=None):
         with self._get_connection() as conn:
-            total = conn.execute("SELECT COUNT(*) FROM jobs").fetchone()[0]
-            completed = conn.execute("SELECT COUNT(*) FROM jobs WHERE status = 'completed'").fetchone()[0]
-            failed = conn.execute("SELECT COUNT(*) FROM jobs WHERE status = 'failed'").fetchone()[0]
+            if channel_id is None:
+                total = conn.execute("SELECT COUNT(*) FROM jobs").fetchone()[0]
+                completed = conn.execute("SELECT COUNT(*) FROM jobs WHERE status = 'completed'").fetchone()[0]
+                failed = conn.execute("SELECT COUNT(*) FROM jobs WHERE status = 'failed'").fetchone()[0]
+            else:
+                total = conn.execute("SELECT COUNT(*) FROM jobs WHERE channel_id = ?", (channel_id,)).fetchone()[0]
+                completed = conn.execute("SELECT COUNT(*) FROM jobs WHERE channel_id = ? AND status = 'completed'", (channel_id,)).fetchone()[0]
+                failed = conn.execute("SELECT COUNT(*) FROM jobs WHERE channel_id = ? AND status = 'failed'", (channel_id,)).fetchone()[0]
             return {
                 "total_jobs": total,
                 "completed_jobs": completed,

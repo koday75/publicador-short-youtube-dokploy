@@ -52,6 +52,47 @@
             color: var(--text-muted);
             text-align: center;
         }
+        .history-table {
+            margin-top: 1rem;
+        }
+        .history-table table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .history-table th, .history-table td {
+            padding: 0.85rem 0.9rem;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            text-align: left;
+        }
+        .history-table th {
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.28rem 0.7rem;
+            border-radius: 999px;
+            font-size: 0.72rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        .status-pill.completed, .status-pill.rendered, .status-pill.connected {
+            background: rgba(63,185,80,0.15);
+            color: #3fb950;
+        }
+        .status-pill.draft {
+            background: rgba(88,166,255,0.15);
+            color: #79b8ff;
+        }
+        .status-pill.failed, .status-pill.error {
+            background: rgba(248,81,73,0.12);
+            color: #f85149;
+        }
         nav { display: flex; gap: 15px; margin-bottom: 2rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; flex-wrap: wrap; }
         nav a { color: var(--text-muted); text-decoration: none; font-size: 0.9rem; padding: 5px 10px; border-radius: 4px; }
         nav a:hover { color: #fff; background: rgba(255,255,255,0.05); }
@@ -111,6 +152,20 @@
             <div class="history-empty">
                 No hay publicaciones cargadas todavía. Cuando la fase 2 aterrice, este espacio enseñará el historial real del canal.
             </div>
+
+            <div class="history-table" id="history-table" style="display:none;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Título</th>
+                            <th>Estado</th>
+                            <th>Creado</th>
+                            <th>Vídeo</th>
+                        </tr>
+                    </thead>
+                    <tbody id="history-body"></tbody>
+                </table>
+            </div>
         </section>
     </div>
 
@@ -132,6 +187,15 @@
             return d.toLocaleString('es-ES');
         }
 
+        function statusLabel(status) {
+            if (status === 'connected') return 'Conectado';
+            if (status === 'rendered') return 'Renderizado';
+            if (status === 'completed') return 'Completado';
+            if (status === 'draft') return 'Borrador';
+            if (status === 'failed') return 'Fallido';
+            return status || '-';
+        }
+
         async function loadHistory() {
             const channelId = getChannelId();
             if (!channelId) return;
@@ -143,8 +207,35 @@
                 document.title = `Historial - ${channel.internal_name || 'Canal'} - Shorts Engine`;
                 document.getElementById('history-channel').textContent = channel.internal_name || '-';
                 document.getElementById('history-email').textContent = channel.connected_google_email || '-';
-                document.getElementById('history-status').textContent = channel.connection_status ? (channel.connection_status === 'connected' ? 'Conectado' : channel.connection_status) : '-';
+                document.getElementById('history-status').textContent = statusLabel(channel.connection_status);
                 document.getElementById('history-test').textContent = formatDate(channel.last_connection_test_at);
+
+                const jobsRes = await fetch(`/api/jobs?page=1&limit=25&channel_id=${channelId}`);
+                const jobsData = await jobsRes.json();
+                const rows = jobsData.jobs || [];
+                const body = document.getElementById('history-body');
+                const empty = document.querySelector('.history-empty');
+
+                if (!rows.length) {
+                    body.innerHTML = '';
+                    document.getElementById('history-table').style.display = 'none';
+                    empty.style.display = 'block';
+                    empty.textContent = 'Este canal todavía no tiene trabajos registrados.';
+                } else {
+                    empty.style.display = 'none';
+                    document.getElementById('history-table').style.display = 'block';
+                    body.innerHTML = rows.map(job => `
+                        <tr>
+                            <td>
+                                <div style="font-weight:600;">${job.title || job.text || job.job_id}</div>
+                                <div style="color:var(--text-muted); font-size:0.8rem;">${job.job_id}</div>
+                            </td>
+                            <td><span class="status-pill ${job.status || 'draft'}">${statusLabel(job.status)}</span></td>
+                            <td>${formatDate(job.created_at)}</td>
+                            <td>${job.video_url ? `<a href="${job.video_url}" target="_blank" rel="noopener">Abrir</a>` : '-'}</td>
+                        </tr>
+                    `).join('');
+                }
             } catch (error) {
                 document.getElementById('history-channel').textContent = 'Error';
                 document.getElementById('history-email').textContent = error.message;

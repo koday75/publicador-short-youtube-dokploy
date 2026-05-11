@@ -165,6 +165,7 @@
                 document.getElementById('channel-context-title').textContent = channel.internal_name || channel.youtube_channel_title || `Canal ${channelId}`;
                 document.getElementById('channel-context-workspace').href = `/channels/${channelId}`;
                 document.getElementById('channel-context-settings').href = `/youtube-channels?channel_id=${channelId}`;
+                document.getElementById('manual-job-title').dataset.channelId = String(channelId);
                 document.getElementById('channel-context').style.display = 'flex';
             } catch (e) {}
         }
@@ -203,7 +204,8 @@
         }
 
         async function init() {
-            const res = await fetch('/api/gallery?limit=1000'); // Get more for the selector
+            const channelId = getChannelIdFromQuery();
+            const res = await fetch(channelId ? `/api/gallery?limit=1000&channel_id=${channelId}` : '/api/gallery?limit=1000'); // Get more for the selector
             const data = await res.json();
             galleryData = data.items;
             
@@ -456,6 +458,7 @@
                 music_filename: document.getElementById('global-music').value,
                 voice_id: document.getElementById('global-voice').value,
                 niche: document.getElementById('global-niche').value,
+                channel_id: getChannelIdFromQuery(),
                 tts_engine: document.getElementById('tts-engine').value,
                 tts_speed: parseFloat(document.getElementById('tts-speed').value),
                 job_id: overrideJobId,
