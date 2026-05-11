@@ -1,9 +1,9 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GalerÃ­a de Medios - Shorts Engine</title>
+    <title>Galería de Medios - Shorts Engine</title>
     <link rel="stylesheet" href="/assets/style.css">
     <style>
         .controls { display: flex; gap: 10px; margin-bottom: 2rem; align-items: center; }
@@ -94,7 +94,7 @@
 <body>
     <div class="container">
         <header>
-            <h1>ðŸ–¼ï¸ GalerÃ­a de Medios</h1>
+            <h1>🖼️ Galería de Medios</h1>
             <div style="display: flex; gap: 10px; align-items: center;">
                 <input type="file" id="media-upload" style="display:none" onchange="uploadMedia(this)">
                 <button onclick="document.getElementById('media-upload').click()" class="badge" style="background:var(--primary); color:#000; font-weight:bold; border:none; cursor:pointer; padding: 0.6rem 1.2rem;">+ SUBIR ARCHIVO</button>
@@ -105,7 +105,7 @@
             <a href="/">Panel Control</a>
             <a href="/discover">Descubrimiento</a>
             <a href="/jobs">Trabajos</a>
-            <a href="/gallery" class="active">Galería</a>
+            <a href="/gallery" class="active">Galer�a</a>
             <a href="/youtube-channels">YouTube / Canales</a>
             <a href="/ai-tasks">Registros IA</a>
             <a href="/settings">Ajustes</a>
@@ -114,15 +114,15 @@
         <section id="channel-shell" class="channel-shell" style="display:none;">
             <div class="channel-breadcrumb">
                 <a href="/channels">Canales</a>
-                <span>›</span>
+                <span>�</span>
                 <span id="channel-breadcrumb-name">Canal</span>
-                <span>›</span>
-                <strong>Galería</strong>
+                <span>�</span>
+                <strong>Galer�a</strong>
             </div>
             <div class="channel-tabs">
                 <a id="tab-overview" class="channel-tab" href="#">Resumen</a>
-                <a id="tab-storyboard" class="channel-tab" href="#">Crear vídeos</a>
-                <a id="tab-gallery" class="channel-tab active" href="#">Galería</a>
+                <a id="tab-storyboard" class="channel-tab" href="#">Crear v�deos</a>
+                <a id="tab-gallery" class="channel-tab active" href="#">Galer�a</a>
                 <a id="tab-jobs" class="channel-tab" href="#">Trabajos</a>
                 <a id="tab-history" class="channel-tab" href="#">Historial</a>
                 <a id="tab-settings" class="channel-tab" href="#">Ajustes</a>
@@ -144,13 +144,13 @@
             <select id="gallery-filter" class="filter-select" onchange="fetchGallery(1)">
                 <option value="">Todos los tipos</option>
                 <option value="video">Videos</option>
-                <option value="image">ImÃ¡genes</option>
+                <option value="image">Imágenes</option>
                 <option value="audio">Audios</option>
             </select>
         </section>
 
         <div id="gallery-grid" class="gallery-grid">
-            <!-- Grid dinÃ¡mico -->
+            <!-- Grid dinámico -->
         </div>
 
         <div class="pagination" id="pagination-controls"></div>
@@ -160,9 +160,9 @@
     <div id="tagModal" class="modal">
         <div class="modal-content" style="max-width: 400px;">
             <span class="close-modal" onclick="closeTagModal()">&times;</span>
-            <h3>ðŸ·ï¸ Etiquetar Asset</h3>
+            <h3>🏷️ Etiquetar Asset</h3>
             <input type="hidden" id="tag-media-id">
-            <label style="font-size:0.8rem; display:block; margin-bottom:5px;">Prompt / DescripciÃ³n</label>
+            <label style="font-size:0.8rem; display:block; margin-bottom:5px;">Prompt / Descripción</label>
             <input type="text" id="tag-prompt" style="width:100%; margin-bottom:15px; background:#222; border:1px solid #444; color:#fff; padding:10px; border-radius:6px;">
             <label style="font-size:0.8rem; display:block; margin-bottom:5px;">Nicho</label>
             <select id="tag-niche" style="width:100%; margin-bottom:20px; background:#222; border:1px solid #444; color:#fff; padding:10px; border-radius:6px;">
@@ -180,11 +180,11 @@
         <div class="modal-content" style="width: 400px; padding: 1rem;">
             <span class="close-modal" onclick="closeVideoModal()">&times;</span>
             <div id="preview-container" style="width: 100%; aspect-ratio: 9/16; background: #000; border-radius: 8px; overflow: hidden;">
-                <!-- DinÃ¡mico -->
+                <!-- Dinámico -->
             </div>
             <div class="modal-footer">
-                <button class="modal-btn" id="btn-download" onclick="downloadCurrentMedia()" style="background: var(--secondary);">â¬‡ Descargar</button>
-                <button class="modal-btn" id="btn-share" onclick="shareCurrentMedia()" style="background: var(--primary);">ðŸ”— Compartir</button>
+                <button class="modal-btn" id="btn-download" onclick="downloadCurrentMedia()" style="background: var(--secondary);">⬇ Descargar</button>
+                <button class="modal-btn" id="btn-share" onclick="shareCurrentMedia()" style="background: var(--primary);">🔗 Compartir</button>
             </div>
         </div>
     </div>
@@ -240,7 +240,7 @@
             grid.innerHTML = '';
 
             if (data.items.length === 0) {
-                grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding: 3rem; color: var(--text-muted);">No se encontraron archivos en la galerÃ­a.</div>';
+                grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding: 3rem; color: var(--text-muted);">No se encontraron archivos en la galería.</div>';
                 return;
             }
 
@@ -258,7 +258,7 @@
                     // Audio
                     thumbHtml = `
                     <div class="audio-placeholder" onclick="previewMedia('audio', '/static/uploads/${item.filename}')">
-                        <span>ðŸŽµ</span>
+                        <span>🎵</span>
                         <div style="font-size:0.7rem; color:var(--text-muted)">Archivo de Audio</div>
                     </div>`;
                 }
@@ -272,12 +272,12 @@
                         <div class="name" title="${item.original_name}">${item.original_name}</div>
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-top:5px;">
                             <span class="file-type-badge">${extension}</span>
-                            <div class="meta">${item.niche ? 'ðŸ·ï¸ ' + item.niche : 'Sin nicho'}</div>
+                            <div class="meta">${item.niche ? '🏷️ ' + item.niche : 'Sin nicho'}</div>
                         </div>
                     </div>
                     <div class="gallery-actions">
-                        <button class="action-btn" onclick="openTagModal(${item.id}, '${item.prompt || ''}', '${item.niche || 'general'}')">ðŸ·ï¸ Editar</button>
-                        <button class="action-btn btn-delete" onclick="deleteMedia(${item.id})">ðŸ—‘ Borrar</button>
+                        <button class="action-btn" onclick="openTagModal(${item.id}, '${item.prompt || ''}', '${item.niche || 'general'}')">🏷️ Editar</button>
+                        <button class="action-btn btn-delete" onclick="deleteMedia(${item.id})">🗑 Borrar</button>
                     </div>
                 `;
                 grid.appendChild(div);
@@ -295,19 +295,19 @@
 
             const prevBtn = document.createElement('button');
             prevBtn.className = 'page-btn';
-            prevBtn.innerText = 'â† Anterior';
+            prevBtn.innerText = '← Anterior';
             prevBtn.disabled = page === 1;
             prevBtn.onclick = () => fetchGallery(page - 1);
             controls.appendChild(prevBtn);
 
             const pageInfo = document.createElement('span');
-            pageInfo.innerText = `PÃ¡gina ${page} de ${totalPages}`;
+            pageInfo.innerText = `Página ${page} de ${totalPages}`;
             pageInfo.style.color = "var(--text-muted)";
             controls.appendChild(pageInfo);
 
             const nextBtn = document.createElement('button');
             nextBtn.className = 'page-btn';
-            nextBtn.innerText = 'Siguiente â†’';
+            nextBtn.innerText = 'Siguiente →';
             nextBtn.disabled = page === totalPages;
             nextBtn.onclick = () => fetchGallery(page + 1);
             controls.appendChild(nextBtn);
@@ -324,7 +324,7 @@
         }
 
         async function deleteMedia(id) {
-            if(!confirm("Â¿Borrar definitivamente?")) return;
+            if(!confirm("¿Borrar definitivamente?")) return;
             await fetch(`/api/gallery/${id}`, { method: 'DELETE' });
             fetchGallery(currentPage);
         }
@@ -349,7 +349,7 @@
                 container.style.alignItems = 'center';
                 container.style.justifyContent = 'center';
                 container.innerHTML = `
-                    <div style="font-size:4rem; margin-bottom:20px;">ðŸŽµ</div>
+                    <div style="font-size:4rem; margin-bottom:20px;">🎵</div>
                     <audio src="${url}" controls style="width:80%"></audio>
                     <div style="margin-top:20px; color:var(--text-muted); font-size:0.8rem;">Reproduciendo Audio</div>
                 `;

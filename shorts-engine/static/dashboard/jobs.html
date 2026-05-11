@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -90,7 +90,7 @@
 <body>
     <div class="container">
         <header>
-            <h1>ðŸŽ¬ Historial de Trabajos</h1>
+            <h1>🎬 Historial de Trabajos</h1>
             <div style="display: flex; gap: 10px; align-items: center;">
                 <a href="/storyboard" class="badge" style="text-decoration: none; background: var(--accent); color: #000; padding: 0.5rem 1.5rem; font-weight: bold;">+ NUEVO PROYECTO</a>
             </div>
@@ -100,7 +100,7 @@
             <a href="/">Panel Control</a>
             <a href="/discover">Descubrimiento</a>
             <a href="/jobs" class="active">Trabajos</a>
-            <a href="/gallery">Galería</a>
+            <a href="/gallery">Galer�a</a>
             <a href="/youtube-channels">YouTube / Canales</a>
             <a href="/ai-tasks">Registros IA</a>
             <a href="/settings">Ajustes</a>
@@ -109,15 +109,15 @@
         <section id="channel-shell" class="channel-shell" style="display:none;">
             <div class="channel-breadcrumb">
                 <a href="/channels">Canales</a>
-                <span>›</span>
+                <span>�</span>
                 <span id="channel-breadcrumb-name">Canal</span>
-                <span>›</span>
+                <span>�</span>
                 <strong>Trabajos</strong>
             </div>
             <div class="channel-tabs">
                 <a id="tab-overview" class="channel-tab" href="#">Resumen</a>
-                <a id="tab-storyboard" class="channel-tab" href="#">Crear vídeos</a>
-                <a id="tab-gallery" class="channel-tab" href="#">Galería</a>
+                <a id="tab-storyboard" class="channel-tab" href="#">Crear v�deos</a>
+                <a id="tab-gallery" class="channel-tab" href="#">Galer�a</a>
                 <a id="tab-jobs" class="channel-tab active" href="#">Trabajos</a>
                 <a id="tab-history" class="channel-tab" href="#">Historial</a>
                 <a id="tab-settings" class="channel-tab" href="#">Ajustes</a>
@@ -144,19 +144,19 @@
                 <thead>
                     <tr>
                         <th>ID</th>
-                        <th>TÃ­tulo</th>
+                        <th>Título</th>
                         <th>Estado</th>
                         <th>Creado</th>
                         <th>Acciones</th>
                     </tr>
                 </thead>
                 <tbody id="jobs-table">
-                    <!-- Filas dinÃ¡micas -->
+                    <!-- Filas dinámicas -->
                 </tbody>
             </table>
 
             <div class="pagination" id="pagination-controls">
-                <!-- Botones de paginaciÃ³n -->
+                <!-- Botones de paginación -->
             </div>
         </section>
     </div>
@@ -169,8 +169,8 @@
                 <video id="previewPlayer" controls style="width: 100%; height: 100%; object-fit: contain;"></video>
             </div>
             <div class="modal-footer">
-                <button class="modal-btn" onclick="downloadCurrentVideo()" style="background: var(--secondary);">â¬‡ Descargar</button>
-                <button class="modal-btn" onclick="shareCurrentVideo()" style="background: var(--primary);">ðŸ”— Compartir</button>
+                <button class="modal-btn" onclick="downloadCurrentVideo()" style="background: var(--secondary);">⬇ Descargar</button>
+                <button class="modal-btn" onclick="shareCurrentVideo()" style="background: var(--primary);">🔗 Compartir</button>
             </div>
         </div>
     </div>
@@ -231,7 +231,7 @@
             data.jobs.forEach(job => {
                 const row = document.createElement('tr');
                 
-                // Priorizar el tÃ­tulo sobre la descripciÃ³n genÃ©rica
+                // Priorizar el título sobre la descripción genérica
                 const displayTitle = job.title || (job.text ? job.text.substring(0, 50) + '...' : job.job_id);
                 
                 const canPlay = job.status === 'rendered' || job.status === 'completed';
@@ -239,8 +239,8 @@
                 // Status selector - only show for rendered jobs (allow promoting to completed or back)
                 const statusCell = job.status === 'rendered'
                     ? `<select class="status-select" id="sel-${job.job_id}" onchange="updateStatus('${job.job_id}', this.value)">
-                            <option value="rendered" ${job.status === 'rendered' ? 'selected' : ''}>â³ Renderizado</option>
-                            <option value="completed" ${job.status === 'completed' ? 'selected' : ''}>âœ… Completado</option>
+                            <option value="rendered" ${job.status === 'rendered' ? 'selected' : ''}>⏳ Renderizado</option>
+                            <option value="completed" ${job.status === 'completed' ? 'selected' : ''}>✅ Completado</option>
                        </select>`
                     : `<span class="badge badge-${job.status}">${job.status}</span>`;
 
@@ -250,9 +250,9 @@
                     <td>${statusCell}</td>
                     <td style="font-size:0.85rem; color:var(--text-muted);">${new Date(job.created_at).toLocaleString('es-ES')}</td>
                     <td style="display:flex; gap:6px;">
-                        <button class="action-btn" style="background:#333; color:#fff;" onclick="window.location.href='/storyboard?job_id=${job.job_id}'">âœï¸</button>
-                        ${canPlay ? `<button class="action-btn btn-view" onclick="previewVideo('${job.video_url}')">â–¶</button>` : ''}
-                        <button class="action-btn btn-delete" onclick="deleteJob('${job.job_id}')">ðŸ—‘</button>
+                        <button class="action-btn" style="background:#333; color:#fff;" onclick="window.location.href='/storyboard?job_id=${job.job_id}'">✏️</button>
+                        ${canPlay ? `<button class="action-btn btn-view" onclick="previewVideo('${job.video_url}')">▶</button>` : ''}
+                        <button class="action-btn btn-delete" onclick="deleteJob('${job.job_id}')">🗑</button>
                     </td>
                 `;
                 table.appendChild(row);
@@ -275,7 +275,7 @@
                 } else {
                     // Small visual confirmation
                     const checkIcon = document.createElement('span');
-                    checkIcon.innerText = ' âœ…';
+                    checkIcon.innerText = ' ✅';
                     checkIcon.style.color = '#3fb950';
                     checkIcon.style.fontSize = '0.8rem';
                     sel.parentNode.appendChild(checkIcon);
@@ -285,7 +285,7 @@
                     }
                 }
             } catch(e) {
-                alert('Error de conexiÃ³n');
+                alert('Error de conexión');
             }
         }
 
@@ -298,7 +298,7 @@
 
             const prevBtn = document.createElement('button');
             prevBtn.className = 'page-btn';
-            prevBtn.innerText = 'â†';
+            prevBtn.innerText = '←';
             prevBtn.disabled = page === 1;
             prevBtn.onclick = () => fetchJobs(page - 1);
             controls.appendChild(prevBtn);
@@ -319,14 +319,14 @@
 
             const nextBtn = document.createElement('button');
             nextBtn.className = 'page-btn';
-            nextBtn.innerText = 'â†’';
+            nextBtn.innerText = '→';
             nextBtn.disabled = page === totalPages;
             nextBtn.onclick = () => fetchJobs(page + 1);
             controls.appendChild(nextBtn);
         }
 
         async function deleteJob(jobId) {
-            if(!confirm('Â¿Borrar permanentemente?')) return;
+            if(!confirm('¿Borrar permanentemente?')) return;
             const res = await fetch(`/api/jobs/${jobId}`, { method: 'DELETE' });
             if(res.ok) fetchJobs(currentPage);
         }
