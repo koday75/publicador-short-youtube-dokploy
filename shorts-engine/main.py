@@ -254,7 +254,8 @@ async def get_settings(session=Depends(get_current_user)):
     keys = {}
     
     # Proveedores API
-    for prov in ["GROQ", "OPENAI", "DEEPSEEK", "OPENROUTER", 
+    for prov in ["GROQ", "OPENAI", "DEEPSEEK", "OPENROUTER",
+                 "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET",
                  "KIE_API_KEY_1", "KIE_API_KEY_2", "KIE_API_KEY_3", "KIE_API_KEY_4", "KIE_API_KEY_5"]:
         val = db.get_setting(prov)
         keys[prov] = "********" if val else None

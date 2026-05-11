@@ -35,6 +35,22 @@
         .status-nc { background: rgba(255,255,255,0.05); color: #555; }
         .current-key { border: 2px solid var(--accent) !important; }
         .current-key-label { font-size: 0.65rem; color: var(--accent); font-weight: bold; margin-bottom: 4px; }
+        .hint-box {
+            margin-top: 1rem;
+            padding: 1rem;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            background: rgba(255,255,255,0.03);
+            color: var(--text-muted);
+            font-size: 0.88rem;
+            line-height: 1.5;
+        }
+        .hint-box code {
+            color: #fff;
+            background: rgba(255,255,255,0.08);
+            padding: 0.15rem 0.35rem;
+            border-radius: 6px;
+        }
     </style>
 </head>
 <body>
@@ -80,8 +96,15 @@
             <div style="margin-bottom: 1.5rem;">
                 <h2 style="margin:0;">🔑 Configuración de Llaves API</h2>
                 <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 5px;">
-                    Configura las credenciales de los proveedores de IA para el motor de renderizado y generación de imágenes.
+                    Configura las credenciales de los proveedores de IA y de Google OAuth para conectar canales de YouTube.
                 </p>
+            </div>
+            <div class="hint-box">
+                <strong>Callback OAuth actual:</strong>
+                <code id="oauth-callback-url">Cargando...</code>
+                <div style="margin-top:0.35rem;">
+                    Esta URL debe estar autorizada también en Google Cloud Console como <em>Authorized redirect URI</em>.
+                </div>
             </div>
             <div id="keys-list" class="grid-settings">
                 <!-- Generado dinámicamente -->
@@ -92,11 +115,13 @@
     <script>
         let is2FAEnabled = true;
         let currentKieKeyIndex = 1;
+        const oauthCallbackUrl = `${window.location.origin}/api/youtube/oauth/callback`;
 
         async function loadSettings() {
             try {
                 const res = await fetch('/api/settings');
                 const data = await res.json();
+                document.getElementById('oauth-callback-url').textContent = oauthCallbackUrl;
                 
                 currentKieKeyIndex = parseInt(data['KIE_CURRENT_KEY_INDEX'] || '1') || 1;
                 // The current key is the LAST used (before increment), so subtract 1
@@ -121,6 +146,7 @@
                 const keysContainer = document.getElementById('keys-list');
                 keysContainer.innerHTML = '';
                 const providers = [
+                    'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET',
                     'GROQ', 'OPENAI', 'DEEPSEEK', 'OPENROUTER',
                     'KIE_API_KEY_1', 'KIE_API_KEY_2', 'KIE_API_KEY_3', 'KIE_API_KEY_4', 'KIE_API_KEY_5'
                 ];
@@ -129,6 +155,11 @@
                     const isConfigured = data[p] === '********';
                     const statusText = isConfigured ? '✅ Configurada' : '⏳ Pendiente';
                     const statusColor = isConfigured ? '#3fb950' : '#e3b341';
+                    const isGoogleOAuth = p.startsWith('GOOGLE_');
+                    const fieldLabel = isGoogleOAuth ? 'Credencial OAuth' : 'Llave API';
+                    const fieldPlaceholder = isGoogleOAuth
+                        ? (p === 'GOOGLE_CLIENT_ID' ? 'Pega tu Google OAuth Client ID' : 'Pega tu Google OAuth Client Secret')
+                        : (isConfigured ? '••••••••••••••••' : 'Pega tu API Key aquí');
                     
                     keysContainer.innerHTML += `
                         <div class="setting-card">
@@ -137,9 +168,9 @@
                                 <small style="color:${statusColor}">${statusText}</small>
                             </div>
                             <div>
-                                <label>Llave API</label>
+                                <label>${fieldLabel}</label>
                                 <div style="display: flex; gap: 8px; margin-top:5px;">
-                                    <input type="password" id="key-${p}" placeholder="${isConfigured ? '••••••••••••••••' : 'Pega tu API Key aquí'}">
+                                    <input type="password" id="key-${p}" placeholder="${fieldPlaceholder}">
                                     <button class="save-btn" onclick="saveKey('${p}')">Guardar</button>
                                 </div>
                             </div>

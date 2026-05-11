@@ -26,17 +26,27 @@ class YouTubeChannelService:
 
     def __init__(self, db):
         self.db = db
-        self.client_id = os.getenv("GOOGLE_CLIENT_ID", "").strip()
-        self.client_secret = os.getenv("GOOGLE_CLIENT_SECRET", "").strip()
-        self.redirect_uri = os.getenv("GOOGLE_REDIRECT_URI", "").strip()
-        self.scopes = self._resolve_scopes()
         self._fernet = Fernet(self._resolve_fernet_key())
+        self.reload_oauth_config()
 
-        if not self.client_id or not self.client_secret or not self.redirect_uri:
+    def _get_runtime_setting(self, key: str, default: str = "") -> str:
+        value = self.db.get_setting(key)
+        if value and str(value).strip():
+            return str(value).strip()
+        return os.getenv(key, default).strip()
+
+    def reload_oauth_config(self):
+        self.client_id = self._get_runtime_setting("GOOGLE_CLIENT_ID")
+        self.client_secret = self._get_runtime_setting("GOOGLE_CLIENT_SECRET")
+        self.redirect_uri = self._get_runtime_setting("GOOGLE_REDIRECT_URI")
+        self.scopes = self._resolve_scopes()
+
+        if not self.client_id or not self.client_secret:
             logger.warning(
                 "Google OAuth no está completamente configurado. "
-                "Faltan GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET o GOOGLE_REDIRECT_URI."
+                "Faltan GOOGLE_CLIENT_ID o GOOGLE_CLIENT_SECRET."
             )
+        return self
 
     def _resolve_scopes(self) -> list[str]:
         raw_scopes = os.getenv("YOUTUBE_SCOPES")
@@ -191,6 +201,7 @@ class YouTubeChannelService:
         return None
 
     def generate_auth_url(self, channel_id: int, redirect_uri: str | None = None, force_consent: bool = True) -> dict[str, Any]:
+        self.reload_oauth_config()
         state = secrets.token_urlsafe(32)
         expires_at = self._now() + timedelta(minutes=15)
         resolved_redirect_uri = (redirect_uri or self.redirect_uri or "").strip()
@@ -208,6 +219,7 @@ class YouTubeChannelService:
         }
 
     def exchange_code_for_tokens(self, code: str, state: str, redirect_uri: str | None = None) -> dict[str, Any]:
+        self.reload_oauth_config()
         resolved_redirect_uri = (redirect_uri or self.redirect_uri or "").strip()
         if not self.client_id or not self.client_secret or not resolved_redirect_uri:
             raise YouTubeAuthError("OAuth de Google no configurado.")
@@ -238,6 +250,7 @@ class YouTubeChannelService:
         }
 
     def handle_oauth_callback(self, code: str, state: str) -> dict[str, Any]:
+        self.reload_oauth_config()
         pending = self.db.consume_oauth_state(state)
         if not pending:
             raise YouTubeAuthError("El estado OAuth no es válido o ya expiró.")
@@ -271,6 +284,7 @@ class YouTubeChannelService:
             return {}
 
     def get_authenticated_channel(self, access_token: str) -> dict[str, Any]:
+        self.reload_oauth_config()
         params = {
             "part": "snippet",
             "mine": "true",
@@ -324,6 +338,7 @@ class YouTubeChannelService:
         }
 
     def refresh_access_token(self, channel_id: int) -> dict[str, Any]:
+        self.reload_oauth_config()
         channel, token_info = self._load_channel_credentials(channel_id, require_access_token=False)
         refresh_token = token_info.get("refresh_token")
         if not refresh_token:
@@ -379,6 +394,7 @@ class YouTubeChannelService:
         }
 
     def get_authorized_client(self, channel_id: int) -> dict[str, Any]:
+        self.reload_oauth_config()
         channel, token_info = self._load_channel_credentials(channel_id)
         expires_at = token_info.get("expiry")
         needs_refresh = (
@@ -402,6 +418,7 @@ class YouTubeChannelService:
         }
 
     def test_connection(self, channel_id: int) -> dict[str, Any]:
+        self.reload_oauth_config()
         try:
             auth = self.get_authorized_client(channel_id)
             access_token = auth["access_token"]
@@ -449,6 +466,7 @@ class YouTubeChannelService:
             return {"ok": False, "error": "No se pudo verificar la conexión."}
 
     def revoke_connection(self, channel_id: int) -> dict[str, Any]:
+        self.reload_oauth_config()
         channel = self.db.get_youtube_channel(channel_id)
         if not channel:
             raise YouTubeAuthError("Canal no encontrado.")
@@ -480,6 +498,7 @@ class YouTubeChannelService:
         return {"ok": True}
 
     def upload_video(self, channel_id: int, file_path_or_stream, metadata: dict[str, Any]):
+        self.reload_oauth_config()
         auth = self.get_authorized_client(channel_id)
         access_token = auth["access_token"]
         snippet = {
