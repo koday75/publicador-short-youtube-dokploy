@@ -413,6 +413,14 @@
         let channels = [];
         let currentChannelId = null;
 
+        function getChannelIdFromQuery() {
+            const params = new URLSearchParams(window.location.search);
+            const raw = params.get('channel_id') || params.get('id');
+            if (!raw) return null;
+            const value = parseInt(raw, 10);
+            return Number.isFinite(value) ? value : null;
+        }
+
         function formatDate(value) {
             if (!value) return '—';
             const d = new Date(value);
@@ -542,6 +550,10 @@
             const data = await res.json();
             channels = data.items || [];
             renderTable();
+            const queryChannelId = getChannelIdFromQuery();
+            if (queryChannelId && currentChannelId !== queryChannelId) {
+                currentChannelId = queryChannelId;
+            }
             const selected = currentChannelId ? channels.find(ch => ch.id === currentChannelId) : channels[0];
             if (selected) {
                 fillForm(selected);

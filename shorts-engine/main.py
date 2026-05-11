@@ -92,6 +92,15 @@ async def get_current_user(request: Request):
     raise HTTPException(status_code=401, detail="No autenticado")
 
 # Dashboard UI Routes
+async def render_dashboard_file(request: Request, filename: str):
+    try:
+        await get_current_user(request)
+        with open(filename, "r", encoding="utf-8") as f:
+            return f.read()
+    except HTTPException:
+        return RedirectResponse(url="/login")
+
+
 @app.get("/login", response_class=HTMLResponse)
 async def login_page():
     with open("static/dashboard/login.html", "r", encoding="utf-8") as f:
@@ -99,79 +108,55 @@ async def login_page():
 
 @app.get("/", response_class=HTMLResponse)
 async def root_redirect(request: Request):
-    return RedirectResponse(url="/dashboard")
+    return RedirectResponse(url="/channels")
 
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard_page(request: Request):
-    try:
-        await get_current_user(request)
-        with open("static/dashboard/index.html", "r", encoding="utf-8") as f:
-            return f.read()
-    except HTTPException:
-        return RedirectResponse(url="/login")
+    return await render_dashboard_file(request, "static/dashboard/channels.html")
+
+@app.get("/channels", response_class=HTMLResponse)
+async def channels_page(request: Request):
+    return await render_dashboard_file(request, "static/dashboard/channels.html")
+
+@app.get("/overview", response_class=HTMLResponse)
+async def overview_page(request: Request):
+    return await render_dashboard_file(request, "static/dashboard/index.html")
+
+@app.get("/channels/{channel_id}", response_class=HTMLResponse)
+async def channel_workspace_page(channel_id: int, request: Request):
+    return await render_dashboard_file(request, "static/dashboard/channel-workspace.html")
+
+@app.get("/channels/{channel_id}/history", response_class=HTMLResponse)
+async def channel_history_page(channel_id: int, request: Request):
+    return await render_dashboard_file(request, "static/dashboard/channel-history.html")
 
 @app.get("/jobs", response_class=HTMLResponse)
 async def jobs_page(request: Request):
-    try:
-        await get_current_user(request)
-        with open("static/dashboard/jobs.html", "r", encoding="utf-8") as f:
-            return f.read()
-    except HTTPException:
-        return RedirectResponse(url="/login")
+    return await render_dashboard_file(request, "static/dashboard/jobs.html")
 
 @app.get("/gallery", response_class=HTMLResponse)
 async def gallery_page(request: Request):
-    try:
-        await get_current_user(request)
-        with open("static/dashboard/gallery.html", "r", encoding="utf-8") as f:
-            return f.read()
-    except HTTPException:
-        return RedirectResponse(url="/login")
+    return await render_dashboard_file(request, "static/dashboard/gallery.html")
 
 @app.get("/discover", response_class=HTMLResponse)
 async def discover_page(request: Request):
-    try:
-        await get_current_user(request)
-        with open("static/dashboard/discover.html", "r", encoding="utf-8") as f:
-            return f.read()
-    except HTTPException:
-        return RedirectResponse(url="/login")
+    return await render_dashboard_file(request, "static/dashboard/discover.html")
 
 @app.get("/ai-tasks", response_class=HTMLResponse)
 async def ai_tasks_page(request: Request):
-    try:
-        await get_current_user(request)
-        with open("static/dashboard/ai-tasks.html", "r", encoding="utf-8") as f:
-            return f.read()
-    except HTTPException:
-        return RedirectResponse(url="/login")
+    return await render_dashboard_file(request, "static/dashboard/ai-tasks.html")
 
 @app.get("/storyboard", response_class=HTMLResponse)
 async def storyboard_page(request: Request):
-    try:
-        await get_current_user(request)
-        with open("static/dashboard/storyboard.html", "r", encoding="utf-8") as f:
-            return f.read()
-    except HTTPException:
-        return RedirectResponse(url="/login")
+    return await render_dashboard_file(request, "static/dashboard/storyboard.html")
 
 @app.get("/settings", response_class=HTMLResponse)
 async def settings_page(request: Request):
-    try:
-        await get_current_user(request)
-        with open("static/dashboard/settings.html", "r", encoding="utf-8") as f:
-            return f.read()
-    except HTTPException:
-        return RedirectResponse(url="/login")
+    return await render_dashboard_file(request, "static/dashboard/settings.html")
 
 @app.get("/youtube-channels", response_class=HTMLResponse)
 async def youtube_channels_page(request: Request):
-    try:
-        await get_current_user(request)
-        with open("static/dashboard/youtube-channels.html", "r", encoding="utf-8") as f:
-            return f.read()
-    except HTTPException:
-        return RedirectResponse(url="/login")
+    return await render_dashboard_file(request, "static/dashboard/youtube-channels.html")
 
 # --- STORYBOARD MODELS ---
 class StoryboardScene(BaseModel):

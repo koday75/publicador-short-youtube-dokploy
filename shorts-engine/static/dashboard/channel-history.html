@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Historial de publicación - Shorts Engine</title>
+    <link rel="stylesheet" href="/assets/style.css">
+    <style>
+        .panel {
+            border: 1px solid var(--border-color);
+            border-radius: 18px;
+            background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(0,0,0,0.14));
+            padding: 1.25rem;
+        }
+        .notice {
+            border: 1px solid rgba(88, 166, 255, 0.25);
+            background: rgba(88, 166, 255, 0.08);
+            border-radius: 14px;
+            padding: 1rem 1.1rem;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.8rem;
+            margin-top: 1rem;
+        }
+        .summary-item {
+            border: 1px solid var(--border-color);
+            background: rgba(0,0,0,0.18);
+            border-radius: 12px;
+            padding: 0.85rem 0.95rem;
+        }
+        .summary-item small {
+            display: block;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-size: 0.68rem;
+            margin-bottom: 0.3rem;
+        }
+        .summary-item strong {
+            font-size: 0.92rem;
+            font-weight: 600;
+        }
+        .history-empty {
+            margin-top: 1rem;
+            padding: 1.4rem;
+            border-radius: 14px;
+            border: 1px dashed var(--border-color);
+            color: var(--text-muted);
+            text-align: center;
+        }
+        nav { display: flex; gap: 15px; margin-bottom: 2rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; flex-wrap: wrap; }
+        nav a { color: var(--text-muted); text-decoration: none; font-size: 0.9rem; padding: 5px 10px; border-radius: 4px; }
+        nav a:hover { color: #fff; background: rgba(255,255,255,0.05); }
+        nav a.active { color: var(--accent); font-weight: bold; background: rgba(188, 140, 255, 0.1); }
+        @media (max-width: 720px) {
+            .summary-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div>
+                <h1>Historial de publicación</h1>
+                <p>Fase 1: la estructura ya está lista. En la siguiente fase esta sección mostrará las publicaciones reales por canal.</p>
+            </div>
+            <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
+                <a href="/channels" class="badge" style="text-decoration:none; background:rgba(255,255,255,0.05); color:#fff;">← Volver a canales</a>
+                <a id="back-workspace" href="/channels" class="badge" style="text-decoration:none; background:var(--accent); color:#000; font-weight:bold;">Volver al workspace</a>
+            </div>
+        </header>
+
+        <nav>
+            <a href="/channels" class="active">Canales</a>
+            <a href="/discover">Descubrimiento</a>
+            <a href="/jobs">Trabajos</a>
+            <a href="/gallery">Galería</a>
+            <a href="/youtube-channels">YouTube / Canales</a>
+            <a href="/ai-tasks">Registros IA</a>
+            <a href="/settings">Ajustes</a>
+        </nav>
+
+        <section class="panel">
+            <div class="notice">
+                <strong>Historial en desarrollo:</strong> esta pantalla está preparada para mostrar los vídeos publicados por este canal, con fecha, estado, URL y errores de subida. En esta fase solo presenta el contenedor y el contexto del canal.
+            </div>
+
+            <div class="summary-grid">
+                <div class="summary-item">
+                    <small>Canal</small>
+                    <strong id="history-channel">-</strong>
+                </div>
+                <div class="summary-item">
+                    <small>Email</small>
+                    <strong id="history-email">-</strong>
+                </div>
+                <div class="summary-item">
+                    <small>Estado de conexión</small>
+                    <strong id="history-status">-</strong>
+                </div>
+                <div class="summary-item">
+                    <small>Última prueba</small>
+                    <strong id="history-test">-</strong>
+                </div>
+            </div>
+
+            <div class="history-empty">
+                No hay publicaciones cargadas todavía. Cuando la fase 2 aterrice, este espacio enseñará el historial real del canal.
+            </div>
+        </section>
+    </div>
+
+    <script>
+        function getChannelId() {
+            const parts = window.location.pathname.split('/').filter(Boolean);
+            const idx = parts.indexOf('channels');
+            if (idx >= 0 && parts[idx + 1]) {
+                const value = parseInt(parts[idx + 1], 10);
+                return Number.isFinite(value) ? value : null;
+            }
+            return null;
+        }
+
+        function formatDate(value) {
+            if (!value) return '—';
+            const d = new Date(value);
+            if (Number.isNaN(d.getTime())) return value;
+            return d.toLocaleString('es-ES');
+        }
+
+        async function loadHistory() {
+            const channelId = getChannelId();
+            if (!channelId) return;
+            document.getElementById('back-workspace').href = `/channels/${channelId}`;
+            try {
+                const res = await fetch(`/api/youtube/channels/${channelId}`);
+                if (!res.ok) throw new Error('No se pudo cargar el canal');
+                const channel = await res.json();
+                document.title = `Historial - ${channel.internal_name || 'Canal'} - Shorts Engine`;
+                document.getElementById('history-channel').textContent = channel.internal_name || '-';
+                document.getElementById('history-email').textContent = channel.connected_google_email || '-';
+                document.getElementById('history-status').textContent = channel.connection_status ? (channel.connection_status === 'connected' ? 'Conectado' : channel.connection_status) : '-';
+                document.getElementById('history-test').textContent = formatDate(channel.last_connection_test_at);
+            } catch (error) {
+                document.getElementById('history-channel').textContent = 'Error';
+                document.getElementById('history-email').textContent = error.message;
+                document.getElementById('history-status').textContent = '-';
+                document.getElementById('history-test').textContent = '-';
+            }
+        }
+
+        loadHistory();
+    </script>
+</body>
+</html>

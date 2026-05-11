@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -32,12 +32,25 @@
             cursor: pointer;
         }
         .status-select:focus { outline: none; border-color: var(--primary); }
+        .channel-context {
+            border: 1px solid rgba(88, 166, 255, 0.25);
+            background: rgba(88, 166, 255, 0.08);
+            border-radius: 14px;
+            padding: 0.9rem 1rem;
+            display: flex;
+            justify-content: space-between;
+            gap: 1rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .channel-context strong { color: #fff; }
+        .channel-context small { color: var(--text-muted); display:block; }
     </style>
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>🎬 Historial de Trabajos</h1>
+            <h1>ðŸŽ¬ Historial de Trabajos</h1>
             <div style="display: flex; gap: 10px; align-items: center;">
                 <a href="/storyboard" class="badge" style="text-decoration: none; background: var(--accent); color: #000; padding: 0.5rem 1.5rem; font-weight: bold;">+ NUEVO PROYECTO</a>
             </div>
@@ -47,12 +60,22 @@
             <a href="/">Panel Control</a>
             <a href="/discover">Descubrimiento</a>
             <a href="/jobs" class="active">Trabajos</a>
-            <a href="/gallery">Galería</a>
+            <a href="/gallery">GalerÃ­a</a>
             <a href="/youtube-channels">YouTube / Canales</a>
             <a href="/ai-tasks">Registros IA</a>
             <a href="/settings">Ajustes</a>
         </nav>
 
+        <div id="channel-context" class="channel-context" style="display:none; margin-bottom: 1rem;">
+            <div>
+                <small>Canal activo</small>
+                <strong id="channel-context-title">-</strong>
+            </div>
+            <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
+                <a id="channel-context-workspace" href="#" class="badge" style="text-decoration:none; background:rgba(255,255,255,0.05); color:#fff;">Workspace</a>
+                <a id="channel-context-settings" href="#" class="badge" style="text-decoration:none; background:var(--accent); color:#000; font-weight:bold;">Editar canal</a>
+            </div>
+        </div>
         <section class="search-bar">
             <input type="text" id="job-search" placeholder="Buscar por texto, ID o nicho..." oninput="debounceSearch()">
             <button onclick="fetchJobs(1)">Buscar</button>
@@ -63,19 +86,19 @@
                 <thead>
                     <tr>
                         <th>ID</th>
-                        <th>Título</th>
+                        <th>TÃ­tulo</th>
                         <th>Estado</th>
                         <th>Creado</th>
                         <th>Acciones</th>
                     </tr>
                 </thead>
                 <tbody id="jobs-table">
-                    <!-- Filas dinámicas -->
+                    <!-- Filas dinÃ¡micas -->
                 </tbody>
             </table>
 
             <div class="pagination" id="pagination-controls">
-                <!-- Botones de paginación -->
+                <!-- Botones de paginaciÃ³n -->
             </div>
         </section>
     </div>
@@ -88,14 +111,35 @@
                 <video id="previewPlayer" controls style="width: 100%; height: 100%; object-fit: contain;"></video>
             </div>
             <div class="modal-footer">
-                <button class="modal-btn" onclick="downloadCurrentVideo()" style="background: var(--secondary);">⬇ Descargar</button>
-                <button class="modal-btn" onclick="shareCurrentVideo()" style="background: var(--primary);">🔗 Compartir</button>
+                <button class="modal-btn" onclick="downloadCurrentVideo()" style="background: var(--secondary);">â¬‡ Descargar</button>
+                <button class="modal-btn" onclick="shareCurrentVideo()" style="background: var(--primary);">ðŸ”— Compartir</button>
             </div>
         </div>
     </div>
 
     <script>
         let currentPage = 1;
+        function getChannelIdFromQuery() {
+            const params = new URLSearchParams(window.location.search);
+            const raw = params.get('channel_id');
+            if (!raw) return null;
+            const value = parseInt(raw, 10);
+            return Number.isFinite(value) ? value : null;
+        }
+
+        async function loadChannelContext() {
+            const channelId = getChannelIdFromQuery();
+            if (!channelId) return;
+            try {
+                const res = await fetch(`/api/youtube/channels/${channelId}`);
+                if (!res.ok) return;
+                const channel = await res.json();
+                document.getElementById('channel-context-title').textContent = channel.internal_name || channel.youtube_channel_title || `Canal ${channelId}`;
+                document.getElementById('channel-context-workspace').href = `/channels/${channelId}`;
+                document.getElementById('channel-context-settings').href = `/youtube-channels?channel_id=${channelId}`;
+                document.getElementById('channel-context').style.display = 'flex';
+            } catch (e) {}
+        }
         let searchTimeout;
 
         function debounceSearch() {
@@ -120,7 +164,7 @@
             data.jobs.forEach(job => {
                 const row = document.createElement('tr');
                 
-                // Priorizar el título sobre la descripción genérica
+                // Priorizar el tÃ­tulo sobre la descripciÃ³n genÃ©rica
                 const displayTitle = job.title || (job.text ? job.text.substring(0, 50) + '...' : job.job_id);
                 
                 const canPlay = job.status === 'rendered' || job.status === 'completed';
@@ -128,8 +172,8 @@
                 // Status selector - only show for rendered jobs (allow promoting to completed or back)
                 const statusCell = job.status === 'rendered'
                     ? `<select class="status-select" id="sel-${job.job_id}" onchange="updateStatus('${job.job_id}', this.value)">
-                            <option value="rendered" ${job.status === 'rendered' ? 'selected' : ''}>⏳ Renderizado</option>
-                            <option value="completed" ${job.status === 'completed' ? 'selected' : ''}>✅ Completado</option>
+                            <option value="rendered" ${job.status === 'rendered' ? 'selected' : ''}>â³ Renderizado</option>
+                            <option value="completed" ${job.status === 'completed' ? 'selected' : ''}>âœ… Completado</option>
                        </select>`
                     : `<span class="badge badge-${job.status}">${job.status}</span>`;
 
@@ -139,9 +183,9 @@
                     <td>${statusCell}</td>
                     <td style="font-size:0.85rem; color:var(--text-muted);">${new Date(job.created_at).toLocaleString('es-ES')}</td>
                     <td style="display:flex; gap:6px;">
-                        <button class="action-btn" style="background:#333; color:#fff;" onclick="window.location.href='/storyboard?job_id=${job.job_id}'">✏️</button>
-                        ${canPlay ? `<button class="action-btn btn-view" onclick="previewVideo('${job.video_url}')">▶</button>` : ''}
-                        <button class="action-btn btn-delete" onclick="deleteJob('${job.job_id}')">🗑</button>
+                        <button class="action-btn" style="background:#333; color:#fff;" onclick="window.location.href='/storyboard?job_id=${job.job_id}'">âœï¸</button>
+                        ${canPlay ? `<button class="action-btn btn-view" onclick="previewVideo('${job.video_url}')">â–¶</button>` : ''}
+                        <button class="action-btn btn-delete" onclick="deleteJob('${job.job_id}')">ðŸ—‘</button>
                     </td>
                 `;
                 table.appendChild(row);
@@ -164,7 +208,7 @@
                 } else {
                     // Small visual confirmation
                     const checkIcon = document.createElement('span');
-                    checkIcon.innerText = ' ✅';
+                    checkIcon.innerText = ' âœ…';
                     checkIcon.style.color = '#3fb950';
                     checkIcon.style.fontSize = '0.8rem';
                     sel.parentNode.appendChild(checkIcon);
@@ -174,7 +218,7 @@
                     }
                 }
             } catch(e) {
-                alert('Error de conexión');
+                alert('Error de conexiÃ³n');
             }
         }
 
@@ -187,7 +231,7 @@
 
             const prevBtn = document.createElement('button');
             prevBtn.className = 'page-btn';
-            prevBtn.innerText = '←';
+            prevBtn.innerText = 'â†';
             prevBtn.disabled = page === 1;
             prevBtn.onclick = () => fetchJobs(page - 1);
             controls.appendChild(prevBtn);
@@ -208,14 +252,14 @@
 
             const nextBtn = document.createElement('button');
             nextBtn.className = 'page-btn';
-            nextBtn.innerText = '→';
+            nextBtn.innerText = 'â†’';
             nextBtn.disabled = page === totalPages;
             nextBtn.onclick = () => fetchJobs(page + 1);
             controls.appendChild(nextBtn);
         }
 
         async function deleteJob(jobId) {
-            if(!confirm('¿Borrar permanentemente?')) return;
+            if(!confirm('Â¿Borrar permanentemente?')) return;
             const res = await fetch(`/api/jobs/${jobId}`, { method: 'DELETE' });
             if(res.ok) fetchJobs(currentPage);
         }
@@ -260,7 +304,9 @@
             }
         }
 
+        loadChannelContext();
         fetchJobs();
     </script>
 </body>
 </html>
+

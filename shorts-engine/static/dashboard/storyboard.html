@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -20,20 +20,34 @@
         .pos-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; margin-top: 5px; }
         .pos-btn { background: #333; height: 25px; border-radius: 4px; cursor: pointer; border: 1px solid transparent; }
         .pos-btn.active { background: var(--primary); border-color: #fff; }
+        .channel-context {
+            border: 1px solid rgba(88, 166, 255, 0.25);
+            background: rgba(88, 166, 255, 0.08);
+            border-radius: 14px;
+            padding: 0.9rem 1rem;
+            margin-bottom: 1.25rem;
+            display: flex;
+            justify-content: space-between;
+            gap: 1rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .channel-context strong { color: #fff; }
+        .channel-context small { color: var(--text-muted); display:block; }
     </style>
 </head>
 <body>
     <div class="container">
         <header style="display: flex; justify-content: space-between; align-items: flex-start;">
             <div style="flex: 1;">
-                <h1>🎬 Cinema Storyboard</h1>
+                <h1>ðŸŽ¬ Cinema Storyboard</h1>
                 <div style="margin-top: 5px;">
-                    <input type="text" id="manual-job-title" placeholder="📝 Escribe un título para tu nuevo Short..." style="width: 100%; max-width: 500px; padding: 10px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: #fff; border-radius: 4px; font-size: 1rem;">
+                    <input type="text" id="manual-job-title" placeholder="ðŸ“ Escribe un tÃ­tulo para tu nuevo Short..." style="width: 100%; max-width: 500px; padding: 10px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: #fff; border-radius: 4px; font-size: 1rem;">
                 </div>
             </div>
             <div style="display: flex; gap: 10px; align-items: flex-start;">
-                <a href="/dashboard" class="badge">← Panel</a>
-                <button onclick="renderMovie()" class="badge badge-processing">🚀 RENDER FINAL</button>
+                <a href="/dashboard" class="badge">â† Panel</a>
+                <button onclick="renderMovie()" class="badge badge-processing">ðŸš€ RENDER FINAL</button>
             </div>
         </header>
 
@@ -41,24 +55,34 @@
             <a href="/">Panel Control</a>
             <a href="/discover">Descubrimiento</a>
             <a href="/jobs">Trabajos</a>
-            <a href="/gallery">Galería</a>
+            <a href="/gallery">GalerÃ­a</a>
             <a href="/youtube-channels">YouTube / Canales</a>
             <a href="/ai-tasks">Registros IA</a>
             <a href="/settings">Ajustes</a>
         </nav>
 
+        <div id="channel-context" class="channel-context" style="display:none;">
+            <div>
+                <small>Canal activo</small>
+                <strong id="channel-context-title">-</strong>
+            </div>
+            <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
+                <a id="channel-context-workspace" href="#" class="badge" style="text-decoration:none; background:rgba(255,255,255,0.05); color:#fff;">Workspace</a>
+                <a id="channel-context-settings" href="#" class="badge" style="text-decoration:none; background:var(--accent); color:#000; font-weight:bold;">Editar canal</a>
+            </div>
+        </div>
         <div class="card" style="margin-bottom: 2rem;">
-            <h3>Configuración Global</h3>
+            <h3>ConfiguraciÃ³n Global</h3>
             <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 1rem; align-items: end;">
                 <div>
-                    <label>Música de Fondo</label>
+                    <label>MÃºsica de Fondo</label>
                     <select id="global-music"><option value="">Ninguna</option></select>
                 </div>
                 <div>
-                    <label>Motor TTS 🔊</label>
+                    <label>Motor TTS ðŸ”Š</label>
                     <select id="tts-engine" style="width:100%;" onchange="onEngineChange()">
-                        <option value="gtts">🌐 gTTS (Google, Gratis)</option>
-                        <option value="edge-tts">⚡ Edge-TTS (Microsoft Neural)</option>
+                        <option value="gtts">ðŸŒ gTTS (Google, Gratis)</option>
+                        <option value="edge-tts">âš¡ Edge-TTS (Microsoft Neural)</option>
                     </select>
                 </div>
                 <div>
@@ -70,23 +94,23 @@
                     <select id="global-niche">
                         <option value="default">Default</option>
                         <option value="terror">Terror / Oscuro</option>
-                        <option value="curiosidades">Curiosidades / Épico</option>
+                        <option value="curiosidades">Curiosidades / Ã‰pico</option>
                     </select>
                 </div>
             </div>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem; align-items: center;">
                 <div id="speed-container">
-                    <label>⚡ Velocidad de Habla: <span id="speed-label" style="color:var(--primary); font-weight:bold;">1.0x</span></label>
+                    <label>âš¡ Velocidad de Habla: <span id="speed-label" style="color:var(--primary); font-weight:bold;">1.0x</span></label>
                     <input type="range" id="tts-speed" min="0.5" max="2.0" step="0.1" value="1.0"
                         style="width:100%; margin-top:5px;"
                         oninput="document.getElementById('speed-label').innerText=parseFloat(this.value).toFixed(1)+'x'">
                     <div style="display:flex; justify-content:space-between; font-size:0.7rem; color:var(--text-muted);">
-                        <span>0.5x Lento</span><span>1.0x Normal</span><span>2.0x Rápido</span>
+                        <span>0.5x Lento</span><span>1.0x Normal</span><span>2.0x RÃ¡pido</span>
                     </div>
                 </div>
                 <div id="voice-info-box" style="background:rgba(255,215,0,0.1); border:1px solid rgba(255,215,0,0.3); border-radius:8px; padding:10px; font-size:0.8rem; color:var(--text-muted);">
-                    💡 <strong>gTTS:</strong> Voz femenina fija de Google. Sin control de velocidad.<br>
-                    ⚡ <strong>Edge-TTS:</strong> Voces neurales Microsoft con género y velocidad ajustable.
+                    ðŸ’¡ <strong>gTTS:</strong> Voz femenina fija de Google. Sin control de velocidad.<br>
+                    âš¡ <strong>Edge-TTS:</strong> Voces neurales Microsoft con gÃ©nero y velocidad ajustable.
                 </div>
             </div>
         </div>
@@ -95,11 +119,11 @@
         <div id="aiModal" class="modal">
             <div class="modal-content" style="max-width: 500px;">
                 <span class="close-modal" onclick="closeAiModal()">&times;</span>
-                <h3>✨ Generar Imagen con IA</h3>
+                <h3>âœ¨ Generar Imagen con IA</h3>
                 <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem;">
-                    Describe la imagen que deseas. Se guardará automáticamente en tu galería.
+                    Describe la imagen que deseas. Se guardarÃ¡ automÃ¡ticamente en tu galerÃ­a.
                 </p>
-                <textarea id="ai-prompt" placeholder="Ej: Un bosque oscuro con niebla espesa, estilo cinematográfico, 8k..." style="height: 80px; margin-bottom: 10px;"></textarea>
+                <textarea id="ai-prompt" placeholder="Ej: Un bosque oscuro con niebla espesa, estilo cinematogrÃ¡fico, 8k..." style="height: 80px; margin-bottom: 10px;"></textarea>
                 <div style="display: flex; gap: 10px;">
                     <select id="ai-niche-tag" style="flex: 1;">
                         <option value="terror">Nicho: Terror</option>
@@ -115,33 +139,54 @@
 
 
         <div id="timeline" class="timeline">
-            <!-- Escenas aquí -->
+            <!-- Escenas aquÃ­ -->
         </div>
 
-        <button class="btn-add" onclick="addScene()">+ AÑADIR NUEVA ESCENA</button>
+        <button class="btn-add" onclick="addScene()">+ AÃ‘ADIR NUEVA ESCENA</button>
     </div>
 
     <script>
         let scenesCount = 0;
+        function getChannelIdFromQuery() {
+            const params = new URLSearchParams(window.location.search);
+            const raw = params.get('channel_id');
+            if (!raw) return null;
+            const value = parseInt(raw, 10);
+            return Number.isFinite(value) ? value : null;
+        }
+
+        async function loadChannelContext() {
+            const channelId = getChannelIdFromQuery();
+            if (!channelId) return;
+            try {
+                const res = await fetch(`/api/youtube/channels/${channelId}`);
+                if (!res.ok) return;
+                const channel = await res.json();
+                document.getElementById('channel-context-title').textContent = channel.internal_name || channel.youtube_channel_title || `Canal ${channelId}`;
+                document.getElementById('channel-context-workspace').href = `/channels/${channelId}`;
+                document.getElementById('channel-context-settings').href = `/youtube-channels?channel_id=${channelId}`;
+                document.getElementById('channel-context').style.display = 'flex';
+            } catch (e) {}
+        }
         let galleryData = [];
         let currentJobTitle = null;
 
         const GTTS_VOICES = [
-            { value: 'es', label: '🇪🇸 Español (España)' },
-            { value: 'com.mx', label: '🇲🇽 Español (México)' },
-            { value: 'us', label: '🇺🇸 Español (EE.UU.)' },
-            { value: 'co.uk', label: '🇬🇧 English (UK)' },
+            { value: 'es', label: 'ðŸ‡ªðŸ‡¸ EspaÃ±ol (EspaÃ±a)' },
+            { value: 'com.mx', label: 'ðŸ‡²ðŸ‡½ EspaÃ±ol (MÃ©xico)' },
+            { value: 'us', label: 'ðŸ‡ºðŸ‡¸ EspaÃ±ol (EE.UU.)' },
+            { value: 'co.uk', label: 'ðŸ‡¬ðŸ‡§ English (UK)' },
         ];
 
         const EDGE_VOICES = [
-            { value: 'es-ES-AlvaroNeural',  label: '🇪🇸 Álvaro (Masculino)' },
-            { value: 'es-ES-ElviraNeural',  label: '🇪🇸 Elvira (Femenino)' },
-            { value: 'es-MX-JorgeNeural',   label: '🇲🇽 Jorge (Masculino)' },
-            { value: 'es-MX-DaliaNeural',   label: '🇲🇽 Dalia (Femenino)' },
-            { value: 'es-AR-TomasNeural',   label: '🇦🇷 Tomás (Masculino)' },
-            { value: 'es-AR-ElenaNeural',   label: '🇦🇷 Elena (Femenino)' },
-            { value: 'es-CO-GonzaloNeural', label: '🇨🇴 Gonzalo (Masculino)' },
-            { value: 'es-CO-SalomeNeural',  label: '🇨🇴 Salomé (Femenino)' },
+            { value: 'es-ES-AlvaroNeural',  label: 'ðŸ‡ªðŸ‡¸ Ãlvaro (Masculino)' },
+            { value: 'es-ES-ElviraNeural',  label: 'ðŸ‡ªðŸ‡¸ Elvira (Femenino)' },
+            { value: 'es-MX-JorgeNeural',   label: 'ðŸ‡²ðŸ‡½ Jorge (Masculino)' },
+            { value: 'es-MX-DaliaNeural',   label: 'ðŸ‡²ðŸ‡½ Dalia (Femenino)' },
+            { value: 'es-AR-TomasNeural',   label: 'ðŸ‡¦ðŸ‡· TomÃ¡s (Masculino)' },
+            { value: 'es-AR-ElenaNeural',   label: 'ðŸ‡¦ðŸ‡· Elena (Femenino)' },
+            { value: 'es-CO-GonzaloNeural', label: 'ðŸ‡¨ðŸ‡´ Gonzalo (Masculino)' },
+            { value: 'es-CO-SalomeNeural',  label: 'ðŸ‡¨ðŸ‡´ SalomÃ© (Femenino)' },
         ];
 
         function onEngineChange() {
@@ -154,7 +199,7 @@
             voiceSelect.innerHTML = voices.map(v => `<option value="${v.value}">${v.label}</option>`).join('');
             speedContainer.style.opacity = engine === 'edge-tts' ? '1' : '0.4';
             document.getElementById('tts-speed').disabled = engine !== 'edge-tts';
-            voiceLabel.innerText = engine === 'edge-tts' ? 'Voz Neural ⚡' : 'Acento gTTS';
+            voiceLabel.innerText = engine === 'edge-tts' ? 'Voz Neural âš¡' : 'Acento gTTS';
         }
 
         async function init() {
@@ -224,7 +269,7 @@
                         document.getElementById('global-niche').value = job.niche || 'default';
                         if(job.music_filename) document.getElementById('global-music').value = job.music_filename;
                         
-                        // Guardar título para reenviarlo al renderizar
+                        // Guardar tÃ­tulo para reenviarlo al renderizar
                         if(job.title) {
                             currentJobTitle = job.title;
                             document.getElementById('manual-job-title').value = job.title;
@@ -256,31 +301,31 @@
                     <textarea placeholder="Guion de esta escena..." id="text-${id}"></textarea>
                     <div style="margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
                          <div style="display: flex; gap: 5px;">
-                            <button onclick="moveScene(this, -1)" class="badge" title="Mover arriba">↑</button>
-                            <button onclick="moveScene(this, 1)" class="badge" title="Mover abajo">↓</button>
+                            <button onclick="moveScene(this, -1)" class="badge" title="Mover arriba">â†‘</button>
+                            <button onclick="moveScene(this, 1)" class="badge" title="Mover abajo">â†“</button>
                         </div>
                         <button class="btn-remove" onclick="removeScene(${id})">Eliminar Escena</button>
                     </div>
                 </div>
                 <div class="controls">
                     <div class="media-picker">
-                        <label>Imagen/Vídeo de Fondo</label>
+                        <label>Imagen/VÃ­deo de Fondo</label>
                         <div style="display: flex; gap: 5px;">
                             <select id="media-${id}" style="flex: 1;" onchange="updatePreview(${id})">
-                                ${galleryData.filter(m => m.file_type && !m.file_type.includes('audio')).map(m => `<option value="${m.filename}">${m.file_type && m.file_type.includes('video') ? '🎥' : '🖼️'} ${m.original_name}</option>`).join('')}
+                                ${galleryData.filter(m => m.file_type && !m.file_type.includes('audio')).map(m => `<option value="${m.filename}">${m.file_type && m.file_type.includes('video') ? 'ðŸŽ¥' : 'ðŸ–¼ï¸'} ${m.original_name}</option>`).join('')}
                             </select>
-                            <button class="badge" style="padding: 0 10px; background: #333; border: 1px solid var(--border-color); cursor: pointer;" onclick="openAiModal(${id})" title="Generar con IA">✨</button>
+                            <button class="badge" style="padding: 0 10px; background: #333; border: 1px solid var(--border-color); cursor: pointer;" onclick="openAiModal(${id})" title="Generar con IA">âœ¨</button>
                         </div>
                     </div>
                     <div class="media-picker">
-                        <label>Posición Subtítulo</label>
+                        <label>PosiciÃ³n SubtÃ­tulo</label>
                         <div class="pos-grid" id="pos-grid-${id}">
                             <div class="pos-btn" onclick="setPos(event, ${id}, 2)" title="Arriba"></div>
                             <div class="pos-btn active" onclick="setPos(event, ${id}, 5)" title="Centro"></div>
                             <div class="pos-btn" onclick="setPos(event, ${id}, 8)" title="Abajo"></div>
                         </div>
                         <input type="hidden" id="pos-${id}" value="5">
-                        <label style="margin-top:5px; display:block;">Tamaño: <span id="size-val-${id}">48</span>px</label>
+                        <label style="margin-top:5px; display:block;">TamaÃ±o: <span id="size-val-${id}">48</span>px</label>
                         <input type="range" id="size-${id}" min="20" max="100" value="48" oninput="document.getElementById('size-val-${id}').innerText=this.value">
                     </div>
                 </div>
@@ -300,18 +345,18 @@
                     mediaSelect.value = sceneData.media_filename;
                 }
                 
-                // Cargar tamaño
+                // Cargar tamaÃ±o
                 if(sceneData.subtitle_size) {
                     document.getElementById(`size-${id}`).value = sceneData.subtitle_size;
                     document.getElementById(`size-val-${id}`).innerText = sceneData.subtitle_size;
                 }
                 
-                // Cargar posición
+                // Cargar posiciÃ³n
                 if(sceneData.subtitle_pos) {
-                    // Simular clic en el botón correcto para actualizar visualmente la grid
+                    // Simular clic en el botÃ³n correcto para actualizar visualmente la grid
                     const posGrid = document.getElementById(`pos-grid-${id}`);
                     const buttons = posGrid.querySelectorAll('.pos-btn');
-                    // 2=Arriba (índice 0), 5=Centro (índice 1), 8=Abajo (índice 2)
+                    // 2=Arriba (Ã­ndice 0), 5=Centro (Ã­ndice 1), 8=Abajo (Ã­ndice 2)
                     let targetIndex = 1;
                     if(sceneData.subtitle_pos === 2) targetIndex = 0;
                     if(sceneData.subtitle_pos === 8) targetIndex = 2;
@@ -329,7 +374,7 @@
             updateSceneNumbers();
         }
 
-        // Función para mover escenas
+        // FunciÃ³n para mover escenas
         function moveScene(btn, direction) {
             const card = btn.closest('.scene-card');
             const timeline = document.getElementById('timeline');
@@ -343,7 +388,7 @@
             updateSceneNumbers();
         }
         
-        // Actualizar números de escena después de mover o borrar
+        // Actualizar nÃºmeros de escena despuÃ©s de mover o borrar
         function updateSceneNumbers() {
             const cards = document.querySelectorAll('.scene-card');
             cards.forEach((card, idx) => {
@@ -397,13 +442,13 @@
                 });
             });
 
-            if(scenes.length === 0) return alert("Añade al menos una escena");
+            if(scenes.length === 0) return alert("AÃ±ade al menos una escena");
 
             const urlParams = new URLSearchParams(window.location.search);
             const overrideJobId = urlParams.get('job_id');
             const manualTitle = document.getElementById('manual-job-title').value.trim();
             if (!overrideJobId && !manualTitle) {
-                return alert("⚠️ Por favor, escribe un título descriptivo para la creación manual de tu Short.");
+                return alert("âš ï¸ Por favor, escribe un tÃ­tulo descriptivo para la creaciÃ³n manual de tu Short.");
             }
 
             const requestData = {
@@ -429,7 +474,7 @@
 
             const data = await res.json();
             if(res.ok) {
-                alert("Renderizado iniciado con éxito. Redirigiendo al historial de trabajos...");
+                alert("Renderizado iniciado con Ã©xito. Redirigiendo al historial de trabajos...");
                 window.location.href = '/jobs';
             } else {
                 let errorMsg = "Error desconocido";
@@ -437,7 +482,7 @@
                     errorMsg = typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail, null, 2);
                 }
                 alert("Error: " + errorMsg);
-                btn.innerText = "🚀 RENDER FINAL";
+                btn.innerText = "ðŸš€ RENDER FINAL";
                 btn.disabled = false;
             }
         }
@@ -464,7 +509,7 @@
 
             btn.disabled = true;
             btn.innerText = "GENERANDO...";
-            status.innerText = "⏳ Kie.ai está creando tu imagen (esto tarda 15-30s)...";
+            status.innerText = "â³ Kie.ai estÃ¡ creando tu imagen (esto tarda 15-30s)...";
 
             try {
                 const res = await fetch('/api/ai/generate', {
@@ -476,24 +521,26 @@
                 if(res.ok) {
                     const data = await res.json();
                     closeAiModal();
-                    if(confirm("Tarea de IA iniciada con éxito. ¿Deseas ir a la página de Registros para ver el progreso?")) {
+                    if(confirm("Tarea de IA iniciada con Ã©xito. Â¿Deseas ir a la pÃ¡gina de Registros para ver el progreso?")) {
                         window.location.href = "/ai-tasks";
                     } else {
-                        alert("La imagen se está generando en segundo plano. Aparecerá en la galería cuando esté lista.");
+                        alert("La imagen se estÃ¡ generando en segundo plano. AparecerÃ¡ en la galerÃ­a cuando estÃ© lista.");
                     }
                 } else {
                     const error = await res.json();
                     alert("Error IA: " + (error.detail || "Error desconocido"));
                 }
             } catch(e) {
-                alert("Error de conexión");
+                alert("Error de conexiÃ³n");
             } finally {
                 btn.disabled = false;
                 btn.innerText = "GENERAR";
             }
         }
 
+        loadChannelContext();
         init();
     </script>
 </body>
 </html>
+

@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Canales - Shorts Engine</title>
+    <link rel="stylesheet" href="/assets/style.css">
+    <style>
+        .hero {
+            display: flex;
+            justify-content: space-between;
+            gap: 1rem;
+            align-items: flex-start;
+            margin-bottom: 1.5rem;
+        }
+        .hero p {
+            margin: 0.45rem 0 0;
+            color: var(--text-muted);
+            max-width: 820px;
+            line-height: 1.55;
+        }
+        .toolbar {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+        .channel-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 1.2rem;
+            margin-top: 1.25rem;
+        }
+        .channel-card {
+            border: 1px solid var(--border-color);
+            border-radius: 18px;
+            background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(0,0,0,0.14));
+            padding: 1.25rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        .channel-card:hover {
+            border-color: rgba(88, 166, 255, 0.35);
+        }
+        .channel-head {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+        .channel-thumb {
+            width: 64px;
+            height: 64px;
+            border-radius: 18px;
+            object-fit: cover;
+            background: #111;
+            border: 1px solid var(--border-color);
+            flex: 0 0 auto;
+        }
+        .channel-title {
+            margin: 0;
+            font-size: 1.1rem;
+        }
+        .channel-subtitle {
+            margin: 0.25rem 0 0;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.35rem 0.8rem;
+            border-radius: 999px;
+            font-size: 0.76rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        .status-pill.connected { background: rgba(63,185,80,0.15); color: #3fb950; }
+        .status-pill.disconnected { background: rgba(120,120,120,0.12); color: #b6b6b6; }
+        .status-pill.error, .status-pill.expired, .status-pill.revoked {
+            background: rgba(248,81,73,0.12);
+            color: #f85149;
+        }
+        .meta-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+        }
+        .meta-item {
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 0.8rem 0.9rem;
+            background: rgba(0,0,0,0.16);
+        }
+        .meta-item small {
+            display: block;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-size: 0.68rem;
+            margin-bottom: 0.3rem;
+        }
+        .meta-item strong {
+            font-size: 0.92rem;
+            font-weight: 600;
+        }
+        .card-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.65rem;
+        }
+        .card-actions a, .card-actions button {
+            text-decoration: none;
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+            padding: 0.65rem 0.9rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .primary-link {
+            background: rgba(88, 166, 255, 0.15);
+            color: #58a6ff;
+        }
+        .secondary-link {
+            background: rgba(255,255,255,0.04);
+            color: #fff;
+        }
+        .empty-state {
+            margin-top: 1.5rem;
+            border: 1px dashed var(--border-color);
+            border-radius: 18px;
+            padding: 2rem;
+            text-align: center;
+            color: var(--text-muted);
+        }
+        nav { display: flex; gap: 15px; margin-bottom: 2rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; flex-wrap: wrap; }
+        nav a { color: var(--text-muted); text-decoration: none; font-size: 0.9rem; padding: 5px 10px; border-radius: 4px; }
+        nav a:hover { color: #fff; background: rgba(255,255,255,0.05); }
+        nav a.active { color: var(--accent); font-weight: bold; background: rgba(188, 140, 255, 0.1); }
+        @media (max-width: 720px) {
+            .hero { flex-direction: column; }
+            .meta-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div>
+                <h1>Canales de trabajo</h1>
+                <p>Empieza por elegir un canal. Cada canal abre su propio workspace con las herramientas de creación, galería, trabajos y publicación.</p>
+            </div>
+            <div class="toolbar">
+                <a href="/youtube-channels" class="badge" style="text-decoration:none; background:rgba(255,255,255,0.05); color:#fff;">Gestionar canales</a>
+                <a href="/overview" class="badge" style="text-decoration:none; background:rgba(255,255,255,0.05); color:#fff;">Ver resumen global</a>
+            </div>
+        </header>
+
+        <nav>
+            <a href="/channels" class="active">Canales</a>
+            <a href="/discover">Descubrimiento</a>
+            <a href="/jobs">Trabajos</a>
+            <a href="/gallery">Galería</a>
+            <a href="/youtube-channels">YouTube / Canales</a>
+            <a href="/ai-tasks">Registros IA</a>
+            <a href="/settings">Ajustes</a>
+        </nav>
+
+        <section class="card">
+            <div class="hero">
+                <div>
+                    <h2 style="margin:0;">Selecciona un canal</h2>
+                    <p>La app ya está pensada para trabajar por canal. Desde aquí entrarás al workspace de cada uno y, dentro, navegarás a sus secciones sin mezclar contenido con otros canales.</p>
+                </div>
+                <div class="toolbar">
+                    <button onclick="reloadChannels()">↻ Recargar</button>
+                    <a href="/youtube-channels" class="badge" style="text-decoration:none; background:var(--accent); color:#000; font-weight:bold;">+ Nuevo canal</a>
+                </div>
+            </div>
+
+            <div id="channel-grid" class="channel-grid">
+                <div style="grid-column:1/-1; text-align:center; padding:2rem; color: var(--text-muted);">Cargando canales...</div>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        function formatDate(value) {
+            if (!value) return '—';
+            const d = new Date(value);
+            if (Number.isNaN(d.getTime())) return value;
+            return d.toLocaleString('es-ES');
+        }
+
+        function statusLabel(status) {
+            if (status === 'connected') return 'Conectado';
+            if (status === 'expired') return 'Token caducado';
+            if (status === 'revoked') return 'Revocado';
+            if (status === 'error') return 'Error';
+            return 'No conectado';
+        }
+
+        function statusClass(status) {
+            if (status === 'connected') return 'connected';
+            if (status === 'expired') return 'expired';
+            if (status === 'revoked') return 'revoked';
+            if (status === 'error') return 'error';
+            return 'disconnected';
+        }
+
+        async function reloadChannels() {
+            const grid = document.getElementById('channel-grid');
+            grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:2rem; color: var(--text-muted);">Cargando canales...</div>';
+
+            try {
+                const res = await fetch('/api/youtube/channels');
+                const data = await res.json();
+                const items = data.items || [];
+
+                if (!items.length) {
+                    grid.innerHTML = `
+                        <div class="empty-state" style="grid-column:1/-1;">
+                            <h3 style="margin-top:0;">Aún no has creado canales</h3>
+                            <p>Primero crea un canal interno y conéctalo a su cuenta de YouTube. Después podrás entrar a su workspace.</p>
+                            <div style="margin-top:1rem;">
+                                <a href="/youtube-channels" class="badge" style="text-decoration:none; background:var(--accent); color:#000; font-weight:bold;">Crear primer canal</a>
+                            </div>
+                        </div>
+                    `;
+                    return;
+                }
+
+                grid.innerHTML = items.map(channel => `
+                    <article class="channel-card">
+                        <div class="channel-head">
+                            <img class="channel-thumb" src="${channel.thumbnail_url || 'https://dummyimage.com/128x128/111/ffffff&text=YT'}" alt="">
+                            <div style="min-width:0;">
+                                <div class="status-pill ${statusClass(channel.connection_status)}">${statusLabel(channel.connection_status)}</div>
+                                <h3 class="channel-title">${channel.internal_name || 'Canal sin nombre'}</h3>
+                                <p class="channel-subtitle">${channel.youtube_channel_title || 'Canal de YouTube no conectado'}</p>
+                            </div>
+                        </div>
+
+                        <div class="meta-grid">
+                            <div class="meta-item">
+                                <small>Canal real</small>
+                                <strong>${channel.youtube_channel_title || '-'}</strong>
+                            </div>
+                            <div class="meta-item">
+                                <small>Email</small>
+                                <strong>${channel.connected_google_email || '-'}</strong>
+                            </div>
+                            <div class="meta-item">
+                                <small>Última prueba</small>
+                                <strong>${formatDate(channel.last_connection_test_at)}</strong>
+                            </div>
+                            <div class="meta-item">
+                                <small>Privacidad</small>
+                                <strong>${channel.default_privacy_status || 'private'}</strong>
+                            </div>
+                        </div>
+
+                        <div class="card-actions">
+                            <a class="primary-link" href="/channels/${channel.id}">Entrar al workspace</a>
+                            <a class="secondary-link" href="/youtube-channels?channel_id=${channel.id}">Editar conexión</a>
+                        </div>
+                    </article>
+                `).join('');
+            } catch (error) {
+                grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1; border-color: var(--error); color: #ffb4af;">No se pudieron cargar los canales: ${error.message}</div>`;
+            }
+        }
+
+        reloadChannels();
+    </script>
+</body>
+</html>
