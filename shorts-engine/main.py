@@ -295,6 +295,22 @@ async def api_get_youtube_channel(channel_id: int, user: str = Depends(get_curre
         raise HTTPException(status_code=404, detail="Canal no encontrado")
     return serialize_youtube_channel(channel)
 
+@app.get("/api/youtube/channels/{channel_id}/overview")
+async def api_get_youtube_channel_overview(channel_id: int, user: str = Depends(get_current_user)):
+    overview = db.get_channel_overview(channel_id)
+    if not overview:
+        raise HTTPException(status_code=404, detail="Canal no encontrado")
+    return {
+        "channel": serialize_youtube_channel(overview["channel"]),
+        "stats": overview["stats"],
+        "job_counts": overview["job_counts"],
+        "media_counts": overview["media_counts"],
+        "recent_jobs": overview["recent_jobs"],
+        "recent_media": overview["recent_media"],
+        "latest_job": overview["latest_job"],
+        "latest_successful_job": overview["latest_successful_job"],
+    }
+
 @app.put("/api/youtube/channels/{channel_id}")
 async def api_update_youtube_channel(channel_id: int, req: YouTubeChannelUpdateRequest, user: str = Depends(get_current_user)):
     existing = db.get_youtube_channel(channel_id)

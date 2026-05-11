@@ -6,17 +6,21 @@
     <title>Workspace de Canal - Shorts Engine</title>
     <link rel="stylesheet" href="/assets/style.css">
     <style>
+        .workspace-shell {
+            display: grid;
+            gap: 1.25rem;
+        }
         .workspace-hero {
             display: grid;
-            grid-template-columns: 1.4fr 0.9fr;
-            gap: 1.25rem;
-            margin-bottom: 1.5rem;
+            grid-template-columns: 1.35fr 0.95fr;
+            gap: 1rem;
         }
-        .hero-card {
+        .hero-card,
+        .panel-card {
             border: 1px solid var(--border-color);
             border-radius: 18px;
-            background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(0,0,0,0.16));
-            padding: 1.25rem;
+            background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(0,0,0,0.14));
+            padding: 1.1rem;
         }
         .channel-line {
             display: flex;
@@ -34,12 +38,12 @@
         }
         .workspace-title {
             margin: 0;
-            font-size: 1.4rem;
+            font-size: 1.55rem;
         }
         .workspace-subtitle {
-            margin: 0.25rem 0 0;
+            margin: 0.3rem 0 0;
             color: var(--text-muted);
-            line-height: 1.5;
+            line-height: 1.55;
         }
         .status-pill {
             display: inline-flex;
@@ -54,9 +58,15 @@
         }
         .status-pill.connected { background: rgba(63,185,80,0.15); color: #3fb950; }
         .status-pill.disconnected { background: rgba(120,120,120,0.12); color: #b6b6b6; }
-        .status-pill.error, .status-pill.expired, .status-pill.revoked {
+        .status-pill.error,
+        .status-pill.expired,
+        .status-pill.revoked {
             background: rgba(248,81,73,0.12);
             color: #f85149;
+        }
+        .status-pill.warning {
+            background: rgba(255,193,7,0.14);
+            color: #ffcc66;
         }
         .summary-grid {
             display: grid;
@@ -81,6 +91,133 @@
         .summary-item strong {
             font-size: 0.92rem;
             font-weight: 600;
+            overflow-wrap: anywhere;
+        }
+        .section-heading {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 0.9rem;
+        }
+        .section-heading h3 {
+            margin: 0;
+            font-size: 1.05rem;
+        }
+        .section-heading p {
+            margin: 0;
+            color: var(--text-muted);
+            font-size: 0.88rem;
+        }
+        .metric-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 0.9rem;
+        }
+        .metric-card {
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            background: rgba(255,255,255,0.03);
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            min-height: 110px;
+        }
+        .metric-card small {
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-size: 0.68rem;
+        }
+        .metric-card strong {
+            font-size: 1.85rem;
+            line-height: 1;
+            font-weight: 800;
+        }
+        .metric-card span {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            line-height: 1.45;
+        }
+        .metric-card.jobs { border-color: rgba(88,166,255,0.25); }
+        .metric-card.ready { border-color: rgba(63,185,80,0.25); }
+        .metric-card.failed { border-color: rgba(248,81,73,0.25); }
+        .metric-card.gallery { border-color: rgba(255,193,7,0.25); }
+        .metric-card.media { border-color: rgba(176,114,255,0.25); }
+        .metric-card.activity { border-color: rgba(255,255,255,0.12); }
+        .activity-grid {
+            display: grid;
+            grid-template-columns: 1.15fr 0.85fr;
+            gap: 1rem;
+        }
+        .activity-list {
+            display: grid;
+            gap: 0.75rem;
+        }
+        .activity-row {
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            background: rgba(0,0,0,0.15);
+            padding: 0.85rem 0.95rem;
+            display: flex;
+            justify-content: space-between;
+            gap: 1rem;
+            align-items: flex-start;
+        }
+        .activity-row h4 {
+            margin: 0 0 0.25rem;
+            font-size: 0.95rem;
+        }
+        .activity-row p {
+            margin: 0;
+            color: var(--text-muted);
+            font-size: 0.82rem;
+            line-height: 1.4;
+        }
+        .activity-meta {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 0.35rem;
+            flex: 0 0 auto;
+        }
+        .activity-meta small {
+            color: var(--text-muted);
+            font-size: 0.72rem;
+        }
+        .activity-media-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 0.75rem;
+        }
+        .media-card {
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            background: rgba(0,0,0,0.15);
+            overflow: hidden;
+            min-height: 180px;
+            display: flex;
+            flex-direction: column;
+        }
+        .media-card-thumb {
+            width: 100%;
+            height: 118px;
+            object-fit: cover;
+            background: #111;
+        }
+        .media-card-body {
+            padding: 0.8rem 0.85rem;
+            display: grid;
+            gap: 0.25rem;
+        }
+        .media-card-body strong {
+            font-size: 0.9rem;
+            overflow-wrap: anywhere;
+        }
+        .media-card-body small {
+            color: var(--text-muted);
+            font-size: 0.72rem;
         }
         .section-grid {
             display: grid;
@@ -131,20 +268,49 @@
             line-height: 1.5;
             margin-top: 1rem;
         }
-        .workspace-shell {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 1.5rem;
+        .channel-path {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text-muted);
+            font-size: 0.84rem;
+            margin-top: 0.5rem;
+        }
+        .channel-path code {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--border-color);
+            border-radius: 999px;
+            padding: 0.25rem 0.55rem;
+            color: #fff;
         }
         nav { display: flex; gap: 15px; margin-bottom: 2rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; flex-wrap: wrap; }
         nav a { color: var(--text-muted); text-decoration: none; font-size: 0.9rem; padding: 5px 10px; border-radius: 4px; }
         nav a:hover { color: #fff; background: rgba(255,255,255,0.05); }
         nav a.active { color: var(--accent); font-weight: bold; background: rgba(188, 140, 255, 0.1); }
-        @media (max-width: 960px) {
-            .workspace-hero { grid-template-columns: 1fr; }
+        .empty-state {
+            border: 1px dashed var(--border-color);
+            border-radius: 14px;
+            background: rgba(255,255,255,0.02);
+            padding: 1rem;
+            color: var(--text-muted);
+            text-align: center;
+        }
+        @media (max-width: 1024px) {
+            .workspace-hero,
+            .activity-grid {
+                grid-template-columns: 1fr;
+            }
         }
         @media (max-width: 720px) {
-            .summary-grid { grid-template-columns: 1fr; }
+            .summary-grid {
+                grid-template-columns: 1fr;
+            }
+            .activity-row {
+                flex-direction: column;
+            }
+            .activity-meta {
+                align-items: flex-start;
+            }
         }
     </style>
 </head>
@@ -153,7 +319,7 @@
         <header>
             <div>
                 <h1>Workspace del canal</h1>
-                <p>Trabaja dentro de un canal concreto. Cada sección que abras desde aquí llevará el contexto del canal seleccionado.</p>
+                <p>Trabaja dentro de un canal concreto. Todas las herramientas que abras desde aquí conservarán su contexto.</p>
             </div>
             <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
                 <a href="/channels" class="badge" style="text-decoration:none; background:rgba(255,255,255,0.05); color:#fff;">← Volver a canales</a>
@@ -176,21 +342,19 @@
                 <div class="hero-card">
                     <div class="channel-line">
                         <img id="channel-avatar" class="channel-avatar" src="" alt="Avatar" style="display:none;">
-                        <div>
+                        <div style="min-width:0;">
                             <div id="channel-status" class="status-pill disconnected">Cargando...</div>
                             <h2 id="channel-title" class="workspace-title" style="margin-top:0.6rem;">Cargando canal...</h2>
                             <p id="channel-description" class="workspace-subtitle">Espera un momento mientras cargamos la configuración del canal.</p>
+                            <div id="channel-path" class="channel-path" style="display:none;"></div>
                         </div>
                     </div>
 
                     <div class="workspace-note">
-                        Desde este espacio podrás entrar a las herramientas del canal sin salir de su contexto. La fase 1 deja la navegación lista; la fase 2 hará que cada lista y cada historial estén filtrados por canal.
+                        Este workspace centraliza la operación del canal: métricas, actividad reciente y accesos rápidos para crear, revisar y publicar contenido sin mezclarlo con otros canales.
                     </div>
-                </div>
 
-                <div class="hero-card">
-                    <h3 style="margin:0 0 0.75rem;">Contexto del canal</h3>
-                    <div class="summary-grid">
+                    <div class="summary-grid" style="margin-top:1rem;">
                         <div class="summary-item">
                             <small>Canal real</small>
                             <strong id="real-channel-title">-</strong>
@@ -200,8 +364,8 @@
                             <strong id="connected-email">-</strong>
                         </div>
                         <div class="summary-item">
-                            <small>Estado</small>
-                            <strong id="connection-status">-</strong>
+                            <small>Handle / URL</small>
+                            <strong id="channel-handle">-</strong>
                         </div>
                         <div class="summary-item">
                             <small>Última prueba</small>
@@ -209,10 +373,87 @@
                         </div>
                     </div>
                 </div>
+
+                <div class="hero-card">
+                    <div class="section-heading">
+                        <div>
+                            <h3>Estado operativo</h3>
+                            <p>Resumen rápido del canal seleccionado.</p>
+                        </div>
+                        <a id="channel-settings-link" href="/youtube-channels" class="badge" style="text-decoration:none; background:rgba(255,255,255,0.05); color:#fff;">Ajustes</a>
+                    </div>
+                    <div class="summary-grid">
+                        <div class="summary-item">
+                            <small>Conexión</small>
+                            <strong id="connection-status">-</strong>
+                        </div>
+                        <div class="summary-item">
+                            <small>Estado interno</small>
+                            <strong id="internal-status">-</strong>
+                        </div>
+                        <div class="summary-item">
+                            <small>Scopos</small>
+                            <strong id="scopes-count">-</strong>
+                        </div>
+                        <div class="summary-item">
+                            <small>Último trabajo</small>
+                            <strong id="latest-job">-</strong>
+                        </div>
+                    </div>
+                    <div class="workspace-note" style="margin-top:1rem;" id="last-success-note">
+                        Aquí aparecerá la última ejecución estable del canal.
+                    </div>
+                </div>
+            </section>
+
+            <section class="panel-card">
+                <div class="section-heading">
+                    <div>
+                        <h3>Métricas del canal</h3>
+                        <p>Indicadores reales sobre generación, galería y salud del workspace.</p>
+                    </div>
+                    <a href="/jobs" id="open-jobs-link" class="badge" style="text-decoration:none; background:rgba(255,255,255,0.05); color:#fff;">Ver trabajos</a>
+                </div>
+                <div id="metric-grid" class="metric-grid">
+                    <div class="empty-state" style="grid-column:1/-1;">Cargando métricas...</div>
+                </div>
+            </section>
+
+            <section class="activity-grid">
+                <div class="panel-card">
+                    <div class="section-heading">
+                        <div>
+                            <h3>Últimos trabajos</h3>
+                            <p>Lo más reciente del canal para controlar progreso y errores.</p>
+                        </div>
+                        <a href="/jobs" id="jobs-link" class="badge" style="text-decoration:none; background:var(--accent); color:#000; font-weight:bold;">Abrir cola</a>
+                    </div>
+                    <div id="recent-jobs-list" class="activity-list">
+                        <div class="empty-state">Cargando trabajos recientes...</div>
+                    </div>
+                </div>
+
+                <div class="panel-card">
+                    <div class="section-heading">
+                        <div>
+                            <h3>Assets recientes</h3>
+                            <p>Material visual y de audio disponible para este canal.</p>
+                        </div>
+                        <a href="/gallery" id="gallery-link" class="badge" style="text-decoration:none; background:rgba(255,255,255,0.05); color:#fff;">Abrir galería</a>
+                    </div>
+                    <div id="recent-media-grid" class="activity-media-grid">
+                        <div class="empty-state" style="grid-column:1/-1;">Cargando assets recientes...</div>
+                    </div>
+                </div>
             </section>
 
             <section class="hero-card">
-                <h3 style="margin:0 0 0.9rem;">Secciones del canal</h3>
+                <div class="section-heading">
+                    <div>
+                        <h3>Secciones del canal</h3>
+                        <p>Accesos directos al flujo de trabajo completo por canal.</p>
+                    </div>
+                </div>
                 <div class="section-grid">
                     <div class="section-card">
                         <h3>Crear vídeos</h3>
@@ -221,7 +462,7 @@
                     </div>
                     <div class="section-card">
                         <h3>Galería</h3>
-                        <p>Assets, fondos y recursos que usarás en este canal.</p>
+                        <p>Assets, fondos y recursos reutilizables para este canal.</p>
                         <a id="link-gallery" class="primary-link" href="/gallery">Abrir galería</a>
                     </div>
                     <div class="section-card">
@@ -231,12 +472,12 @@
                     </div>
                     <div class="section-card">
                         <h3>Historial de publicación</h3>
-                        <p>Vista preparada para mostrar los vídeos ya publicados del canal.</p>
+                        <p>Vista centralizada del historial del canal con el contexto correcto.</p>
                         <a id="link-history" class="secondary-link" href="/channels/0/history">Abrir historial</a>
                     </div>
                     <div class="section-card">
                         <h3>Ajustes del canal</h3>
-                        <p>Credenciales OAuth, callback, privacidad y datos internos de este canal.</p>
+                        <p>Credenciales OAuth, callback, privacidad y datos internos del canal.</p>
                         <a id="link-settings" class="secondary-link" href="/youtube-channels">Abrir ajustes</a>
                     </div>
                 </div>
@@ -262,6 +503,13 @@
             return d.toLocaleString('es-ES');
         }
 
+        function shortDate(value) {
+            if (!value) return '—';
+            const d = new Date(value);
+            if (Number.isNaN(d.getTime())) return value;
+            return d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+        }
+
         function statusLabel(status) {
             if (status === 'connected') return 'Conectado';
             if (status === 'expired') return 'Token caducado';
@@ -278,6 +526,30 @@
             return 'disconnected';
         }
 
+        function jobStatusLabel(status) {
+            if (status === 'draft') return 'Borrador';
+            if (status === 'processing') return 'Procesando';
+            if (status === 'rendered') return 'Renderizado';
+            if (status === 'completed') return 'Completado';
+            if (status === 'failed') return 'Fallido';
+            return status || 'Desconocido';
+        }
+
+        function jobStatusClass(status) {
+            if (status === 'completed') return 'connected';
+            if (status === 'rendered') return 'warning';
+            if (status === 'failed') return 'error';
+            if (status === 'draft') return 'disconnected';
+            return 'disconnected';
+        }
+
+        function mediaLabel(type) {
+            if (type === 'video') return 'Video';
+            if (type === 'image') return 'Imagen';
+            if (type === 'audio') return 'Audio';
+            return 'Archivo';
+        }
+
         function setLinks(channelId) {
             document.getElementById('link-storyboard').href = `/storyboard?channel_id=${channelId}`;
             document.getElementById('link-gallery').href = `/gallery?channel_id=${channelId}`;
@@ -285,6 +557,57 @@
             document.getElementById('link-history').href = `/channels/${channelId}/history`;
             document.getElementById('link-settings').href = `/youtube-channels?channel_id=${channelId}`;
             document.getElementById('edit-channel-link').href = `/youtube-channels?channel_id=${channelId}`;
+            document.getElementById('channel-settings-link').href = `/youtube-channels?channel_id=${channelId}`;
+            document.getElementById('jobs-link').href = `/jobs?channel_id=${channelId}`;
+            document.getElementById('gallery-link').href = `/gallery?channel_id=${channelId}`;
+            document.getElementById('open-jobs-link').href = `/jobs?channel_id=${channelId}`;
+        }
+
+        function renderMetricCard({ label, value, note, className }) {
+            return `
+                <article class="metric-card ${className || ''}">
+                    <small>${label}</small>
+                    <strong>${value}</strong>
+                    <span>${note || ''}</span>
+                </article>
+            `;
+        }
+
+        function renderJobRow(job) {
+            const statusClassName = jobStatusClass(job.status);
+            const canOpen = !!job.video_url;
+            const title = job.title || (job.text ? job.text.substring(0, 60) + (job.text.length > 60 ? '...' : '') : job.job_id);
+            return `
+                <div class="activity-row">
+                    <div style="min-width:0;">
+                        <h4 title="${job.title || job.text || ''}">${title}</h4>
+                        <p>${job.niche || 'general'} · ${job.job_id}</p>
+                    </div>
+                    <div class="activity-meta">
+                        <span class="status-pill ${statusClassName}">${jobStatusLabel(job.status)}</span>
+                        <small>${shortDate(job.created_at)}</small>
+                        ${canOpen ? `<a href="${job.video_url}" target="_blank" rel="noopener" style="font-size:0.8rem; color:#58a6ff; text-decoration:none;">Abrir vídeo</a>` : ''}
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderMediaCard(item) {
+            const thumb = item.file_type === 'video'
+                ? `<video class="media-card-thumb" src="/static/uploads/${item.filename}" muted playsinline></video>`
+                : item.file_type === 'image'
+                    ? `<img class="media-card-thumb" src="/static/uploads/${item.filename}" alt="${item.original_name || item.filename}">`
+                    : `<div class="media-card-thumb" style="display:flex;align-items:center;justify-content:center;color:var(--accent);background:#111;">${mediaLabel(item.file_type)}</div>`;
+            return `
+                <article class="media-card">
+                    ${thumb}
+                    <div class="media-card-body">
+                        <strong title="${item.original_name || item.filename}">${item.original_name || item.filename}</strong>
+                        <small>${mediaLabel(item.file_type)} · ${item.niche || 'sin nicho'}</small>
+                        <small>${shortDate(item.created_at)}</small>
+                    </div>
+                </article>
+            `;
         }
 
         async function loadWorkspace() {
@@ -298,11 +621,19 @@
             setLinks(channelId);
 
             try {
-                const res = await fetch(`/api/youtube/channels/${channelId}`);
+                const res = await fetch(`/api/youtube/channels/${channelId}/overview`);
                 if (!res.ok) {
-                    throw new Error('No se pudo cargar el canal.');
+                    throw new Error('No se pudo cargar el resumen del canal.');
                 }
-                const channel = await res.json();
+                const data = await res.json();
+                const channel = data.channel || {};
+                const stats = data.stats || {};
+                const jobCounts = data.job_counts || {};
+                const mediaCounts = data.media_counts || {};
+                const recentJobs = data.recent_jobs || [];
+                const recentMedia = data.recent_media || [];
+                const latestJob = data.latest_job || null;
+                const latestSuccessfulJob = data.latest_successful_job || null;
 
                 document.title = `${channel.internal_name || 'Workspace'} - Shorts Engine`;
                 document.getElementById('channel-title').textContent = channel.internal_name || 'Canal sin nombre';
@@ -316,15 +647,84 @@
                     avatar.style.display = 'block';
                 }
 
+                document.getElementById('channel-path').style.display = 'inline-flex';
+                document.getElementById('channel-path').innerHTML = `<span>Workspace activo</span><code>/channels/${channelId}</code>`;
+
                 document.getElementById('real-channel-title').textContent = channel.youtube_channel_title || '-';
                 document.getElementById('connected-email').textContent = channel.connected_google_email || '-';
-                document.getElementById('connection-status').textContent = statusLabel(channel.connection_status);
+                document.getElementById('channel-handle').textContent = channel.youtube_channel_handle || channel.youtube_channel_url || '-';
                 document.getElementById('last-test').textContent = formatDate(channel.last_connection_test_at);
+                document.getElementById('connection-status').textContent = statusLabel(channel.connection_status);
+                document.getElementById('internal-status').textContent = (channel.status || 'inactive').toUpperCase();
+                document.getElementById('scopes-count').textContent = Array.isArray(channel.scopes_granted) ? channel.scopes_granted.length : (channel.scopes_granted ? String(channel.scopes_granted).split(/\s+/).filter(Boolean).length : '0');
+                document.getElementById('latest-job').textContent = latestJob ? jobStatusLabel(latestJob.status) : '-';
+                document.getElementById('last-success-note').textContent = latestSuccessfulJob
+                    ? `Última ejecución estable: ${latestSuccessfulJob.title || latestSuccessfulJob.job_id} · ${formatDate(latestSuccessfulJob.created_at)}`
+                    : 'Todavía no hay una ejecución estable registrada para este canal.';
+
+                const metricGrid = document.getElementById('metric-grid');
+                const activeJobs = (jobCounts.draft || 0) + (jobCounts.processing || 0);
+                const readyJobs = (jobCounts.rendered || 0) + (jobCounts.completed || 0);
+                metricGrid.innerHTML = [
+                    renderMetricCard({
+                        label: 'Trabajos totales',
+                        value: stats.total_jobs ?? 0,
+                        note: 'Todo el historial de producción del canal.',
+                        className: 'jobs'
+                    }),
+                    renderMetricCard({
+                        label: 'Activos / borradores',
+                        value: activeJobs,
+                        note: `${jobCounts.draft || 0} borradores y ${jobCounts.processing || 0} en proceso.`,
+                        className: 'activity'
+                    }),
+                    renderMetricCard({
+                        label: 'Listos para revisar',
+                        value: readyJobs,
+                        note: `${jobCounts.rendered || 0} renderizados y ${jobCounts.completed || 0} completados.`,
+                        className: 'ready'
+                    }),
+                    renderMetricCard({
+                        label: 'Fallidos',
+                        value: stats.failed_jobs ?? 0,
+                        note: 'Trabajos que necesitan corrección o reintento.',
+                        className: 'failed'
+                    }),
+                    renderMetricCard({
+                        label: 'Assets en galería',
+                        value: (mediaCounts.video || 0) + (mediaCounts.image || 0) + (mediaCounts.audio || 0) + (mediaCounts.other || 0),
+                        note: `${mediaCounts.video || 0} vídeos, ${mediaCounts.image || 0} imágenes y ${mediaCounts.audio || 0} audios.`,
+                        className: 'gallery'
+                    }),
+                    renderMetricCard({
+                        label: 'Última prueba',
+                        value: channel.last_connection_test_at ? shortDate(channel.last_connection_test_at) : '—',
+                        note: channel.connection_status === 'connected' ? 'Conexión activa y validada.' : 'Revisa credenciales o scopes.',
+                        className: 'media'
+                    })
+                ].join('');
+
+                const jobsList = document.getElementById('recent-jobs-list');
+                if (recentJobs.length) {
+                    jobsList.innerHTML = recentJobs.map(renderJobRow).join('');
+                } else {
+                    jobsList.innerHTML = '<div class="empty-state">Todavía no hay trabajos recientes para este canal.</div>';
+                }
+
+                const mediaGrid = document.getElementById('recent-media-grid');
+                if (recentMedia.length) {
+                    mediaGrid.innerHTML = recentMedia.map(renderMediaCard).join('');
+                } else {
+                    mediaGrid.innerHTML = '<div class="empty-state" style="grid-column:1/-1;">Todavía no hay assets cargados para este canal.</div>';
+                }
             } catch (error) {
                 document.getElementById('channel-title').textContent = 'Error cargando canal';
                 document.getElementById('channel-description').textContent = error.message;
                 document.getElementById('channel-status').textContent = 'Error';
                 document.getElementById('channel-status').className = 'status-pill error';
+                document.getElementById('metric-grid').innerHTML = `<div class="empty-state" style="grid-column:1/-1; border-color: var(--error); color: #ffb4af;">No se pudo cargar el resumen: ${error.message}</div>`;
+                document.getElementById('recent-jobs-list').innerHTML = '<div class="empty-state">No se pudieron cargar los trabajos.</div>';
+                document.getElementById('recent-media-grid').innerHTML = '<div class="empty-state" style="grid-column:1/-1;">No se pudieron cargar los assets.</div>';
             }
         }
 

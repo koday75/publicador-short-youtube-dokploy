@@ -603,6 +603,94 @@ class JobDatabase:
                 "failed_jobs": failed
             }
 
+    def get_job_status_counts(self, channel_id=None):
+        with self._get_connection() as conn:
+            conn.row_factory = sqlite3.Row
+            query = "SELECT COALESCE(status, 'unknown') AS status, COUNT(*) AS total FROM jobs WHERE 1=1"
+            params = []
+            if channel_id is not None:
+                query += " AND channel_id = ?"
+                params.append(channel_id)
+            query += " GROUP BY COALESCE(status, 'unknown')"
+
+            counts = {row["status"]: row["total"] for row in conn.execute(query, params).fetchall()}
+            for key in ["draft", "processing", "rendered", "completed", "failed"]:
+                counts.setdefault(key, 0)
+            return counts
+
+    def get_media_type_counts(self, channel_id=None):
+        with self._get_connection() as conn:
+            conn.row_factory = sqlite3.Row
+            query = "SELECT COALESCE(file_type, 'other') AS file_type, COUNT(*) AS total FROM media WHERE 1=1"
+            params = []
+            if channel_id is not None:
+                query += " AND channel_id = ?"
+                params.append(channel_id)
+            query += " GROUP BY COALESCE(file_type, 'other')"
+
+            counts = {row["file_type"]: row["total"] for row in conn.execute(query, params).fetchall()}
+            for key in ["video", "image", "audio", "other"]:
+                counts.setdefault(key, 0)
+            return counts
+
+    def get_recent_media(self, limit=4, channel_id=None):
+        with self._get_connection() as conn:
+            conn.row_factory = sqlite3.Row
+            query = """
+                SELECT m.*, a.id as asset_id, a.prompt, a.niche, a.model, a.asset_tag, a.is_ai
+                FROM media m
+                LEFT JOIN ai_assets a ON m.id = a.media_id
+                WHERE 1=1
+            """
+            params = []
+            if channel_id is not None:
+                query += " AND m.channel_id = ?"
+                params.append(channel_id)
+            query += " ORDER BY m.created_at DESC LIMIT ?"
+            params.append(limit)
+            cursor = conn.execute(query, params)
+            return [dict(row) for row in cursor.fetchall()]
+
+    def get_latest_job(self, channel_id=None, statuses=None):
+        with self._get_connection() as conn:
+            conn.row_factory = sqlite3.Row
+            query = "SELECT * FROM jobs WHERE 1=1"
+            params = []
+            if channel_id is not None:
+                query += " AND channel_id = ?"
+                params.append(channel_id)
+            if statuses:
+                placeholders = ",".join("?" for _ in statuses)
+                query += f" AND COALESCE(status, 'unknown') IN ({placeholders})"
+                params.extend(list(statuses))
+            query += " ORDER BY created_at DESC LIMIT 1"
+            row = conn.execute(query, params).fetchone()
+            return dict(row) if row else None
+
+    def get_channel_overview(self, channel_id: int):
+        channel = self.get_youtube_channel(channel_id)
+        if not channel:
+            return None
+
+        stats = self.get_stats(channel_id=channel_id)
+        job_counts = self.get_job_status_counts(channel_id=channel_id)
+        media_counts = self.get_media_type_counts(channel_id=channel_id)
+        recent_jobs = self.get_recent_jobs(limit=5, channel_id=channel_id)
+        recent_media = self.get_recent_media(limit=4, channel_id=channel_id)
+        latest_job = self.get_latest_job(channel_id=channel_id)
+        latest_successful_job = self.get_latest_job(channel_id=channel_id, statuses=["rendered", "completed"])
+
+        return {
+            "channel": channel,
+            "stats": stats,
+            "job_counts": job_counts,
+            "media_counts": media_counts,
+            "recent_jobs": recent_jobs,
+            "recent_media": recent_media,
+            "latest_job": latest_job,
+            "latest_successful_job": latest_successful_job,
+        }
+
     # --- Candidates Management (Discovery) ---
 
     def add_candidates_batch(self, candidates: list):
