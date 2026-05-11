@@ -25,21 +25,29 @@ Para entorno local, por ejemplo:
 http://localhost:8000/api/youtube/oauth/callback
 ```
 
-## 3. Variables de entorno
+## 3. Configuración por canal
 
-Configura estas variables:
+Ahora las credenciales de Google OAuth se guardan dentro de cada canal en **YouTube / Canales**:
 
-```bash
-GOOGLE_CLIENT_ID=
-GOOGLE_CLIENT_SECRET=
-GOOGLE_REDIRECT_URI=
-YOUTUBE_SCOPES=https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube.readonly openid email profile
-YOUTUBE_TOKEN_ENCRYPTION_KEY=
+- `Google Client ID`
+- `Google Client Secret`
+- `Callback OAuth actual`
+
+La callback debe coincidir con la URL pública de la app:
+
+```text
+https://TU-DOMINIO/api/youtube/oauth/callback
+```
+
+En local:
+
+```text
+http://localhost:8000/api/youtube/oauth/callback
 ```
 
 Notas:
 
-- `YOUTUBE_SCOPES` incluye subida de vídeos y lectura básica del canal autenticado.
+- `YOUTUBE_SCOPES` sigue siendo global si quieres personalizar permisos.
 - `YOUTUBE_TOKEN_ENCRYPTION_KEY` debe ser estable y secreta en producción.
 - No guardes el `client_secret` ni los tokens en el frontend.
 

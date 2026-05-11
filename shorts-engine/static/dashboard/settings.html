@@ -96,14 +96,13 @@
             <div style="margin-bottom: 1.5rem;">
                 <h2 style="margin:0;">🔑 Configuración de Llaves API</h2>
                 <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 5px;">
-                    Configura las credenciales de los proveedores de IA y de Google OAuth para conectar canales de YouTube.
+                    Configura las credenciales de los proveedores de IA. Google OAuth se configura ahora dentro de cada canal en <a href="/youtube-channels">YouTube / Canales</a>.
                 </p>
             </div>
             <div class="hint-box">
-                <strong>Callback OAuth actual:</strong>
-                <code id="oauth-callback-url">Cargando...</code>
+                <strong>Google OAuth por canal:</strong>
                 <div style="margin-top:0.35rem;">
-                    Esta URL debe estar autorizada también en Google Cloud Console como <em>Authorized redirect URI</em>.
+                    La URL de callback y las credenciales OAuth se gestionan ahora dentro de <a href="/youtube-channels">YouTube / Canales</a>.
                 </div>
             </div>
             <div id="keys-list" class="grid-settings">
@@ -115,14 +114,11 @@
     <script>
         let is2FAEnabled = true;
         let currentKieKeyIndex = 1;
-        const oauthCallbackUrl = `${window.location.origin}/api/youtube/oauth/callback`;
 
         async function loadSettings() {
             try {
                 const res = await fetch('/api/settings');
                 const data = await res.json();
-                document.getElementById('oauth-callback-url').textContent = oauthCallbackUrl;
-                
                 currentKieKeyIndex = parseInt(data['KIE_CURRENT_KEY_INDEX'] || '1') || 1;
                 // The current key is the LAST used (before increment), so subtract 1
                 const activeKey = currentKieKeyIndex === 1 ? 5 : currentKieKeyIndex - 1;
@@ -146,7 +142,6 @@
                 const keysContainer = document.getElementById('keys-list');
                 keysContainer.innerHTML = '';
                 const providers = [
-                    'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET',
                     'GROQ', 'OPENAI', 'DEEPSEEK', 'OPENROUTER',
                     'KIE_API_KEY_1', 'KIE_API_KEY_2', 'KIE_API_KEY_3', 'KIE_API_KEY_4', 'KIE_API_KEY_5'
                 ];
@@ -155,11 +150,8 @@
                     const isConfigured = data[p] === '********';
                     const statusText = isConfigured ? '✅ Configurada' : '⏳ Pendiente';
                     const statusColor = isConfigured ? '#3fb950' : '#e3b341';
-                    const isGoogleOAuth = p.startsWith('GOOGLE_');
-                    const fieldLabel = isGoogleOAuth ? 'Credencial OAuth' : 'Llave API';
-                    const fieldPlaceholder = isGoogleOAuth
-                        ? (p === 'GOOGLE_CLIENT_ID' ? 'Pega tu Google OAuth Client ID' : 'Pega tu Google OAuth Client Secret')
-                        : (isConfigured ? '••••••••••••••••' : 'Pega tu API Key aquí');
+                    const fieldLabel = 'Llave API';
+                    const fieldPlaceholder = isConfigured ? '••••••••••••••••' : 'Pega tu API Key aquí';
                     
                     keysContainer.innerHTML += `
                         <div class="setting-card">

@@ -179,6 +179,9 @@ class JobDatabase:
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     internal_name TEXT NOT NULL,
                     internal_description TEXT,
+                    google_client_id TEXT,
+                    google_client_secret TEXT,
+                    google_redirect_uri TEXT,
                     youtube_channel_id TEXT,
                     youtube_channel_title TEXT,
                     youtube_channel_handle TEXT,
@@ -202,6 +205,15 @@ class JobDatabase:
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
+            for column_def in [
+                ("google_client_id", "TEXT"),
+                ("google_client_secret", "TEXT"),
+                ("google_redirect_uri", "TEXT"),
+            ]:
+                try:
+                    conn.execute(f"ALTER TABLE youtube_channels ADD COLUMN {column_def[0]} {column_def[1]}")
+                except Exception:
+                    pass
 
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS youtube_oauth_states (
@@ -633,12 +645,16 @@ class JobDatabase:
         with self._get_connection() as conn:
             cursor = conn.execute("""
                 INSERT INTO youtube_channels (
-                    internal_name, internal_description, default_privacy_status, default_category_id,
+                    internal_name, internal_description, google_client_id, google_client_secret, google_redirect_uri,
+                    default_privacy_status, default_category_id,
                     default_tags, default_language, notify_subscribers, status, connection_status
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 payload["internal_name"].strip(),
                 payload.get("internal_description"),
+                self._normalize_optional_text(payload.get("google_client_id")),
+                self._normalize_optional_text(payload.get("google_client_secret")),
+                self._normalize_optional_text(payload.get("google_redirect_uri")),
                 payload.get("default_privacy_status", "private"),
                 str(payload.get("default_category_id", "22")),
                 self._safe_json_dumps(payload.get("default_tags", [])),
@@ -656,6 +672,7 @@ class JobDatabase:
         allowed = [
             "internal_name", "internal_description", "youtube_channel_id", "youtube_channel_title",
             "youtube_channel_handle", "youtube_channel_url", "thumbnail_url", "connected_google_email",
+            "google_client_id", "google_client_secret", "google_redirect_uri",
             "default_privacy_status", "default_category_id", "default_tags", "default_language",
             "notify_subscribers", "status", "connection_status", "scopes_granted",
             "access_token_encrypted", "refresh_token_encrypted", "token_expires_at",
@@ -670,6 +687,8 @@ class JobDatabase:
                     value = 1 if value else 0
                 elif key == "default_tags":
                     value = self._safe_json_dumps(value or [])
+                elif key in {"google_client_id", "google_client_secret", "google_redirect_uri"}:
+                    value = self._normalize_optional_text(value)
                 values.append(value)
 
         if not fields:
@@ -737,3 +756,10 @@ class JobDatabase:
             return json.loads(value)
         except Exception:
             return default
+
+    @staticmethod
+    def _normalize_optional_text(value):
+        if value is None:
+            return None
+        text = str(value).strip()
+        return text or None

@@ -63,6 +63,10 @@
             width: 100%;
             box-sizing: border-box;
         }
+        input[readonly] {
+            opacity: 0.95;
+            cursor: copy;
+        }
         textarea { min-height: 108px; resize: vertical; }
         .inline-row {
             display: flex;
@@ -188,6 +192,19 @@
             background: rgba(248,81,73,0.12);
             color: #ffb4af;
         }
+        .oauth-note {
+            grid-column: 1 / -1;
+            border: 1px solid rgba(88, 166, 255, 0.25);
+            background: rgba(88, 166, 255, 0.08);
+            border-radius: 12px;
+            padding: 0.95rem 1rem;
+            color: var(--text-muted);
+            line-height: 1.5;
+            font-size: 0.88rem;
+        }
+        .oauth-note strong {
+            color: #fff;
+        }
         .hidden { display: none !important; }
         nav { display: flex; gap: 15px; margin-bottom: 2rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; flex-wrap: wrap; }
         nav a { color: var(--text-muted); text-decoration: none; font-size: 0.9rem; padding: 5px 10px; border-radius: 4px; }
@@ -239,6 +256,9 @@
                 </div>
 
                 <div class="form-grid">
+                    <div class="oauth-note">
+                        <strong>OAuth por canal:</strong> este canal usa sus propias credenciales de Google. La callback es la misma para todos los canales y debes copiarla exactamente en Google Cloud Console.
+                    </div>
                     <div class="field full">
                         <label for="internal_name">Nombre interno del canal</label>
                         <input id="internal_name" type="text" placeholder="Canal principal Estrellita Studio">
@@ -269,6 +289,18 @@
                     <div class="field">
                         <label for="default_language">Idioma por defecto</label>
                         <input id="default_language" type="text" value="es" placeholder="es">
+                    </div>
+                    <div class="field full">
+                        <label for="google_redirect_uri">Callback OAuth actual</label>
+                        <input id="google_redirect_uri" type="text" readonly>
+                    </div>
+                    <div class="field">
+                        <label for="google_client_id">Google Client ID</label>
+                        <input id="google_client_id" type="text" placeholder="1234567890-abcdef.apps.googleusercontent.com">
+                    </div>
+                    <div class="field full">
+                        <label for="google_client_secret">Google Client Secret</label>
+                        <input id="google_client_secret" type="password" placeholder="Pega el secreto de este canal">
                     </div>
                     <div class="field full">
                         <label for="default_tags">Etiquetas por defecto</label>
@@ -481,6 +513,16 @@
             document.getElementById('default_privacy_status').value = channel?.default_privacy_status || 'private';
             document.getElementById('default_category_id').value = channel?.default_category_id || '22';
             document.getElementById('default_language').value = channel?.default_language || 'es';
+            document.getElementById('google_redirect_uri').value = channel?.google_redirect_uri || `${window.location.origin}/api/youtube/oauth/callback`;
+            document.getElementById('google_client_id').value = channel?.google_client_id || '';
+            const secretField = document.getElementById('google_client_secret');
+            if (channel?.google_client_secret === '********') {
+                secretField.value = '';
+                secretField.placeholder = 'Secreto guardado; deja este campo vacío para conservarlo';
+            } else {
+                secretField.value = channel?.google_client_secret || '';
+                secretField.placeholder = 'Pega el secreto de este canal';
+            }
             document.getElementById('default_tags').value = Array.isArray(channel?.default_tags) ? channel.default_tags.join(', ') : (channel?.default_tags || '');
             document.getElementById('notify_subscribers').checked = Boolean(channel?.notify_subscribers);
             document.getElementById('connect-btn').textContent = channel && channel.connection_status === 'connected'
@@ -565,6 +607,9 @@
             const default_privacy_status = document.getElementById('default_privacy_status').value;
             const default_category_id = document.getElementById('default_category_id').value.trim() || '22';
             const default_language = document.getElementById('default_language').value.trim() || 'es';
+            const google_redirect_uri = document.getElementById('google_redirect_uri').value.trim() || `${window.location.origin}/api/youtube/oauth/callback`;
+            const google_client_id = document.getElementById('google_client_id').value.trim();
+            const google_client_secret = document.getElementById('google_client_secret').value.trim();
             const default_tags = parseTags(document.getElementById('default_tags').value);
             const notify_subscribers = document.getElementById('notify_subscribers').checked;
             const status = document.getElementById('status').value;
@@ -586,6 +631,9 @@
                 default_category_id,
                 default_tags,
                 default_language,
+                google_client_id,
+                google_client_secret,
+                google_redirect_uri,
                 notify_subscribers,
                 status,
             };

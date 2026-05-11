@@ -226,6 +226,9 @@ class SettingSetRequest(BaseModel):
 class YouTubeChannelCreateRequest(BaseModel):
     internal_name: str
     internal_description: Optional[str] = None
+    google_client_id: Optional[str] = None
+    google_client_secret: Optional[str] = None
+    google_redirect_uri: Optional[str] = None
     default_privacy_status: str = "private"
     default_category_id: str = "22"
     default_tags: Optional[Union[List[str], str]] = []
@@ -236,6 +239,9 @@ class YouTubeChannelCreateRequest(BaseModel):
 class YouTubeChannelUpdateRequest(BaseModel):
     internal_name: str
     internal_description: Optional[str] = None
+    google_client_id: Optional[str] = None
+    google_client_secret: Optional[str] = None
+    google_redirect_uri: Optional[str] = None
     default_privacy_status: str = "private"
     default_category_id: str = "22"
     default_tags: Optional[Union[List[str], str]] = []
@@ -255,7 +261,6 @@ async def get_settings(session=Depends(get_current_user)):
     
     # Proveedores API
     for prov in ["GROQ", "OPENAI", "DEEPSEEK", "OPENROUTER",
-                 "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET",
                  "KIE_API_KEY_1", "KIE_API_KEY_2", "KIE_API_KEY_3", "KIE_API_KEY_4", "KIE_API_KEY_5"]:
         val = db.get_setting(prov)
         keys[prov] = "********" if val else None
@@ -283,6 +288,9 @@ async def api_create_youtube_channel(req: YouTubeChannelCreateRequest, user: str
     channel_id = db.create_youtube_channel({
         "internal_name": req.internal_name,
         "internal_description": req.internal_description,
+        "google_client_id": req.google_client_id,
+        "google_client_secret": req.google_client_secret,
+        "google_redirect_uri": req.google_redirect_uri,
         "default_privacy_status": privacy,
         "default_category_id": str(req.default_category_id or "22"),
         "default_tags": normalize_tags_input(req.default_tags),
@@ -314,6 +322,9 @@ async def api_update_youtube_channel(channel_id: int, req: YouTubeChannelUpdateR
     db.update_youtube_channel(channel_id, {
         "internal_name": req.internal_name,
         "internal_description": req.internal_description,
+        "google_client_id": req.google_client_id if req.google_client_id is not None and req.google_client_id.strip() else existing.get("google_client_id"),
+        "google_client_secret": req.google_client_secret if req.google_client_secret is not None and req.google_client_secret.strip() else existing.get("google_client_secret"),
+        "google_redirect_uri": req.google_redirect_uri if req.google_redirect_uri is not None and req.google_redirect_uri.strip() else existing.get("google_redirect_uri"),
         "default_privacy_status": privacy,
         "default_category_id": str(req.default_category_id or "22"),
         "default_tags": normalize_tags_input(req.default_tags),
@@ -444,6 +455,8 @@ def serialize_youtube_channel(channel: dict | None) -> dict | None:
     safe = dict(channel)
     safe.pop("access_token_encrypted", None)
     safe.pop("refresh_token_encrypted", None)
+    if safe.get("google_client_secret"):
+        safe["google_client_secret"] = "********"
     safe["default_tags"] = normalize_tags_input(safe.get("default_tags"))
     return safe
 
