@@ -331,11 +331,12 @@ async def api_delete_youtube_channel(channel_id: int, user: str = Depends(get_cu
     return {"status": "success"}
 
 @app.get("/api/youtube/channels/{channel_id}/connect")
-async def api_connect_youtube_channel(channel_id: int, user: str = Depends(get_current_user)):
+async def api_connect_youtube_channel(channel_id: int, request: Request, user: str = Depends(get_current_user)):
     channel = db.get_youtube_channel(channel_id)
     if not channel:
         raise HTTPException(status_code=404, detail="Canal no encontrado")
-    auth = youtube_manager.generate_auth_url(channel_id)
+    callback_url = str(request.url_for("api_youtube_oauth_callback"))
+    auth = youtube_manager.generate_auth_url(channel_id, redirect_uri=callback_url)
     return RedirectResponse(url=auth["auth_url"])
 
 @app.get("/api/youtube/oauth/callback")

@@ -108,10 +108,11 @@ class YouTubeChannelService:
             )
         return {}
 
-    def _build_auth_url(self, state: str, prompt: str = "consent") -> str:
+    def _build_auth_url(self, state: str, prompt: str = "consent", redirect_uri: str | None = None) -> str:
+        resolved_redirect_uri = (redirect_uri or self.redirect_uri or "").strip()
         params = {
             "client_id": self.client_id,
-            "redirect_uri": self.redirect_uri,
+            "redirect_uri": resolved_redirect_uri,
             "response_type": "code",
             "scope": " ".join(self.scopes),
             "access_type": "offline",
@@ -189,26 +190,33 @@ class YouTubeChannelService:
                 return thumbnails[key]["url"]
         return None
 
-    def generate_auth_url(self, channel_id: int, force_consent: bool = True) -> dict[str, Any]:
+    def generate_auth_url(self, channel_id: int, redirect_uri: str | None = None, force_consent: bool = True) -> dict[str, Any]:
         state = secrets.token_urlsafe(32)
         expires_at = self._now() + timedelta(minutes=15)
-        self.db.create_oauth_state(state, channel_id, expires_at)
+        resolved_redirect_uri = (redirect_uri or self.redirect_uri or "").strip()
+        if not resolved_redirect_uri:
+            raise YouTubeAuthError(
+                "No se pudo determinar la redirect_uri de OAuth. Define GOOGLE_REDIRECT_URI o publica la app con una URL accesible."
+            )
+        self.db.create_oauth_state(state, channel_id, expires_at, resolved_redirect_uri)
         prompt = "consent" if force_consent else "select_account"
         return {
-            "auth_url": self._build_auth_url(state=state, prompt=prompt),
+            "auth_url": self._build_auth_url(state=state, prompt=prompt, redirect_uri=resolved_redirect_uri),
             "state": state,
             "expires_at": self._to_iso(expires_at),
+            "redirect_uri": resolved_redirect_uri,
         }
 
-    def exchange_code_for_tokens(self, code: str, state: str) -> dict[str, Any]:
-        if not self.client_id or not self.client_secret or not self.redirect_uri:
+    def exchange_code_for_tokens(self, code: str, state: str, redirect_uri: str | None = None) -> dict[str, Any]:
+        resolved_redirect_uri = (redirect_uri or self.redirect_uri or "").strip()
+        if not self.client_id or not self.client_secret or not resolved_redirect_uri:
             raise YouTubeAuthError("OAuth de Google no configurado.")
 
         payload = {
             "code": code,
             "client_id": self.client_id,
             "client_secret": self.client_secret,
-            "redirect_uri": self.redirect_uri,
+            "redirect_uri": resolved_redirect_uri,
             "grant_type": "authorization_code",
         }
         res = requests.post(self.TOKEN_ENDPOINT, data=payload, timeout=30)
@@ -239,7 +247,7 @@ class YouTubeChannelService:
             raise YouTubeAuthError("La autorización OAuth expiró antes de completarse.")
 
         channel_id = int(pending["channel_id"])
-        token_payload = self.exchange_code_for_tokens(code, state)
+        token_payload = self.exchange_code_for_tokens(code, state, redirect_uri=pending.get("redirect_uri"))
         access_token = token_payload.get("access_token")
         if not access_token:
             raise YouTubeAuthError("Google no devolvió access_token.")

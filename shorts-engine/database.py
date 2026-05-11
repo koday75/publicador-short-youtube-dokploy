@@ -208,12 +208,18 @@ class JobDatabase:
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     state TEXT UNIQUE NOT NULL,
                     channel_id INTEGER NOT NULL,
+                    redirect_uri TEXT,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     expires_at TIMESTAMP NOT NULL,
                     consumed_at TIMESTAMP,
                     FOREIGN KEY (channel_id) REFERENCES youtube_channels(id) ON DELETE CASCADE
                 )
             """)
+
+            try:
+                conn.execute("ALTER TABLE youtube_oauth_states ADD COLUMN redirect_uri TEXT")
+            except Exception:
+                pass
                 
             conn.commit()
 
@@ -684,11 +690,11 @@ class JobDatabase:
             conn.commit()
             return result.rowcount > 0
 
-    def create_oauth_state(self, state: str, channel_id: int, expires_at):
+    def create_oauth_state(self, state: str, channel_id: int, expires_at, redirect_uri: str | None = None):
         with self._get_connection() as conn:
             conn.execute(
-                "INSERT INTO youtube_oauth_states (state, channel_id, expires_at) VALUES (?, ?, ?)",
-                (state, channel_id, expires_at.isoformat())
+                "INSERT INTO youtube_oauth_states (state, channel_id, redirect_uri, expires_at) VALUES (?, ?, ?, ?)",
+                (state, channel_id, redirect_uri, expires_at.isoformat())
             )
             conn.commit()
 
