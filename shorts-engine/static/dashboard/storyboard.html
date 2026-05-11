@@ -34,6 +34,46 @@
         }
         .channel-context strong { color: #fff; }
         .channel-context small { color: var(--text-muted); display:block; }
+        .channel-shell {
+            border: 1px solid rgba(88, 166, 255, 0.18);
+            background: rgba(88, 166, 255, 0.05);
+            border-radius: 18px;
+            padding: 1rem 1.1rem;
+            margin: 0 0 1rem;
+        }
+        .channel-breadcrumb {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            align-items: center;
+            color: var(--text-muted);
+            font-size: 0.84rem;
+            margin-bottom: 0.8rem;
+        }
+        .channel-breadcrumb a {
+            color: #fff;
+            text-decoration: none;
+        }
+        .channel-tabs {
+            display: flex;
+            gap: 0.55rem;
+            flex-wrap: wrap;
+        }
+        .channel-tab {
+            text-decoration: none;
+            border: 1px solid var(--border-color);
+            border-radius: 999px;
+            padding: 0.55rem 0.85rem;
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            background: rgba(255,255,255,0.03);
+        }
+        .channel-tab.active {
+            background: rgba(88, 166, 255, 0.15);
+            color: #58a6ff;
+            border-color: rgba(88, 166, 255, 0.3);
+            font-weight: 700;
+        }
     </style>
 </head>
 <body>
@@ -55,11 +95,29 @@
             <a href="/">Panel Control</a>
             <a href="/discover">Descubrimiento</a>
             <a href="/jobs">Trabajos</a>
-            <a href="/gallery">GalerÃ­a</a>
+            <a href="/gallery">Galería</a>
             <a href="/youtube-channels">YouTube / Canales</a>
             <a href="/ai-tasks">Registros IA</a>
             <a href="/settings">Ajustes</a>
         </nav>
+
+        <section id="channel-shell" class="channel-shell" style="display:none;">
+            <div class="channel-breadcrumb">
+                <a href="/channels">Canales</a>
+                <span>›</span>
+                <span id="channel-breadcrumb-name">Canal</span>
+                <span>›</span>
+                <strong>Crear vídeos</strong>
+            </div>
+            <div class="channel-tabs">
+                <a id="tab-overview" class="channel-tab" href="#">Resumen</a>
+                <a id="tab-storyboard" class="channel-tab active" href="#">Crear vídeos</a>
+                <a id="tab-gallery" class="channel-tab" href="#">Galería</a>
+                <a id="tab-jobs" class="channel-tab" href="#">Trabajos</a>
+                <a id="tab-history" class="channel-tab" href="#">Historial</a>
+                <a id="tab-settings" class="channel-tab" href="#">Ajustes</a>
+            </div>
+        </section>
 
         <div id="channel-context" class="channel-context" style="display:none;">
             <div>
@@ -166,6 +224,14 @@
                 document.getElementById('channel-context-workspace').href = `/channels/${channelId}`;
                 document.getElementById('channel-context-settings').href = `/youtube-channels?channel_id=${channelId}`;
                 document.getElementById('manual-job-title').dataset.channelId = String(channelId);
+                document.getElementById('channel-shell').style.display = 'block';
+                document.getElementById('channel-breadcrumb-name').textContent = channel.internal_name || `Canal ${channelId}`;
+                document.getElementById('tab-overview').href = `/channels/${channelId}`;
+                document.getElementById('tab-storyboard').href = `/storyboard?channel_id=${channelId}`;
+                document.getElementById('tab-gallery').href = `/gallery?channel_id=${channelId}`;
+                document.getElementById('tab-jobs').href = `/jobs?channel_id=${channelId}`;
+                document.getElementById('tab-history').href = `/channels/${channelId}/history`;
+                document.getElementById('tab-settings').href = `/youtube-channels?channel_id=${channelId}`;
                 document.getElementById('channel-context').style.display = 'flex';
             } catch (e) {}
         }

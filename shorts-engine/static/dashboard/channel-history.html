@@ -52,6 +52,46 @@
             color: var(--text-muted);
             text-align: center;
         }
+        .channel-shell {
+            border: 1px solid rgba(88, 166, 255, 0.18);
+            background: rgba(88, 166, 255, 0.05);
+            border-radius: 18px;
+            padding: 1rem 1.1rem;
+            margin: 0 0 1rem;
+        }
+        .channel-breadcrumb {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            align-items: center;
+            color: var(--text-muted);
+            font-size: 0.84rem;
+            margin-bottom: 0.8rem;
+        }
+        .channel-breadcrumb a {
+            color: #fff;
+            text-decoration: none;
+        }
+        .channel-tabs {
+            display: flex;
+            gap: 0.55rem;
+            flex-wrap: wrap;
+        }
+        .channel-tab {
+            text-decoration: none;
+            border: 1px solid var(--border-color);
+            border-radius: 999px;
+            padding: 0.55rem 0.85rem;
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            background: rgba(255,255,255,0.03);
+        }
+        .channel-tab.active {
+            background: rgba(88, 166, 255, 0.15);
+            color: #58a6ff;
+            border-color: rgba(88, 166, 255, 0.3);
+            font-weight: 700;
+        }
         .history-table {
             margin-top: 1rem;
         }
@@ -124,6 +164,24 @@
             <a href="/ai-tasks">Registros IA</a>
             <a href="/settings">Ajustes</a>
         </nav>
+
+        <section id="channel-shell" class="channel-shell" style="display:none;">
+            <div class="channel-breadcrumb">
+                <a href="/channels">Canales</a>
+                <span>›</span>
+                <span id="channel-breadcrumb-name">Canal</span>
+                <span>›</span>
+                <strong>Historial</strong>
+            </div>
+            <div class="channel-tabs">
+                <a id="tab-overview" class="channel-tab" href="#">Resumen</a>
+                <a id="tab-storyboard" class="channel-tab" href="#">Crear vídeos</a>
+                <a id="tab-gallery" class="channel-tab" href="#">Galería</a>
+                <a id="tab-jobs" class="channel-tab" href="#">Trabajos</a>
+                <a id="tab-history" class="channel-tab active" href="#">Historial</a>
+                <a id="tab-settings" class="channel-tab" href="#">Ajustes</a>
+            </div>
+        </section>
 
         <section class="panel">
             <div class="notice">
@@ -199,12 +257,20 @@
         async function loadHistory() {
             const channelId = getChannelId();
             if (!channelId) return;
+            document.getElementById('channel-shell').style.display = 'block';
             document.getElementById('back-workspace').href = `/channels/${channelId}`;
             try {
                 const res = await fetch(`/api/youtube/channels/${channelId}`);
                 if (!res.ok) throw new Error('No se pudo cargar el canal');
                 const channel = await res.json();
                 document.title = `Historial - ${channel.internal_name || 'Canal'} - Shorts Engine`;
+                document.getElementById('channel-breadcrumb-name').textContent = channel.internal_name || `Canal ${channelId}`;
+                document.getElementById('tab-overview').href = `/channels/${channelId}`;
+                document.getElementById('tab-storyboard').href = `/storyboard?channel_id=${channelId}`;
+                document.getElementById('tab-gallery').href = `/gallery?channel_id=${channelId}`;
+                document.getElementById('tab-jobs').href = `/jobs?channel_id=${channelId}`;
+                document.getElementById('tab-history').href = `/channels/${channelId}/history`;
+                document.getElementById('tab-settings').href = `/youtube-channels?channel_id=${channelId}`;
                 document.getElementById('history-channel').textContent = channel.internal_name || '-';
                 document.getElementById('history-email').textContent = channel.connected_google_email || '-';
                 document.getElementById('history-status').textContent = statusLabel(channel.connection_status);

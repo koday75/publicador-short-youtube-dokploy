@@ -10,6 +10,46 @@
             display: grid;
             gap: 1.25rem;
         }
+        .channel-shell {
+            border: 1px solid rgba(88, 166, 255, 0.18);
+            background: rgba(88, 166, 255, 0.05);
+            border-radius: 18px;
+            padding: 1rem 1.1rem;
+            margin: 0 0 1rem;
+        }
+        .channel-breadcrumb {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            align-items: center;
+            color: var(--text-muted);
+            font-size: 0.84rem;
+            margin-bottom: 0.8rem;
+        }
+        .channel-breadcrumb a {
+            color: #fff;
+            text-decoration: none;
+        }
+        .channel-tabs {
+            display: flex;
+            gap: 0.55rem;
+            flex-wrap: wrap;
+        }
+        .channel-tab {
+            text-decoration: none;
+            border: 1px solid var(--border-color);
+            border-radius: 999px;
+            padding: 0.55rem 0.85rem;
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            background: rgba(255,255,255,0.03);
+        }
+        .channel-tab.active {
+            background: rgba(88, 166, 255, 0.15);
+            color: #58a6ff;
+            border-color: rgba(88, 166, 255, 0.3);
+            font-weight: 700;
+        }
         .workspace-hero {
             display: grid;
             grid-template-columns: 1.35fr 0.95fr;
@@ -337,6 +377,24 @@
             <a href="/settings">Ajustes</a>
         </nav>
 
+        <section id="channel-shell" class="channel-shell" style="display:none;">
+            <div class="channel-breadcrumb">
+                <a href="/channels">Canales</a>
+                <span>›</span>
+                <span id="channel-breadcrumb-name">Workspace</span>
+                <span>›</span>
+                <strong id="channel-breadcrumb-page">Resumen</strong>
+            </div>
+            <div class="channel-tabs">
+                <a id="tab-overview" class="channel-tab active" href="#">Resumen</a>
+                <a id="tab-storyboard" class="channel-tab" href="#">Crear vídeos</a>
+                <a id="tab-gallery" class="channel-tab" href="#">Galería</a>
+                <a id="tab-jobs" class="channel-tab" href="#">Trabajos</a>
+                <a id="tab-history" class="channel-tab" href="#">Historial</a>
+                <a id="tab-settings" class="channel-tab" href="#">Ajustes</a>
+            </div>
+        </section>
+
         <div class="workspace-shell">
             <section class="workspace-hero">
                 <div class="hero-card">
@@ -561,6 +619,15 @@
             document.getElementById('jobs-link').href = `/jobs?channel_id=${channelId}`;
             document.getElementById('gallery-link').href = `/gallery?channel_id=${channelId}`;
             document.getElementById('open-jobs-link').href = `/jobs?channel_id=${channelId}`;
+            document.getElementById('channel-shell').style.display = 'block';
+            document.getElementById('channel-breadcrumb-name').textContent = 'Canal';
+            document.getElementById('channel-breadcrumb-page').textContent = 'Resumen';
+            document.getElementById('tab-overview').href = `/channels/${channelId}`;
+            document.getElementById('tab-storyboard').href = `/storyboard?channel_id=${channelId}`;
+            document.getElementById('tab-gallery').href = `/gallery?channel_id=${channelId}`;
+            document.getElementById('tab-jobs').href = `/jobs?channel_id=${channelId}`;
+            document.getElementById('tab-history').href = `/channels/${channelId}/history`;
+            document.getElementById('tab-settings').href = `/youtube-channels?channel_id=${channelId}`;
         }
 
         function renderMetricCard({ label, value, note, className }) {
@@ -640,6 +707,7 @@
                 document.getElementById('channel-description').textContent = channel.internal_description || 'Canal interno preparado para operar con YouTube.';
                 document.getElementById('channel-status').textContent = statusLabel(channel.connection_status);
                 document.getElementById('channel-status').className = `status-pill ${statusClass(channel.connection_status)}`;
+                document.getElementById('channel-breadcrumb-name').textContent = channel.internal_name || 'Canal';
 
                 const avatar = document.getElementById('channel-avatar');
                 if (channel.thumbnail_url) {

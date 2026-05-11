@@ -205,6 +205,46 @@
         .oauth-note strong {
             color: #fff;
         }
+        .channel-shell {
+            border: 1px solid rgba(88, 166, 255, 0.18);
+            background: rgba(88, 166, 255, 0.05);
+            border-radius: 18px;
+            padding: 1rem 1.1rem;
+            margin: 0 0 1rem;
+        }
+        .channel-breadcrumb {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            align-items: center;
+            color: var(--text-muted);
+            font-size: 0.84rem;
+            margin-bottom: 0.8rem;
+        }
+        .channel-breadcrumb a {
+            color: #fff;
+            text-decoration: none;
+        }
+        .channel-tabs {
+            display: flex;
+            gap: 0.55rem;
+            flex-wrap: wrap;
+        }
+        .channel-tab {
+            text-decoration: none;
+            border: 1px solid var(--border-color);
+            border-radius: 999px;
+            padding: 0.55rem 0.85rem;
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            background: rgba(255,255,255,0.03);
+        }
+        .channel-tab.active {
+            background: rgba(88, 166, 255, 0.15);
+            color: #58a6ff;
+            border-color: rgba(88, 166, 255, 0.3);
+            font-weight: 700;
+        }
         .hidden { display: none !important; }
         nav { display: flex; gap: 15px; margin-bottom: 2rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; flex-wrap: wrap; }
         nav a { color: var(--text-muted); text-decoration: none; font-size: 0.9rem; padding: 5px 10px; border-radius: 4px; }
@@ -242,6 +282,24 @@
             <a href="/ai-tasks">Registros IA</a>
             <a href="/settings">Ajustes</a>
         </nav>
+
+        <section id="channel-shell" class="channel-shell" style="display:none;">
+            <div class="channel-breadcrumb">
+                <a href="/channels">Canales</a>
+                <span>›</span>
+                <span id="channel-breadcrumb-name">Canal</span>
+                <span>›</span>
+                <strong>Ajustes</strong>
+            </div>
+            <div class="channel-tabs">
+                <a id="tab-overview" class="channel-tab" href="#">Resumen</a>
+                <a id="tab-storyboard" class="channel-tab" href="#">Crear vídeos</a>
+                <a id="tab-gallery" class="channel-tab" href="#">Galería</a>
+                <a id="tab-jobs" class="channel-tab" href="#">Trabajos</a>
+                <a id="tab-history" class="channel-tab" href="#">Historial</a>
+                <a id="tab-settings" class="channel-tab active" href="#">Ajustes</a>
+            </div>
+        </section>
 
         <div id="page-message" class="message hidden"></div>
 
@@ -515,6 +573,19 @@
         function fillForm(channel) {
             currentChannelId = channel ? channel.id : null;
             document.getElementById('form-title').textContent = channel ? 'Editar canal' : 'Nuevo canal';
+            const shell = document.getElementById('channel-shell');
+            if (currentChannelId) {
+                shell.style.display = 'block';
+                document.getElementById('channel-breadcrumb-name').textContent = channel.internal_name || `Canal ${currentChannelId}`;
+                document.getElementById('tab-overview').href = `/channels/${currentChannelId}`;
+                document.getElementById('tab-storyboard').href = `/storyboard?channel_id=${currentChannelId}`;
+                document.getElementById('tab-gallery').href = `/gallery?channel_id=${currentChannelId}`;
+                document.getElementById('tab-jobs').href = `/jobs?channel_id=${currentChannelId}`;
+                document.getElementById('tab-history').href = `/channels/${currentChannelId}/history`;
+                document.getElementById('tab-settings').href = `/youtube-channels?channel_id=${currentChannelId}`;
+            } else {
+                shell.style.display = 'none';
+            }
             document.getElementById('internal_name').value = channel?.internal_name || '';
             document.getElementById('internal_description').value = channel?.internal_description || '';
             document.getElementById('status').value = channel?.status || 'inactive';
