@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -174,16 +174,6 @@
             </div>
         </header>
 
-        <nav>
-            <a href="/channels" class="active">Canales</a>
-            <a href="/discover">Descubrimiento</a>
-            <a href="/jobs">Trabajos</a>
-            <a href="/gallery">Galería</a>
-            <a href="/youtube-channels">YouTube / Canales</a>
-            <a href="/ai-tasks">Registros IA</a>
-            <a href="/settings">Ajustes</a>
-        </nav>
-
         <section class="card">
             <div class="hero">
                 <div>
@@ -245,8 +235,8 @@
                 if (!items.length) {
                     grid.innerHTML = `
                         <div class="empty-state" style="grid-column:1/-1;">
-                            <h3 style="margin-top:0;">Aún no has creado canales</h3>
-                            <p>Primero crea un canal interno y conéctalo a su cuenta de YouTube. Después podrás entrar a su workspace.</p>
+                            <h3 style="margin-top:0;">AÃºn no has creado canales</h3>
+                            <p>Primero crea un canal interno y conÃ©ctalo a su cuenta de YouTube. DespuÃ©s podrÃ¡s entrar a su workspace.</p>
                             <div style="margin-top:1rem;">
                                 <a href="/youtube-channels" class="badge" style="text-decoration:none; background:var(--accent); color:#000; font-weight:bold;">Crear primer canal</a>
                             </div>
@@ -276,7 +266,7 @@
                                 <strong>${channel.connected_google_email || '-'}</strong>
                             </div>
                             <div class="meta-item">
-                                <small>Última prueba</small>
+                            <small>Última prueba</small>
                                 <strong>${formatDate(channel.last_connection_test_at)}</strong>
                             </div>
                             <div class="meta-item">
@@ -304,3 +294,4 @@
     </script>
 </body>
 </html>
+
