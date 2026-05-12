@@ -264,12 +264,8 @@
     <div class="container">
         <header>
             <div>
-                <h1>📺 Canales de YouTube</h1>
-                <p style="margin:0.35rem 0 0; color: var(--text-muted);">Configura canales internos, autoriza OAuth con Google y deja listo el motor para publicar vídeos en canales ya existentes.</p>
-            </div>
-            <div class="toolbar">
-                <button class="btn-secondary" onclick="newChannel()">+ Nuevo canal</button>
-                <button onclick="loadChannels()">â†» Recargar</button>
+                <h1 id="settings-header-title">Ajustes</h1>
+                <p style="margin:0.35rem 0 0; color: var(--text-muted);">Configura este canal, autoriza OAuth con Google y deja listo el motor para publicar vídeos.</p>
             </div>
         </header>
 
@@ -539,6 +535,7 @@
             const shell = document.getElementById('channel-shell');
             if (currentChannelId) {
                 shell.style.display = 'block';
+                document.getElementById('settings-header-title').textContent = `${channel.internal_name || `Canal ${currentChannelId}`} · Ajustes`;
                 document.getElementById('channel-breadcrumb-name').textContent = channel.internal_name || `Canal ${currentChannelId}`;
                 document.getElementById('tab-overview').href = `/channels/${currentChannelId}`;
                 document.getElementById('tab-storyboard').href = `/storyboard?channel_id=${currentChannelId}`;
@@ -548,6 +545,7 @@
                 document.getElementById('tab-settings').href = `/youtube-channels?channel_id=${currentChannelId}`;
             } else {
                 shell.style.display = 'none';
+                document.getElementById('settings-header-title').textContent = 'Ajustes';
             }
             document.getElementById('internal_name').value = channel?.internal_name || '';
             document.getElementById('internal_description').value = channel?.internal_description || '';
