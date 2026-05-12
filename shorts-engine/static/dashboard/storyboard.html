@@ -20,20 +20,6 @@
         .pos-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; margin-top: 5px; }
         .pos-btn { background: #333; height: 25px; border-radius: 4px; cursor: pointer; border: 1px solid transparent; }
         .pos-btn.active { background: var(--primary); border-color: #fff; }
-        .channel-context {
-            border: 1px solid rgba(88, 166, 255, 0.25);
-            background: rgba(88, 166, 255, 0.08);
-            border-radius: 14px;
-            padding: 0.9rem 1rem;
-            margin-bottom: 1.25rem;
-            display: flex;
-            justify-content: space-between;
-            gap: 1rem;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-        .channel-context strong { color: #fff; }
-        .channel-context small { color: var(--text-muted); display:block; }
         .channel-shell {
             border: 1px solid rgba(88, 166, 255, 0.18);
             background: rgba(88, 166, 255, 0.05);
@@ -91,44 +77,25 @@
             </div>
         </header>
 
-        <nav>
-            <a href="/">Panel Control</a>
-            <a href="/discover">Descubrimiento</a>
-            <a href="/jobs">Trabajos</a>
-            <a href="/gallery">Galer�a</a>
-            <a href="/youtube-channels">YouTube / Canales</a>
-            <a href="/ai-tasks">Registros IA</a>
-            <a href="/settings">Ajustes</a>
-        </nav>
 
         <section id="channel-shell" class="channel-shell" style="display:none;">
             <div class="channel-breadcrumb">
                 <a href="/channels">Canales</a>
-                <span>�</span>
+                <span>&rsaquo;</span>
                 <span id="channel-breadcrumb-name">Canal</span>
-                <span>�</span>
-                <strong>Crear v�deos</strong>
+                <span>&rsaquo;</span>
+                <strong>Crear v&iacute;deos</strong>
             </div>
             <div class="channel-tabs">
                 <a id="tab-overview" class="channel-tab" href="#">Resumen</a>
-                <a id="tab-storyboard" class="channel-tab active" href="#">Crear v�deos</a>
-                <a id="tab-gallery" class="channel-tab" href="#">Galer�a</a>
+                <a id="tab-storyboard" class="channel-tab active" href="#">Crear v&iacute;deos</a>
+                <a id="tab-gallery" class="channel-tab" href="#">Galer&iacute;a</a>
                 <a id="tab-jobs" class="channel-tab" href="#">Trabajos</a>
                 <a id="tab-history" class="channel-tab" href="#">Historial</a>
                 <a id="tab-settings" class="channel-tab" href="#">Ajustes</a>
             </div>
         </section>
 
-        <div id="channel-context" class="channel-context" style="display:none;">
-            <div>
-                <small>Canal activo</small>
-                <strong id="channel-context-title">-</strong>
-            </div>
-            <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
-                <a id="channel-context-workspace" href="#" class="badge" style="text-decoration:none; background:rgba(255,255,255,0.05); color:#fff;">Workspace</a>
-                <a id="channel-context-settings" href="#" class="badge" style="text-decoration:none; background:var(--accent); color:#000; font-weight:bold;">Editar canal</a>
-            </div>
-        </div>
         <div class="card" style="margin-bottom: 2rem;">
             <h3>Configuración Global</h3>
             <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 1rem; align-items: end;">
@@ -220,9 +187,6 @@
                 const res = await fetch(`/api/youtube/channels/${channelId}`);
                 if (!res.ok) return;
                 const channel = await res.json();
-                document.getElementById('channel-context-title').textContent = channel.internal_name || channel.youtube_channel_title || `Canal ${channelId}`;
-                document.getElementById('channel-context-workspace').href = `/channels/${channelId}`;
-                document.getElementById('channel-context-settings').href = `/youtube-channels?channel_id=${channelId}`;
                 document.getElementById('manual-job-title').dataset.channelId = String(channelId);
                 document.getElementById('channel-shell').style.display = 'block';
                 document.getElementById('channel-breadcrumb-name').textContent = channel.internal_name || `Canal ${channelId}`;
@@ -232,7 +196,6 @@
                 document.getElementById('tab-jobs').href = `/jobs?channel_id=${channelId}`;
                 document.getElementById('tab-history').href = `/channels/${channelId}/history`;
                 document.getElementById('tab-settings').href = `/youtube-channels?channel_id=${channelId}`;
-                document.getElementById('channel-context').style.display = 'flex';
             } catch (e) {}
         }
         let galleryData = [];
