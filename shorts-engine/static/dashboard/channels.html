@@ -40,6 +40,104 @@
             border-color: rgba(88, 166, 255, 0.35);
             background: rgba(88, 166, 255, 0.12);
         }
+        .toolbar-link.primary {
+            background: var(--accent);
+            color: #000;
+            border-color: transparent;
+        }
+        .toolbar-link.primary:hover {
+            filter: brightness(1.05);
+            border-color: transparent;
+        }
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.72);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 1.25rem;
+            z-index: 1000;
+        }
+        .modal-backdrop.open { display: flex; }
+        .modal {
+            width: min(860px, 100%);
+            max-height: 90vh;
+            overflow: auto;
+            border-radius: 20px;
+            border: 1px solid var(--border-color);
+            background: linear-gradient(180deg, rgba(16,20,26,0.98), rgba(10,12,16,0.98));
+            box-shadow: 0 24px 80px rgba(0,0,0,0.45);
+            padding: 1.35rem;
+        }
+        .modal-head {
+            display: flex;
+            justify-content: space-between;
+            gap: 1rem;
+            align-items: flex-start;
+            margin-bottom: 1rem;
+        }
+        .modal-head h3 { margin: 0; font-size: 1.2rem; }
+        .modal-head p { margin: 0.35rem 0 0; color: var(--text-muted); line-height: 1.5; }
+        .modal-close {
+            border: 1px solid var(--border-color);
+            background: rgba(255,255,255,0.05);
+            color: #fff;
+            border-radius: 999px;
+            width: 2.5rem;
+            height: 2.5rem;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+        .modal-form {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 1rem;
+        }
+        .modal-form .full { grid-column: 1 / -1; }
+        .field label {
+            display: block;
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            margin-bottom: 0.35rem;
+        }
+        .field input,
+        .field textarea,
+        .field select {
+            width: 100%;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            background: rgba(255,255,255,0.04);
+            color: #fff;
+            padding: 0.85rem 0.9rem;
+            font: inherit;
+        }
+        .field textarea { min-height: 92px; resize: vertical; }
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.75rem;
+            margin-top: 1rem;
+        }
+        .btn-soft,
+        .btn-strong {
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            padding: 0.8rem 1rem;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .btn-soft {
+            background: rgba(255,255,255,0.05);
+            color: #fff;
+        }
+        .btn-strong {
+            background: var(--accent);
+            color: #000;
+            border-color: transparent;
+        }
         .channel-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
@@ -169,6 +267,7 @@
                 <p>Empieza por elegir un canal. Cada canal abre su propio workspace con las herramientas de creación, galería, trabajos y publicación.</p>
             </div>
             <div class="toolbar">
+                <a href="#" class="toolbar-link primary" onclick="openCreateModal(); return false;">➕ Conectar Canal</a>
                 <a href="/settings" class="toolbar-link">⚙ Ajustes</a>
             </div>
         </header>
@@ -185,6 +284,73 @@
                 <div style="grid-column:1/-1; text-align:center; padding:2rem; color: var(--text-muted);">Cargando canales...</div>
             </div>
         </section>
+    </div>
+
+    <div id="create-modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="create-modal-title">
+        <div class="modal">
+            <div class="modal-head">
+                <div>
+                    <h3 id="create-modal-title">Conectar Canal</h3>
+                    <p>Introduce la información del canal interno y las credenciales de Google para dejarlo listo para conectar después.</p>
+                </div>
+                <button class="modal-close" onclick="closeCreateModal()" aria-label="Cerrar">✕</button>
+            </div>
+
+            <form id="create-channel-form" class="modal-form">
+                <div class="field full">
+                    <label for="internal_name">Nombre interno del canal</label>
+                    <input id="internal_name" name="internal_name" type="text" placeholder="Ej. 5 Datos Sorprendentes" required>
+                </div>
+                <div class="field full">
+                    <label for="internal_description">Descripción interna</label>
+                    <textarea id="internal_description" name="internal_description" placeholder="Notas internas, nicho, objetivo del canal..."></textarea>
+                </div>
+                <div class="field">
+                    <label for="google_client_id">Google Client ID</label>
+                    <input id="google_client_id" name="google_client_id" type="text" placeholder="client-id.apps.googleusercontent.com">
+                </div>
+                <div class="field">
+                    <label for="google_client_secret">Google Client Secret</label>
+                    <input id="google_client_secret" name="google_client_secret" type="password" placeholder="••••••••••••••••">
+                </div>
+                <div class="field">
+                    <label for="default_privacy_status">Privacidad por defecto</label>
+                    <select id="default_privacy_status" name="default_privacy_status">
+                        <option value="private">Privado</option>
+                        <option value="unlisted">Oculto</option>
+                        <option value="public">Público</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label for="default_language">Idioma por defecto</label>
+                    <input id="default_language" name="default_language" type="text" value="es" maxlength="8">
+                </div>
+                <div class="field">
+                    <label for="default_category_id">Categoría por defecto</label>
+                    <input id="default_category_id" name="default_category_id" type="text" value="22">
+                </div>
+                <div class="field">
+                    <label for="status">Estado</label>
+                    <select id="status" name="status">
+                        <option value="inactive">Inactivo</option>
+                        <option value="active">Activo</option>
+                    </select>
+                </div>
+                <div class="field full">
+                    <label for="google_redirect_uri">Callback OAuth</label>
+                    <input id="google_redirect_uri" name="google_redirect_uri" type="text" placeholder="https://tu-dominio.com/api/youtube/oauth/callback">
+                </div>
+                <div class="field full">
+                    <label for="default_tags">Etiquetas por defecto</label>
+                    <input id="default_tags" name="default_tags" type="text" placeholder="viral, shorts, curiosidades">
+                </div>
+            </form>
+
+            <div class="modal-actions">
+                <button type="button" class="btn-soft" onclick="closeCreateModal()">Cancelar</button>
+                <button type="button" class="btn-strong" onclick="submitCreateChannel()">Crear canal</button>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -218,6 +384,82 @@
             return new Intl.NumberFormat('es-ES').format(num);
         }
 
+        function openCreateModal() {
+            const modal = document.getElementById('create-modal');
+            modal.classList.add('open');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeCreateModal() {
+            const modal = document.getElementById('create-modal');
+            modal.classList.remove('open');
+            document.body.style.overflow = '';
+        }
+
+        function getCreatePayload() {
+            const tags = document.getElementById('default_tags').value.trim();
+            return {
+                internal_name: document.getElementById('internal_name').value.trim(),
+                internal_description: document.getElementById('internal_description').value.trim() || null,
+                google_client_id: document.getElementById('google_client_id').value.trim() || null,
+                google_client_secret: document.getElementById('google_client_secret').value.trim() || null,
+                google_redirect_uri: document.getElementById('google_redirect_uri').value.trim() || null,
+                default_privacy_status: document.getElementById('default_privacy_status').value,
+                default_category_id: document.getElementById('default_category_id').value.trim() || '22',
+                default_tags: tags ? tags.split(',').map(tag => tag.trim()).filter(Boolean) : [],
+                default_language: document.getElementById('default_language').value.trim() || 'es',
+                notify_subscribers: false,
+                status: document.getElementById('status').value,
+            };
+        }
+
+        async function submitCreateChannel() {
+            const payload = getCreatePayload();
+            if (!payload.internal_name) {
+                alert('El nombre interno es obligatorio.');
+                return;
+            }
+
+            const btn = document.querySelector('.btn-strong');
+            btn.disabled = true;
+            btn.textContent = 'Creando...';
+
+            try {
+                const res = await fetch('/api/youtube/channels', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    throw new Error(data.detail || 'No se pudo crear el canal');
+                }
+
+                closeCreateModal();
+                document.getElementById('create-channel-form').reset();
+                document.getElementById('default_privacy_status').value = 'private';
+                document.getElementById('default_language').value = 'es';
+                document.getElementById('default_category_id').value = '22';
+                document.getElementById('status').value = 'inactive';
+                document.getElementById('default_tags').value = '';
+                reloadChannels();
+                window.location.href = `/youtube-channels?channel_id=${data.channel.id}`;
+            } catch (error) {
+                alert(`No se pudo crear el canal: ${error.message}`);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Crear canal';
+            }
+        }
+
+        document.getElementById('create-modal').addEventListener('click', (event) => {
+            if (event.target.id === 'create-modal') closeCreateModal();
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') closeCreateModal();
+        });
+
         async function reloadChannels() {
             const grid = document.getElementById('channel-grid');
             grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:2rem; color: var(--text-muted);">Cargando canales...</div>';
@@ -233,7 +475,7 @@
                             <h3 style="margin-top:0;">Aún no has creado canales</h3>
                             <p>Primero crea un canal interno y conéctalo a su cuenta de YouTube. Después podrás entrar a su workspace.</p>
                             <div style="margin-top:1rem;">
-                                <a href="/youtube-channels" class="badge" style="text-decoration:none; background:var(--accent); color:#000; font-weight:bold;">Crear primer canal</a>
+                                <a href="#" onclick="openCreateModal(); return false;" class="badge" style="text-decoration:none; background:var(--accent); color:#000; font-weight:bold;">Conectar canal</a>
                             </div>
                         </div>
                     `;
