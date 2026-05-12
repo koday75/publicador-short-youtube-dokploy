@@ -56,19 +56,12 @@
 <body>
     <div class="container">
         <header>
-            <h1>⚙️ Ajustes de Sistema</h1>
-            <div id="2fa-control" class="badge" style="cursor: pointer; padding: 0.6rem 1.2rem; font-weight: bold; font-size: 0.8rem;">Cargando Seguridad...</div>
+            <h1>Ajustes de Sistema</h1>
+            <div class="header-actions">
+                <div id="2fa-control" class="badge" style="cursor: pointer; padding: 0.6rem 1.2rem; font-weight: bold; font-size: 0.8rem;">Cargando Seguridad...</div>
+                <a class="header-link" href="/youtube-channels">Canales</a>
+            </div>
         </header>
-
-        <nav>
-            <a href="/">Panel Control</a>
-            <a href="/discover">Descubrimiento</a>
-            <a href="/jobs">Trabajos</a>
-            <a href="/gallery">Galería</a>
-            <a href="/youtube-channels">YouTube / Canales</a>
-            <a href="/ai-tasks">Registros IA</a>
-            <a href="/settings" class="active">Ajustes</a>
-        </nav>
 
         <!-- CREDITS SECTION -->
         <section class="card" style="margin-bottom: 2rem;">
@@ -87,26 +80,6 @@
                 <div style="grid-column: 1/-1; text-align:center; padding: 2rem; color: var(--text-muted); font-size: 0.85rem;">
                     Pulsa "Consultar Créditos" para ver el saldo de cada cuenta.
                 </div>
-            </div>
-        </section>
-
-
-        <!-- API KEYS SECTION -->
-        <section class="card">
-            <div style="margin-bottom: 1.5rem;">
-                <h2 style="margin:0;">🔑 Configuración de Llaves API</h2>
-                <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 5px;">
-                    Configura las credenciales de los proveedores de IA. Google OAuth se configura ahora dentro de cada canal en <a href="/youtube-channels">YouTube / Canales</a>.
-                </p>
-            </div>
-            <div class="hint-box">
-                <strong>Google OAuth por canal:</strong>
-                <div style="margin-top:0.35rem;">
-                    La URL de callback y las credenciales OAuth se gestionan ahora dentro de <a href="/youtube-channels">YouTube / Canales</a>.
-                </div>
-            </div>
-            <div id="keys-list" class="grid-settings">
-                <!-- Generado dinámicamente -->
             </div>
         </section>
     </div>
@@ -136,39 +109,6 @@
                     ctrl.style.color = '#f85149';
                 }
                 ctrl.onclick = toggle2FA;
-
-
-                // API Keys
-                const keysContainer = document.getElementById('keys-list');
-                keysContainer.innerHTML = '';
-                const providers = [
-                    'GROQ', 'OPENAI', 'DEEPSEEK', 'OPENROUTER',
-                    'KIE_API_KEY_1', 'KIE_API_KEY_2', 'KIE_API_KEY_3', 'KIE_API_KEY_4', 'KIE_API_KEY_5'
-                ];
-                
-                providers.forEach(p => {
-                    const isConfigured = data[p] === '********';
-                    const statusText = isConfigured ? '✅ Configurada' : '⏳ Pendiente';
-                    const statusColor = isConfigured ? '#3fb950' : '#e3b341';
-                    const fieldLabel = 'Llave API';
-                    const fieldPlaceholder = isConfigured ? '••••••••••••••••' : 'Pega tu API Key aquí';
-                    
-                    keysContainer.innerHTML += `
-                        <div class="setting-card">
-                            <div style="display:flex; justify-content:space-between; align-items:center;">
-                                <h4>${p}</h4>
-                                <small style="color:${statusColor}">${statusText}</small>
-                            </div>
-                            <div>
-                                <label>${fieldLabel}</label>
-                                <div style="display: flex; gap: 8px; margin-top:5px;">
-                                    <input type="password" id="key-${p}" placeholder="${fieldPlaceholder}">
-                                    <button class="save-btn" onclick="saveKey('${p}')">Guardar</button>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                });
             } catch (e) {
                 alert("Error crítico cargando ajustes: " + e.message);
                 console.error("Error cargando ajustes", e);
@@ -248,36 +188,6 @@
             });
             loadSettings();
         }
-
-        async function saveKey(provider) {
-            const val = document.getElementById(`key-${provider}`).value;
-            if(!val) return alert("Escribe la llave primero");
-            
-            const btn = event.target;
-            btn.disabled = true;
-            btn.innerText = "⏳";
-
-            try {
-                const res = await fetch('/api/settings', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ provider, api_key: val })
-                });
-                if(res.ok) {
-                    alert(`Llave de ${provider} guardada correctamente.`);
-                    document.getElementById(`key-${provider}`).value = '';
-                    loadSettings();
-                } else {
-                    alert("Error al guardar la llave.");
-                }
-            } catch(e) {
-                alert("Error de conexión.");
-            } finally {
-                btn.disabled = false;
-                btn.innerText = "Guardar";
-            }
-        }
-
 
         loadSettings();
     </script>
