@@ -36,19 +36,6 @@
         .audio-placeholder { width: 100%; height: 220px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #1a1a1a; color: var(--accent); cursor: pointer; }
         .audio-placeholder span { font-size: 3rem; margin-bottom: 10px; }
         .file-type-badge { font-size: 0.6rem; background: rgba(255,255,255,0.1); padding: 2px 5px; border-radius: 3px; font-family: monospace; text-transform: uppercase; }
-        .channel-context {
-            border: 1px solid rgba(88, 166, 255, 0.25);
-            background: rgba(88, 166, 255, 0.08);
-            border-radius: 14px;
-            padding: 0.9rem 1rem;
-            display: flex;
-            justify-content: space-between;
-            gap: 1rem;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-        .channel-context strong { color: #fff; }
-        .channel-context small { color: var(--text-muted); display:block; }
         .channel-shell {
             border: 1px solid rgba(88, 166, 255, 0.18);
             background: rgba(88, 166, 255, 0.05);
@@ -101,49 +88,30 @@
             </div>
         </header>
 
-        <nav>
-            <a href="/">Panel Control</a>
-            <a href="/discover">Descubrimiento</a>
-            <a href="/jobs">Trabajos</a>
-            <a href="/gallery" class="active">Galer�a</a>
-            <a href="/youtube-channels">YouTube / Canales</a>
-            <a href="/ai-tasks">Registros IA</a>
-            <a href="/settings">Ajustes</a>
-        </nav>
 
         <section id="channel-shell" class="channel-shell" style="display:none;">
             <div class="channel-breadcrumb">
                 <a href="/channels">Canales</a>
-                <span>�</span>
+                <span>›</span>
                 <span id="channel-breadcrumb-name">Canal</span>
-                <span>�</span>
-                <strong>Galer�a</strong>
+                <span>›</span>
+                <strong>Galería</strong>
             </div>
             <div class="channel-tabs">
                 <a id="tab-overview" class="channel-tab" href="#">Resumen</a>
-                <a id="tab-storyboard" class="channel-tab" href="#">Crear v�deos</a>
-                <a id="tab-gallery" class="channel-tab active" href="#">Galer�a</a>
+                <a id="tab-storyboard" class="channel-tab" href="#">Crear vídeos</a>
+                <a id="tab-gallery" class="channel-tab active" href="#">Galería</a>
                 <a id="tab-jobs" class="channel-tab" href="#">Trabajos</a>
                 <a id="tab-history" class="channel-tab" href="#">Historial</a>
                 <a id="tab-settings" class="channel-tab" href="#">Ajustes</a>
             </div>
         </section>
 
-        <div id="channel-context" class="channel-context" style="display:none; margin-bottom: 1rem;">
-            <div>
-                <small>Canal activo</small>
-                <strong id="channel-context-title">-</strong>
-            </div>
-            <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
-                <a id="channel-context-workspace" href="#" class="badge" style="text-decoration:none; background:rgba(255,255,255,0.05); color:#fff;">Workspace</a>
-                <a id="channel-context-settings" href="#" class="badge" style="text-decoration:none; background:var(--accent); color:#000; font-weight:bold;">Editar canal</a>
-            </div>
-        </div>
         <section class="controls">
             <input type="text" id="gallery-search" class="search-input" placeholder="Buscar por nombre, prompt o nicho..." oninput="debounceSearch()">
             <select id="gallery-filter" class="filter-select" onchange="fetchGallery(1)">
                 <option value="">Todos los tipos</option>
-                <option value="video">Videos</option>
+                <option value="video">Vídeos</option>
                 <option value="image">Imágenes</option>
                 <option value="audio">Audios</option>
             </select>
@@ -206,9 +174,6 @@
                 const res = await fetch(`/api/youtube/channels/${channelId}`);
                 if (!res.ok) return;
                 const channel = await res.json();
-                document.getElementById('channel-context-title').textContent = channel.internal_name || channel.youtube_channel_title || `Canal ${channelId}`;
-                document.getElementById('channel-context-workspace').href = `/channels/${channelId}`;
-                document.getElementById('channel-context-settings').href = `/youtube-channels?channel_id=${channelId}`;
                 document.getElementById('channel-shell').style.display = 'block';
                 document.getElementById('channel-breadcrumb-name').textContent = channel.internal_name || `Canal ${channelId}`;
                 document.getElementById('tab-overview').href = `/channels/${channelId}`;
@@ -217,7 +182,6 @@
                 document.getElementById('tab-jobs').href = `/jobs?channel_id=${channelId}`;
                 document.getElementById('tab-history').href = `/channels/${channelId}/history`;
                 document.getElementById('tab-settings').href = `/youtube-channels?channel_id=${channelId}`;
-                document.getElementById('channel-context').style.display = 'flex';
             } catch (e) {}
         }
         let searchTimeout;
