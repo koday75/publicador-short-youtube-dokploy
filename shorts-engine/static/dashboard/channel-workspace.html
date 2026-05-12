@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -358,37 +358,27 @@
     <div class="container">
         <header>
             <div>
-                <h1>Workspace del canal</h1>
-                <p>Trabaja dentro de un canal concreto. Todas las herramientas que abras desde aquí conservarán su contexto.</p>
+                <h1 id="workspace-header-title">Workspace del canal</h1>
+                <p>Trabaja dentro de un canal concreto. Todas las herramientas que abras desde aquÃ­ conservarÃ¡n su contexto.</p>
             </div>
             <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
-                <a href="/channels" class="badge" style="text-decoration:none; background:rgba(255,255,255,0.05); color:#fff;">← Volver a canales</a>
+                <a href="/channels" class="badge" style="text-decoration:none; background:rgba(255,255,255,0.05); color:#fff;">â† Volver a canales</a>
                 <a id="edit-channel-link" href="/youtube-channels" class="badge" style="text-decoration:none; background:var(--accent); color:#000; font-weight:bold;">Editar canal</a>
             </div>
         </header>
 
-        <nav>
-            <a href="/channels" class="active">Canales</a>
-            <a href="/discover">Descubrimiento</a>
-            <a href="/jobs">Trabajos</a>
-            <a href="/gallery">Galería</a>
-            <a href="/youtube-channels">YouTube / Canales</a>
-            <a href="/ai-tasks">Registros IA</a>
-            <a href="/settings">Ajustes</a>
-        </nav>
-
         <section id="channel-shell" class="channel-shell" style="display:none;">
             <div class="channel-breadcrumb">
                 <a href="/channels">Canales</a>
-                <span>›</span>
+                <span>â€º</span>
                 <span id="channel-breadcrumb-name">Workspace</span>
-                <span>›</span>
+                <span>â€º</span>
                 <strong id="channel-breadcrumb-page">Resumen</strong>
             </div>
             <div class="channel-tabs">
                 <a id="tab-overview" class="channel-tab active" href="#">Resumen</a>
-                <a id="tab-storyboard" class="channel-tab" href="#">Crear vídeos</a>
-                <a id="tab-gallery" class="channel-tab" href="#">Galería</a>
+                <a id="tab-storyboard" class="channel-tab" href="#">Crear vÃ­deos</a>
+                <a id="tab-gallery" class="channel-tab" href="#">GalerÃ­a</a>
                 <a id="tab-jobs" class="channel-tab" href="#">Trabajos</a>
                 <a id="tab-history" class="channel-tab" href="#">Historial</a>
                 <a id="tab-settings" class="channel-tab" href="#">Ajustes</a>
@@ -403,13 +393,13 @@
                         <div style="min-width:0;">
                             <div id="channel-status" class="status-pill disconnected">Cargando...</div>
                             <h2 id="channel-title" class="workspace-title" style="margin-top:0.6rem;">Cargando canal...</h2>
-                            <p id="channel-description" class="workspace-subtitle">Espera un momento mientras cargamos la configuración del canal.</p>
+                            <p id="channel-description" class="workspace-subtitle">Espera un momento mientras cargamos la configuraciÃ³n del canal.</p>
                             <div id="channel-path" class="channel-path" style="display:none;"></div>
                         </div>
                     </div>
 
                     <div class="workspace-note">
-                        Este workspace centraliza la operación del canal: métricas, actividad reciente y accesos rápidos para crear, revisar y publicar contenido sin mezclarlo con otros canales.
+                        Este workspace centraliza la operaciÃ³n del canal: mÃ©tricas, actividad reciente y accesos rÃ¡pidos para crear, revisar y publicar contenido sin mezclarlo con otros canales.
                     </div>
 
                     <div class="summary-grid" style="margin-top:1rem;">
@@ -426,7 +416,7 @@
                             <strong id="channel-handle">-</strong>
                         </div>
                         <div class="summary-item">
-                            <small>Última prueba</small>
+                            <small>Ãšltima prueba</small>
                             <strong id="last-test">-</strong>
                         </div>
                     </div>
@@ -436,13 +426,13 @@
                     <div class="section-heading">
                         <div>
                             <h3>Estado operativo</h3>
-                            <p>Resumen rápido del canal seleccionado.</p>
+                            <p>Resumen rÃ¡pido del canal seleccionado.</p>
                         </div>
                         <a id="channel-settings-link" href="/youtube-channels" class="badge" style="text-decoration:none; background:rgba(255,255,255,0.05); color:#fff;">Ajustes</a>
                     </div>
                     <div class="summary-grid">
                         <div class="summary-item">
-                            <small>Conexión</small>
+                            <small>ConexiÃ³n</small>
                             <strong id="connection-status">-</strong>
                         </div>
                         <div class="summary-item">
@@ -454,12 +444,12 @@
                             <strong id="scopes-count">-</strong>
                         </div>
                         <div class="summary-item">
-                            <small>Último trabajo</small>
+                            <small>Ãšltimo trabajo</small>
                             <strong id="latest-job">-</strong>
                         </div>
                     </div>
                     <div class="workspace-note" style="margin-top:1rem;" id="last-success-note">
-                        Aquí aparecerá la última ejecución estable del canal.
+                        AquÃ­ aparecerÃ¡ la Ãºltima ejecuciÃ³n estable del canal.
                     </div>
                 </div>
             </section>
@@ -467,13 +457,13 @@
             <section class="panel-card">
                 <div class="section-heading">
                     <div>
-                        <h3>Métricas del canal</h3>
-                        <p>Indicadores reales sobre generación, galería y salud del workspace.</p>
+                        <h3>MÃ©tricas del canal</h3>
+                        <p>Indicadores reales sobre generaciÃ³n, galerÃ­a y salud del workspace.</p>
                     </div>
                     <a href="/jobs" id="open-jobs-link" class="badge" style="text-decoration:none; background:rgba(255,255,255,0.05); color:#fff;">Ver trabajos</a>
                 </div>
                 <div id="metric-grid" class="metric-grid">
-                    <div class="empty-state" style="grid-column:1/-1;">Cargando métricas...</div>
+                    <div class="empty-state" style="grid-column:1/-1;">Cargando mÃ©tricas...</div>
                 </div>
             </section>
 
@@ -481,8 +471,8 @@
                 <div class="panel-card">
                     <div class="section-heading">
                         <div>
-                            <h3>Últimos trabajos</h3>
-                            <p>Lo más reciente del canal para controlar progreso y errores.</p>
+                            <h3>Ãšltimos trabajos</h3>
+                            <p>Lo mÃ¡s reciente del canal para controlar progreso y errores.</p>
                         </div>
                         <a href="/jobs" id="jobs-link" class="badge" style="text-decoration:none; background:var(--accent); color:#000; font-weight:bold;">Abrir cola</a>
                     </div>
@@ -497,7 +487,7 @@
                             <h3>Assets recientes</h3>
                             <p>Material visual y de audio disponible para este canal.</p>
                         </div>
-                        <a href="/gallery" id="gallery-link" class="badge" style="text-decoration:none; background:rgba(255,255,255,0.05); color:#fff;">Abrir galería</a>
+                        <a href="/gallery" id="gallery-link" class="badge" style="text-decoration:none; background:rgba(255,255,255,0.05); color:#fff;">Abrir galerÃ­a</a>
                     </div>
                     <div id="recent-media-grid" class="activity-media-grid">
                         <div class="empty-state" style="grid-column:1/-1;">Cargando assets recientes...</div>
@@ -514,14 +504,14 @@
                 </div>
                 <div class="section-grid">
                     <div class="section-card">
-                        <h3>Crear vídeos</h3>
-                        <p>Storyboard, voz, música y render dentro del canal seleccionado.</p>
-                        <a id="link-storyboard" class="primary-link" href="/storyboard">Abrir creación</a>
+                        <h3>Crear vÃ­deos</h3>
+                        <p>Storyboard, voz, mÃºsica y render dentro del canal seleccionado.</p>
+                        <a id="link-storyboard" class="primary-link" href="/storyboard">Abrir creaciÃ³n</a>
                     </div>
                     <div class="section-card">
-                        <h3>Galería</h3>
+                        <h3>GalerÃ­a</h3>
                         <p>Assets, fondos y recursos reutilizables para este canal.</p>
-                        <a id="link-gallery" class="primary-link" href="/gallery">Abrir galería</a>
+                        <a id="link-gallery" class="primary-link" href="/gallery">Abrir galerÃ­a</a>
                     </div>
                     <div class="section-card">
                         <h3>Trabajos</h3>
@@ -529,7 +519,7 @@
                         <a id="link-jobs" class="primary-link" href="/jobs">Abrir trabajos</a>
                     </div>
                     <div class="section-card">
-                        <h3>Historial de publicación</h3>
+                        <h3>Historial de publicaciÃ³n</h3>
                         <p>Vista centralizada del historial del canal con el contexto correcto.</p>
                         <a id="link-history" class="secondary-link" href="/channels/0/history">Abrir historial</a>
                     </div>
@@ -555,14 +545,14 @@
         }
 
         function formatDate(value) {
-            if (!value) return '—';
+            if (!value) return 'â€”';
             const d = new Date(value);
             if (Number.isNaN(d.getTime())) return value;
             return d.toLocaleString('es-ES');
         }
 
         function shortDate(value) {
-            if (!value) return '—';
+            if (!value) return 'â€”';
             const d = new Date(value);
             if (Number.isNaN(d.getTime())) return value;
             return d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
@@ -648,12 +638,12 @@
                 <div class="activity-row">
                     <div style="min-width:0;">
                         <h4 title="${job.title || job.text || ''}">${title}</h4>
-                        <p>${job.niche || 'general'} · ${job.job_id}</p>
+                        <p>${job.niche || 'general'} Â· ${job.job_id}</p>
                     </div>
                     <div class="activity-meta">
                         <span class="status-pill ${statusClassName}">${jobStatusLabel(job.status)}</span>
                         <small>${shortDate(job.created_at)}</small>
-                        ${canOpen ? `<a href="${job.video_url}" target="_blank" rel="noopener" style="font-size:0.8rem; color:#58a6ff; text-decoration:none;">Abrir vídeo</a>` : ''}
+                        ${canOpen ? `<a href="${job.video_url}" target="_blank" rel="noopener" style="font-size:0.8rem; color:#58a6ff; text-decoration:none;">Abrir vÃ­deo</a>` : ''}
                     </div>
                 </div>
             `;
@@ -670,7 +660,7 @@
                     ${thumb}
                     <div class="media-card-body">
                         <strong title="${item.original_name || item.filename}">${item.original_name || item.filename}</strong>
-                        <small>${mediaLabel(item.file_type)} · ${item.niche || 'sin nicho'}</small>
+                        <small>${mediaLabel(item.file_type)} Â· ${item.niche || 'sin nicho'}</small>
                         <small>${shortDate(item.created_at)}</small>
                     </div>
                 </article>
@@ -681,7 +671,7 @@
             const channelId = getChannelId();
             if (!channelId) {
                 document.getElementById('channel-title').textContent = 'Canal no encontrado';
-                document.getElementById('channel-description').textContent = 'La URL no incluye un canal válido.';
+                document.getElementById('channel-description').textContent = 'La URL no incluye un canal vÃ¡lido.';
                 return;
             }
 
@@ -702,8 +692,9 @@
                 const latestJob = data.latest_job || null;
                 const latestSuccessfulJob = data.latest_successful_job || null;
 
-                document.title = `${channel.internal_name || 'Workspace'} - Shorts Engine`;
+                document.title = `${channel.internal_name || 'Canal'} - Shorts Engine`;
                 document.getElementById('channel-title').textContent = channel.internal_name || 'Canal sin nombre';
+                document.getElementById('workspace-header-title').textContent = channel.internal_name || 'Canal';
                 document.getElementById('channel-description').textContent = channel.internal_description || 'Canal interno preparado para operar con YouTube.';
                 document.getElementById('channel-status').textContent = statusLabel(channel.connection_status);
                 document.getElementById('channel-status').className = `status-pill ${statusClass(channel.connection_status)}`;
@@ -727,8 +718,8 @@
                 document.getElementById('scopes-count').textContent = Array.isArray(channel.scopes_granted) ? channel.scopes_granted.length : (channel.scopes_granted ? String(channel.scopes_granted).split(/\s+/).filter(Boolean).length : '0');
                 document.getElementById('latest-job').textContent = latestJob ? jobStatusLabel(latestJob.status) : '-';
                 document.getElementById('last-success-note').textContent = latestSuccessfulJob
-                    ? `Última ejecución estable: ${latestSuccessfulJob.title || latestSuccessfulJob.job_id} · ${formatDate(latestSuccessfulJob.created_at)}`
-                    : 'Todavía no hay una ejecución estable registrada para este canal.';
+                    ? `Ãšltima ejecuciÃ³n estable: ${latestSuccessfulJob.title || latestSuccessfulJob.job_id} Â· ${formatDate(latestSuccessfulJob.created_at)}`
+                    : 'TodavÃ­a no hay una ejecuciÃ³n estable registrada para este canal.';
 
                 const metricGrid = document.getElementById('metric-grid');
                 const activeJobs = (jobCounts.draft || 0) + (jobCounts.processing || 0);
@@ -737,7 +728,7 @@
                     renderMetricCard({
                         label: 'Trabajos totales',
                         value: stats.total_jobs ?? 0,
-                        note: 'Todo el historial de producción del canal.',
+                        note: 'Todo el historial de producciÃ³n del canal.',
                         className: 'jobs'
                     }),
                     renderMetricCard({
@@ -755,19 +746,19 @@
                     renderMetricCard({
                         label: 'Fallidos',
                         value: stats.failed_jobs ?? 0,
-                        note: 'Trabajos que necesitan corrección o reintento.',
+                        note: 'Trabajos que necesitan correcciÃ³n o reintento.',
                         className: 'failed'
                     }),
                     renderMetricCard({
-                        label: 'Assets en galería',
+                        label: 'Assets en galerÃ­a',
                         value: (mediaCounts.video || 0) + (mediaCounts.image || 0) + (mediaCounts.audio || 0) + (mediaCounts.other || 0),
-                        note: `${mediaCounts.video || 0} vídeos, ${mediaCounts.image || 0} imágenes y ${mediaCounts.audio || 0} audios.`,
+                        note: `${mediaCounts.video || 0} vÃ­deos, ${mediaCounts.image || 0} imÃ¡genes y ${mediaCounts.audio || 0} audios.`,
                         className: 'gallery'
                     }),
                     renderMetricCard({
-                        label: 'Última prueba',
-                        value: channel.last_connection_test_at ? shortDate(channel.last_connection_test_at) : '—',
-                        note: channel.connection_status === 'connected' ? 'Conexión activa y validada.' : 'Revisa credenciales o scopes.',
+                        label: 'Ãšltima prueba',
+                        value: channel.last_connection_test_at ? shortDate(channel.last_connection_test_at) : 'â€”',
+                        note: channel.connection_status === 'connected' ? 'ConexiÃ³n activa y validada.' : 'Revisa credenciales o scopes.',
                         className: 'media'
                     })
                 ].join('');
@@ -776,14 +767,14 @@
                 if (recentJobs.length) {
                     jobsList.innerHTML = recentJobs.map(renderJobRow).join('');
                 } else {
-                    jobsList.innerHTML = '<div class="empty-state">Todavía no hay trabajos recientes para este canal.</div>';
+                    jobsList.innerHTML = '<div class="empty-state">TodavÃ­a no hay trabajos recientes para este canal.</div>';
                 }
 
                 const mediaGrid = document.getElementById('recent-media-grid');
                 if (recentMedia.length) {
                     mediaGrid.innerHTML = recentMedia.map(renderMediaCard).join('');
                 } else {
-                    mediaGrid.innerHTML = '<div class="empty-state" style="grid-column:1/-1;">Todavía no hay assets cargados para este canal.</div>';
+                    mediaGrid.innerHTML = '<div class="empty-state" style="grid-column:1/-1;">TodavÃ­a no hay assets cargados para este canal.</div>';
                 }
             } catch (error) {
                 document.getElementById('channel-title').textContent = 'Error cargando canal';
