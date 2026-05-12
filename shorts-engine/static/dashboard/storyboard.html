@@ -72,7 +72,8 @@
                 </div>
             </div>
             <div style="display: flex; gap: 10px; align-items: flex-start;">
-                <button onclick="renderMovie()" class="badge badge-processing">🚀 RENDER FINAL</button>
+                <button onclick="saveWork(event)" class="badge" style="background: rgba(88, 166, 255, 0.18); color: #58a6ff; border: 1px solid rgba(88, 166, 255, 0.35);">💾 GUARDAR TRABAJO</button>
+                <button onclick="renderMovie(event)" class="badge badge-processing">🚀 RENDER FINAL</button>
             </div>
         </header>
 
@@ -459,10 +460,10 @@
             }
         }
 
-        async function renderMovie() {
+        function buildStoryboardRequestData() {
             const scenes = [];
             const cards = document.querySelectorAll('.scene-card');
-            cards.forEach((card, idx) => {
+            cards.forEach((card) => {
                 const id = card.id.split('-')[1];
                 scenes.push({
                     text: document.getElementById(`text-${id}`).value,
@@ -472,30 +473,79 @@
                 });
             });
 
-            if(scenes.length === 0) return alert("Añade al menos una escena");
-
             const urlParams = new URLSearchParams(window.location.search);
             const overrideJobId = urlParams.get('job_id');
             const manualTitle = document.getElementById('manual-job-title').value.trim();
+            const title = manualTitle || currentJobTitle || "Borrador Manual";
+
+            return {
+                scenes,
+                requestData: {
+                    scenes,
+                    music_filename: document.getElementById('global-music').value,
+                    voice_id: document.getElementById('global-voice').value,
+                    niche: document.getElementById('global-niche').value,
+                    channel_id: getChannelIdFromQuery(),
+                    tts_engine: document.getElementById('tts-engine').value,
+                    tts_speed: parseFloat(document.getElementById('tts-speed').value),
+                    job_id: overrideJobId,
+                    title
+                },
+                overrideJobId,
+                manualTitle,
+                title
+            };
+        }
+
+        async function saveWork(event) {
+            const { scenes, requestData, overrideJobId, manualTitle } = buildStoryboardRequestData();
+            if (scenes.length === 0) return alert("Añade al menos una escena");
+            if (!overrideJobId && !manualTitle) {
+                return alert("⚠️ Por favor, escribe un título descriptivo para guardar este trabajo.");
+            }
+
+            const btn = event.target;
+            const originalText = btn.innerText;
+            btn.innerText = "GUARDANDO...";
+            btn.disabled = true;
+
+            try {
+                const res = await fetch('/api/storyboard/draft', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(requestData)
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    alert("Trabajo guardado correctamente. Te llevamos al historial de trabajos del canal.");
+                    const channelId = getChannelIdFromQuery();
+                    window.location.href = channelId ? `/jobs?channel_id=${channelId}` : '/jobs';
+                } else {
+                    let errorMsg = "Error desconocido";
+                    if (data.detail) {
+                        errorMsg = typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail, null, 2);
+                    }
+                    alert("Error: " + errorMsg);
+                }
+            } finally {
+                btn.innerText = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        async function renderMovie(event) {
+            const { scenes, requestData, overrideJobId, manualTitle } = buildStoryboardRequestData();
+            if(scenes.length === 0) return alert("Añade al menos una escena");
             if (!overrideJobId && !manualTitle) {
                 return alert("⚠️ Por favor, escribe un título descriptivo para la creación manual de tu Short.");
             }
 
-            const requestData = {
-                scenes: scenes,
-                music_filename: document.getElementById('global-music').value,
-                voice_id: document.getElementById('global-voice').value,
-                niche: document.getElementById('global-niche').value,
-                channel_id: getChannelIdFromQuery(),
-                tts_engine: document.getElementById('tts-engine').value,
-                tts_speed: parseFloat(document.getElementById('tts-speed').value),
-                job_id: overrideJobId,
-                title: manualTitle || currentJobTitle || "Borrador Manual"
-            };
-
-            const btn = event.target;
-            btn.innerText = "PROCESANDO...";
-            btn.disabled = true;
+            const btn = event?.target;
+            const originalText = btn ? btn.innerText : null;
+            if (btn) {
+                btn.innerText = "PROCESANDO...";
+                btn.disabled = true;
+            }
 
             const res = await fetch('/api/storyboard/render', {
                 method: 'POST',
@@ -514,8 +564,10 @@
                     errorMsg = typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail, null, 2);
                 }
                 alert("Error: " + errorMsg);
-                btn.innerText = "🚀 RENDER FINAL";
-                btn.disabled = false;
+                if (btn) {
+                    btn.innerText = originalText || "🚀 RENDER FINAL";
+                    btn.disabled = false;
+                }
             }
         }
 

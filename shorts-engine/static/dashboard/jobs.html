@@ -139,6 +139,12 @@
             margin-top: 1rem;
             flex-wrap: wrap;
         }
+        .modal-footer .modal-link {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+        }
         .modal-btn {
             border: none;
             border-radius: 10px;
@@ -209,8 +215,9 @@
                 <video id="previewPlayer" controls style="width: 100%; height: 100%; object-fit: contain;"></video>
             </div>
             <div class="modal-footer">
-                <button class="modal-btn" onclick="downloadCurrentVideo()" style="background: var(--secondary);">⬇ Descargar</button>
-                <button class="modal-btn" onclick="shareCurrentVideo()" style="background: var(--primary);">🔗 Compartir</button>
+                <button class="modal-btn" onclick="downloadCurrentVideo()" style="background: var(--secondary);">Descargar</button>
+                <button class="modal-btn" onclick="shareCurrentVideo()" style="background: var(--primary);">Compartir</button>
+                <a id="backToJobsLink" class="modal-btn modal-link" href="/jobs" style="background: #333;">Volver a trabajos del canal</a>
             </div>
         </div>
     </div>
@@ -292,7 +299,7 @@
                     <td style="font-size:0.85rem; color:var(--text-muted);">${new Date(job.created_at).toLocaleString('es-ES')}</td>
                     <td style="display:flex; gap:6px; flex-wrap:wrap;">
                         <button class="action-btn" style="background:#333; color:#fff;" onclick="window.location.href='/storyboard?job_id=${job.job_id}'">✏️</button>
-                        ${canPlay ? `<button class="action-btn btn-view" onclick="previewVideo('${job.video_url}')">▶</button>` : ''}
+                        ${canPlay ? `<button class="action-btn btn-view" onclick="previewVideo('${job.video_url}', ${job.channel_id ?? 'null'})">▶</button>` : ''}
                         <button class="action-btn btn-delete" onclick="deleteJob('${job.job_id}')">🗑</button>
                     </td>
                 `;
@@ -350,10 +357,11 @@
             fetchJobs(currentPage);
         }
 
-        function previewVideo(url) {
+        function previewVideo(url, channelId = null) {
             currentVideoUrl = url;
             const modal = document.getElementById('videoModal');
             document.getElementById('previewPlayer').src = url;
+            document.getElementById('backToJobsLink').href = channelId ? `/jobs?channel_id=${channelId}` : '/jobs';
             modal.classList.add('open');
             modal.setAttribute('aria-hidden', 'false');
         }
@@ -368,7 +376,12 @@
 
         function downloadCurrentVideo() {
             if (!currentVideoUrl) return;
-            window.open(currentVideoUrl, '_blank');
+            const link = document.createElement('a');
+            link.href = currentVideoUrl;
+            link.download = currentVideoUrl.split('/').pop() || 'video.mp4';
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
         }
 
         async function shareCurrentVideo() {
