@@ -147,23 +147,8 @@
         <header>
             <div>
                 <h1>Historial de publicación</h1>
-                <p>Fase 1: la estructura ya está lista. En la siguiente fase esta sección mostrará las publicaciones reales por canal.</p>
-            </div>
-            <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
-                <a href="/channels" class="badge" style="text-decoration:none; background:rgba(255,255,255,0.05); color:#fff;">← Volver a canales</a>
-                <a id="back-workspace" href="/channels" class="badge" style="text-decoration:none; background:var(--accent); color:#000; font-weight:bold;">Volver al workspace</a>
             </div>
         </header>
-
-        <nav>
-            <a href="/channels" class="active">Canales</a>
-            <a href="/discover">Descubrimiento</a>
-            <a href="/jobs">Trabajos</a>
-            <a href="/gallery">Galería</a>
-            <a href="/youtube-channels">YouTube / Canales</a>
-            <a href="/ai-tasks">Registros IA</a>
-            <a href="/settings">Ajustes</a>
-        </nav>
 
         <section id="channel-shell" class="channel-shell" style="display:none;">
             <div class="channel-breadcrumb">
@@ -184,10 +169,6 @@
         </section>
 
         <section class="panel">
-            <div class="notice">
-                <strong>Historial en desarrollo:</strong> esta pantalla está preparada para mostrar los vídeos publicados por este canal, con fecha, estado, URL y errores de subida. En esta fase solo presenta el contenedor y el contexto del canal.
-            </div>
-
             <div class="summary-grid">
                 <div class="summary-item">
                     <small>Canal</small>
@@ -258,7 +239,6 @@
             const channelId = getChannelId();
             if (!channelId) return;
             document.getElementById('channel-shell').style.display = 'block';
-            document.getElementById('back-workspace').href = `/channels/${channelId}`;
             try {
                 const res = await fetch(`/api/youtube/channels/${channelId}`);
                 if (!res.ok) throw new Error('No se pudo cargar el canal');
