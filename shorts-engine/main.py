@@ -271,7 +271,10 @@ async def api_list_youtube_channels(user: str = Depends(get_current_user)):
                 ch = youtube_manager.refresh_channel_snapshot(int(ch["id"]))
             except Exception:
                 ch = db.get_youtube_channel(int(ch["id"]))
-        channels.append(serialize_youtube_channel(ch))
+        safe_channel = serialize_youtube_channel(ch)
+        if safe_channel:
+            safe_channel["jobs_count"] = db.count_jobs(channel_id=int(safe_channel["id"]))
+        channels.append(safe_channel)
     return {"items": channels}
 
 @app.post("/api/youtube/channels")
