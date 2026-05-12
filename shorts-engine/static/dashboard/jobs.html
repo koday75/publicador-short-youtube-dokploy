@@ -6,22 +6,36 @@
     <title>Historial de Trabajos - Shorts Engine</title>
     <link rel="stylesheet" href="/assets/style.css">
     <style>
-        .search-bar { display: flex; gap: 10px; margin-bottom: 2rem; }
+        .toolbar {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+        .toolbar-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            text-decoration: none;
+            border-radius: 999px;
+            padding: 0.65rem 0.95rem;
+            font-weight: 700;
+            border: 1px solid var(--border-color);
+            background: rgba(255,255,255,0.05);
+            color: #fff;
+        }
+        .toolbar-link:hover {
+            border-color: rgba(88, 166, 255, 0.35);
+            background: rgba(88, 166, 255, 0.12);
+        }
+        .search-bar { display: flex; gap: 10px; margin-bottom: 1.5rem; }
         .search-bar input { flex: 1; padding: 10px; background: var(--card-bg); border: 1px solid var(--border-color); color: #fff; border-radius: 6px; }
-        .pagination { display: flex; justify-content: center; gap: 10px; margin-top: 2rem; align-items: center; }
+        .pagination { display: flex; justify-content: center; gap: 10px; margin-top: 2rem; align-items: center; flex-wrap: wrap; }
         .page-btn { padding: 6px 12px; background: var(--card-bg); border: 1px solid var(--border-color); color: #fff; border-radius: 4px; cursor: pointer; }
         .page-btn.active { background: var(--primary); border-color: var(--primary); }
         .page-btn:disabled { opacity: 0.3; cursor: not-allowed; }
         .action-btn { padding: 4px 10px; font-size: 0.75rem; border-radius: 5px; cursor: pointer; border: none; }
         .btn-delete { background: rgba(248,81,73,0.2); color: #f85149; border: 1px solid #f85149; }
         .btn-view { background: rgba(88,166,255,0.15); color: #58a6ff; border: 1px solid #58a6ff; }
-        nav { display: flex; gap: 15px; margin-bottom: 2rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; }
-        nav a { color: var(--text-muted); text-decoration: none; font-size: 0.9rem; padding: 5px 10px; border-radius: 4px; }
-        nav a:hover { color: #fff; background: rgba(255,255,255,0.05); }
-        nav a.active { color: var(--accent); font-weight: bold; background: rgba(188, 140, 255, 0.1); }
-        .badge-draft { background: rgba(50,100,200,0.25); color: #79b8ff; border: 1px solid #79b8ff; }
-        .badge-rendered { background: rgba(255,165,0,0.2); color: #ffa500; border: 1px solid #ffa500; }
-        .badge-completed { background: rgba(63,185,80,0.2); color: #3fb950; border: 1px solid #3fb950; }
         .status-select {
             background: var(--card-bg);
             border: 1px solid var(--border-color);
@@ -32,19 +46,6 @@
             cursor: pointer;
         }
         .status-select:focus { outline: none; border-color: var(--primary); }
-        .channel-context {
-            border: 1px solid rgba(88, 166, 255, 0.25);
-            background: rgba(88, 166, 255, 0.08);
-            border-radius: 14px;
-            padding: 0.9rem 1rem;
-            display: flex;
-            justify-content: space-between;
-            gap: 1rem;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-        .channel-context strong { color: #fff; }
-        .channel-context small { color: var(--text-muted); display:block; }
         .channel-shell {
             border: 1px solid rgba(88, 166, 255, 0.18);
             background: rgba(88, 166, 255, 0.05);
@@ -85,61 +86,102 @@
             border-color: rgba(88, 166, 255, 0.3);
             font-weight: 700;
         }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 0.9rem;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            text-align: left;
+        }
+        th {
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .empty-state {
+            text-align: center;
+            color: var(--text-muted);
+            padding: 2rem;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.72);
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            z-index: 1000;
+        }
+        .modal.open { display: flex; }
+        .modal-content {
+            width: min(420px, 100%);
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 1rem;
+            position: relative;
+        }
+        .close-modal {
+            position: absolute;
+            top: 0.75rem;
+            right: 0.75rem;
+            cursor: pointer;
+            color: var(--text-muted);
+            font-size: 1.2rem;
+        }
+        .modal-footer {
+            display: flex;
+            gap: 0.75rem;
+            margin-top: 1rem;
+            flex-wrap: wrap;
+        }
+        .modal-btn {
+            border: none;
+            border-radius: 10px;
+            padding: 0.7rem 1rem;
+            cursor: pointer;
+            color: #fff;
+            font-weight: 700;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <header>
             <h1>🎬 Historial de Trabajos</h1>
-            <div style="display: flex; gap: 10px; align-items: center;">
-                <a href="/storyboard" class="badge" style="text-decoration: none; background: var(--accent); color: #000; padding: 0.5rem 1.5rem; font-weight: bold;">+ NUEVO PROYECTO</a>
+            <div class="toolbar">
+                <a href="/settings" class="toolbar-link">⚙ Ajustes</a>
             </div>
         </header>
-
-        <nav>
-            <a href="/">Panel Control</a>
-            <a href="/discover">Descubrimiento</a>
-            <a href="/jobs" class="active">Trabajos</a>
-            <a href="/gallery">Galer�a</a>
-            <a href="/youtube-channels">YouTube / Canales</a>
-            <a href="/ai-tasks">Registros IA</a>
-            <a href="/settings">Ajustes</a>
-        </nav>
 
         <section id="channel-shell" class="channel-shell" style="display:none;">
             <div class="channel-breadcrumb">
                 <a href="/channels">Canales</a>
-                <span>�</span>
+                <span>›</span>
                 <span id="channel-breadcrumb-name">Canal</span>
-                <span>�</span>
+                <span>›</span>
                 <strong>Trabajos</strong>
             </div>
             <div class="channel-tabs">
                 <a id="tab-overview" class="channel-tab" href="#">Resumen</a>
-                <a id="tab-storyboard" class="channel-tab" href="#">Crear v�deos</a>
-                <a id="tab-gallery" class="channel-tab" href="#">Galer�a</a>
+                <a id="tab-storyboard" class="channel-tab" href="#">Crear vídeos</a>
+                <a id="tab-gallery" class="channel-tab" href="#">Galería</a>
                 <a id="tab-jobs" class="channel-tab active" href="#">Trabajos</a>
                 <a id="tab-history" class="channel-tab" href="#">Historial</a>
                 <a id="tab-settings" class="channel-tab" href="#">Ajustes</a>
             </div>
         </section>
 
-        <div id="channel-context" class="channel-context" style="display:none; margin-bottom: 1rem;">
-            <div>
-                <small>Canal activo</small>
-                <strong id="channel-context-title">-</strong>
-            </div>
-            <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
-                <a id="channel-context-workspace" href="#" class="badge" style="text-decoration:none; background:rgba(255,255,255,0.05); color:#fff;">Workspace</a>
-                <a id="channel-context-settings" href="#" class="badge" style="text-decoration:none; background:var(--accent); color:#000; font-weight:bold;">Editar canal</a>
-            </div>
-        </div>
         <section class="search-bar">
             <input type="text" id="job-search" placeholder="Buscar por texto, ID o nicho..." oninput="debounceSearch()">
             <button onclick="fetchJobs(1)">Buscar</button>
         </section>
 
-        <section class="history">
+        <section class="history card">
             <table>
                 <thead>
                     <tr>
@@ -151,19 +193,17 @@
                     </tr>
                 </thead>
                 <tbody id="jobs-table">
-                    <!-- Filas dinámicas -->
+                    <tr>
+                        <td colspan="5" class="empty-state">Cargando trabajos...</td>
+                    </tr>
                 </tbody>
             </table>
-
-            <div class="pagination" id="pagination-controls">
-                <!-- Botones de paginación -->
-            </div>
+            <div class="pagination" id="pagination-controls"></div>
         </section>
     </div>
 
-    <!-- Modal View -->
-    <div id="videoModal" class="modal">
-        <div class="modal-content" style="width: 400px; padding: 1rem;">
+    <div id="videoModal" class="modal" aria-hidden="true">
+        <div class="modal-content">
             <span class="close-modal" onclick="closeVideoModal()">&times;</span>
             <div style="width: 100%; aspect-ratio: 9/16; background: #000; border-radius: 8px; overflow: hidden;">
                 <video id="previewPlayer" controls style="width: 100%; height: 100%; object-fit: contain;"></video>
@@ -177,6 +217,8 @@
 
     <script>
         let currentPage = 1;
+        let currentVideoUrl = '';
+
         function getChannelIdFromQuery() {
             const params = new URLSearchParams(window.location.search);
             const raw = params.get('channel_id');
@@ -188,13 +230,13 @@
         async function loadChannelContext() {
             const channelId = getChannelIdFromQuery();
             if (!channelId) return;
+
             try {
                 const res = await fetch(`/api/youtube/channels/${channelId}`);
                 if (!res.ok) return;
+
                 const channel = await res.json();
-                document.getElementById('channel-context-title').textContent = channel.internal_name || channel.youtube_channel_title || `Canal ${channelId}`;
-                document.getElementById('channel-context-workspace').href = `/channels/${channelId}`;
-                document.getElementById('channel-context-settings').href = `/youtube-channels?channel_id=${channelId}`;
+                document.title = `Trabajos - ${channel.internal_name || 'Canal'} - Shorts Engine`;
                 document.getElementById('channel-shell').style.display = 'block';
                 document.getElementById('channel-breadcrumb-name').textContent = channel.internal_name || `Canal ${channelId}`;
                 document.getElementById('tab-overview').href = `/channels/${channelId}`;
@@ -203,40 +245,39 @@
                 document.getElementById('tab-jobs').href = `/jobs?channel_id=${channelId}`;
                 document.getElementById('tab-history').href = `/channels/${channelId}/history`;
                 document.getElementById('tab-settings').href = `/youtube-channels?channel_id=${channelId}`;
-                document.getElementById('channel-context').style.display = 'flex';
-            } catch (e) {}
+            } catch (e) {
+                console.error('No se pudo cargar el canal:', e);
+            }
         }
-        let searchTimeout;
 
+        let searchTimeout;
         function debounceSearch() {
             clearTimeout(searchTimeout);
-            searchTimeout = setTimeout(() => fetchJobs(1), 500);
+            searchTimeout = setTimeout(() => fetchJobs(1), 400);
         }
 
         async function fetchJobs(page = 1) {
             currentPage = page;
             const search = document.getElementById('job-search').value;
             const channelId = getChannelIdFromQuery();
+            const table = document.getElementById('jobs-table');
+            table.innerHTML = '<tr><td colspan="5" class="empty-state">Cargando trabajos...</td></tr>';
+
             const res = await fetch(`/api/jobs?page=${page}&limit=25&search=${encodeURIComponent(search)}${channelId ? `&channel_id=${channelId}` : ''}`);
             const data = await res.json();
-            
-            const table = document.getElementById('jobs-table');
-            table.innerHTML = '';
 
-            if(data.jobs.length === 0) {
-                table.innerHTML = '<tr><td colspan="5" style="text-align:center; color: var(--text-muted); padding: 2rem;">No se encontraron trabajos.</td></tr>';
+            if (!data.jobs || !data.jobs.length) {
+                table.innerHTML = '<tr><td colspan="5" class="empty-state">No se encontraron trabajos.</td></tr>';
+                renderPagination(data.total || 0, data.page || 1, data.limit || 25);
                 return;
             }
 
+            table.innerHTML = '';
             data.jobs.forEach(job => {
                 const row = document.createElement('tr');
-                
-                // Priorizar el título sobre la descripción genérica
-                const displayTitle = job.title || (job.text ? job.text.substring(0, 50) + '...' : job.job_id);
-                
+                const displayTitle = job.title || (job.text ? `${job.text.substring(0, 50)}...` : job.job_id);
                 const canPlay = job.status === 'rendered' || job.status === 'completed';
-                
-                // Status selector - only show for rendered jobs (allow promoting to completed or back)
+
                 const statusCell = job.status === 'rendered'
                     ? `<select class="status-select" id="sel-${job.job_id}" onchange="updateStatus('${job.job_id}', this.value)">
                             <option value="rendered" ${job.status === 'rendered' ? 'selected' : ''}>⏳ Renderizado</option>
@@ -245,11 +286,11 @@
                     : `<span class="badge badge-${job.status}">${job.status}</span>`;
 
                 row.innerHTML = `
-                    <td style="font-family:monospace; font-size:0.8rem;">${job.job_id.substring(0,12)}</td>
-                    <td style="max-width:300px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${job.title || job.text || ''}">${displayTitle}</td>
+                    <td style="font-family:monospace; font-size:0.8rem;">${job.job_id.substring(0, 12)}</td>
+                    <td style="max-width:320px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${job.title || job.text || ''}">${displayTitle}</td>
                     <td>${statusCell}</td>
                     <td style="font-size:0.85rem; color:var(--text-muted);">${new Date(job.created_at).toLocaleString('es-ES')}</td>
-                    <td style="display:flex; gap:6px;">
+                    <td style="display:flex; gap:6px; flex-wrap:wrap;">
                         <button class="action-btn" style="background:#333; color:#fff;" onclick="window.location.href='/storyboard?job_id=${job.job_id}'">✏️</button>
                         ${canPlay ? `<button class="action-btn btn-view" onclick="previewVideo('${job.video_url}')">▶</button>` : ''}
                         <button class="action-btn btn-delete" onclick="deleteJob('${job.job_id}')">🗑</button>
@@ -258,122 +299,97 @@
                 table.appendChild(row);
             });
 
-            renderPagination(data.total, data.page, data.limit);
-        }
-
-        async function updateStatus(jobId, newStatus) {
-            const sel = document.getElementById(`sel-${jobId}`);
-            try {
-                const res = await fetch(`/api/jobs/${jobId}/status`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ status: newStatus })
-                });
-                if (!res.ok) {
-                    alert('Error al actualizar el estado');
-                    sel.value = sel.dataset.original || 'rendered';
-                } else {
-                    // Small visual confirmation
-                    const checkIcon = document.createElement('span');
-                    checkIcon.innerText = ' ✅';
-                    checkIcon.style.color = '#3fb950';
-                    checkIcon.style.fontSize = '0.8rem';
-                    sel.parentNode.appendChild(checkIcon);
-                    setTimeout(() => checkIcon.remove(), 2000);
-                    if (newStatus === 'completed') {
-                        setTimeout(() => fetchJobs(currentPage), 1500);
-                    }
-                }
-            } catch(e) {
-                alert('Error de conexión');
-            }
+            renderPagination(data.total || 0, data.page || 1, data.limit || 25);
         }
 
         function renderPagination(total, page, limit) {
-            const controls = document.getElementById('pagination-controls');
-            controls.innerHTML = '';
-            const totalPages = Math.ceil(total / limit);
+            const container = document.getElementById('pagination-controls');
+            const totalPages = Math.max(1, Math.ceil(total / limit));
+            container.innerHTML = '';
 
-            if (totalPages <= 1) return;
+            const prev = document.createElement('button');
+            prev.className = 'page-btn';
+            prev.textContent = 'Anterior';
+            prev.disabled = page <= 1;
+            prev.onclick = () => fetchJobs(page - 1);
+            container.appendChild(prev);
 
-            const prevBtn = document.createElement('button');
-            prevBtn.className = 'page-btn';
-            prevBtn.innerText = '←';
-            prevBtn.disabled = page === 1;
-            prevBtn.onclick = () => fetchJobs(page - 1);
-            controls.appendChild(prevBtn);
+            const info = document.createElement('span');
+            info.style.color = 'var(--text-muted)';
+            info.textContent = `Página ${page} de ${totalPages}`;
+            container.appendChild(info);
 
-            for (let i = 1; i <= totalPages; i++) {
-                if (i === 1 || i === totalPages || (i >= page - 2 && i <= page + 2)) {
-                    const btn = document.createElement('button');
-                    btn.className = `page-btn ${i === page ? 'active' : ''}`;
-                    btn.innerText = i;
-                    btn.onclick = () => fetchJobs(i);
-                    controls.appendChild(btn);
-                } else if (i === page - 3 || i === page + 3) {
-                    const dots = document.createElement('span');
-                    dots.innerText = '...';
-                    controls.appendChild(dots);
-                }
+            const next = document.createElement('button');
+            next.className = 'page-btn';
+            next.textContent = 'Siguiente';
+            next.disabled = page >= totalPages;
+            next.onclick = () => fetchJobs(page + 1);
+            container.appendChild(next);
+        }
+
+        async function updateStatus(jobId, newStatus) {
+            const res = await fetch(`/api/jobs/${jobId}/status`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: newStatus })
+            });
+            if (!res.ok) {
+                alert('No se pudo actualizar el estado.');
+                return;
             }
-
-            const nextBtn = document.createElement('button');
-            nextBtn.className = 'page-btn';
-            nextBtn.innerText = '→';
-            nextBtn.disabled = page === totalPages;
-            nextBtn.onclick = () => fetchJobs(page + 1);
-            controls.appendChild(nextBtn);
+            fetchJobs(currentPage);
         }
 
         async function deleteJob(jobId) {
-            if(!confirm('¿Borrar permanentemente?')) return;
+            if (!confirm('¿Seguro que quieres eliminar este trabajo?')) return;
             const res = await fetch(`/api/jobs/${jobId}`, { method: 'DELETE' });
-            if(res.ok) fetchJobs(currentPage);
+            if (!res.ok) {
+                alert('No se pudo eliminar el trabajo.');
+                return;
+            }
+            fetchJobs(currentPage);
         }
 
         function previewVideo(url) {
+            currentVideoUrl = url;
             const modal = document.getElementById('videoModal');
-            const player = document.getElementById('previewPlayer');
-            player.src = url;
-            modal.classList.add('active');
-            player.play();
+            document.getElementById('previewPlayer').src = url;
+            modal.classList.add('open');
+            modal.setAttribute('aria-hidden', 'false');
         }
 
         function closeVideoModal() {
-            document.getElementById('videoModal').classList.remove('active');
+            const modal = document.getElementById('videoModal');
             document.getElementById('previewPlayer').pause();
+            document.getElementById('previewPlayer').removeAttribute('src');
+            modal.classList.remove('open');
+            modal.setAttribute('aria-hidden', 'true');
         }
 
         function downloadCurrentVideo() {
-            const url = document.getElementById('previewPlayer').src;
-            if(!url) return;
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = url.split('/').pop();
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
+            if (!currentVideoUrl) return;
+            window.open(currentVideoUrl, '_blank');
         }
 
         async function shareCurrentVideo() {
-            const url = document.getElementById('previewPlayer').src;
-            if(!url) return;
-            const absoluteUrl = url.startsWith('http') ? url : window.location.origin + url;
-            try {
-                if (navigator.share) {
-                    await navigator.share({ title: 'Short Video', text: 'Mira este video generado por Shorts Engine', url: absoluteUrl });
-                } else {
-                    await navigator.clipboard.writeText(absoluteUrl);
-                    alert("Enlace copiado al portapapeles: " + absoluteUrl);
-                }
-            } catch (err) {
-                console.error("Error al compartir:", err);
+            if (!currentVideoUrl) return;
+            if (navigator.share) {
+                await navigator.share({ url: currentVideoUrl, title: 'Vídeo de Shorts Engine' });
+            } else {
+                await navigator.clipboard.writeText(currentVideoUrl);
+                alert('Enlace copiado al portapapeles.');
             }
         }
 
-        loadChannelContext();
-        fetchJobs();
+        document.getElementById('videoModal').addEventListener('click', (event) => {
+            if (event.target.id === 'videoModal') closeVideoModal();
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') closeVideoModal();
+        });
+
+        loadChannelContext().then(() => fetchJobs(1));
     </script>
 </body>
 </html>
-
