@@ -72,7 +72,6 @@
                 </div>
             </div>
             <div style="display: flex; gap: 10px; align-items: flex-start;">
-                <a href="/dashboard" class="badge">← Panel</a>
                 <button onclick="renderMovie()" class="badge badge-processing">🚀 RENDER FINAL</button>
             </div>
         </header>
@@ -507,7 +506,8 @@
             const data = await res.json();
             if(res.ok) {
                 alert("Renderizado iniciado con éxito. Redirigiendo al historial de trabajos...");
-                window.location.href = '/jobs';
+                const channelId = getChannelIdFromQuery();
+                window.location.href = channelId ? `/jobs?channel_id=${channelId}` : '/jobs';
             } else {
                 let errorMsg = "Error desconocido";
                 if (data.detail) {
