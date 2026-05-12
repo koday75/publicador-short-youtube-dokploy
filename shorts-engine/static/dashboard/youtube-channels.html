@@ -264,8 +264,8 @@
     <div class="container">
         <header>
             <div>
-                <h1>ðŸ“º Canales de YouTube</h1>
-                <p style="margin:0.35rem 0 0; color: var(--text-muted);">Configura canales internos, autoriza OAuth con Google y deja listo el motor para publicar vÃ­deos en canales ya existentes.</p>
+                <h1>📺 Canales de YouTube</h1>
+                <p style="margin:0.35rem 0 0; color: var(--text-muted);">Configura canales internos, autoriza OAuth con Google y deja listo el motor para publicar vídeos en canales ya existentes.</p>
             </div>
             <div class="toolbar">
                 <button class="btn-secondary" onclick="newChannel()">+ Nuevo canal</button>
@@ -276,15 +276,15 @@
         <section id="channel-shell" class="channel-shell" style="display:none;">
             <div class="channel-breadcrumb">
                 <a href="/channels">Canales</a>
-                <span>â€º</span>
+                <span>›</span>
                 <span id="channel-breadcrumb-name">Canal</span>
-                <span>â€º</span>
+                <span>›</span>
                 <strong>Ajustes</strong>
             </div>
             <div class="channel-tabs">
                 <a id="tab-overview" class="channel-tab" href="#">Resumen</a>
-                <a id="tab-storyboard" class="channel-tab" href="#">Crear vÃ­deos</a>
-                <a id="tab-gallery" class="channel-tab" href="#">GalerÃ­a</a>
+                <a id="tab-storyboard" class="channel-tab" href="#">Crear vídeos</a>
+                <a id="tab-gallery" class="channel-tab" href="#">Galería</a>
                 <a id="tab-jobs" class="channel-tab" href="#">Trabajos</a>
                 <a id="tab-history" class="channel-tab" href="#">Historial</a>
                 <a id="tab-settings" class="channel-tab active" href="#">Ajustes</a>
@@ -298,7 +298,7 @@
                 <div class="status-head">
                     <div>
                         <h2 id="form-title" style="margin:0;">Nuevo canal</h2>
-                        <p style="margin:0.4rem 0 0; color: var(--text-muted);">Datos internos del canal y configuraciÃ³n por defecto para futuras publicaciones.</p>
+                        <p style="margin:0.4rem 0 0; color: var(--text-muted);">Datos internos del canal y configuración por defecto para futuras publicaciones.</p>
                     </div>
                     <span id="connection-pill" class="status-tag disconnected">No conectado</span>
                 </div>
@@ -312,7 +312,7 @@
                         <input id="internal_name" type="text" placeholder="Canal principal Estrellita Studio">
                     </div>
                     <div class="field full">
-                        <label for="internal_description">DescripciÃ³n interna</label>
+                        <label for="internal_description">Descripción interna</label>
                         <textarea id="internal_description" placeholder="Notas internas, objetivo del canal, nicho, etc."></textarea>
                     </div>
                     <div class="field">
@@ -363,11 +363,11 @@
                 </div>
 
                 <div class="btn-row">
-                    <button onclick="saveChannel()" id="save-btn">Guardar configuraciÃ³n</button>
+                    <button onclick="saveChannel()" id="save-btn">Guardar configuración</button>
                     <button class="btn-secondary" onclick="connectChannel()" id="connect-btn">Conectar con Google / YouTube</button>
                     <button class="btn-secondary" onclick="reconnectChannel()" id="reconnect-btn">Reconectar cuenta</button>
-                    <button class="btn-secondary" onclick="testChannel()" id="test-btn">Probar conexiÃ³n</button>
-                    <button class="btn-danger" onclick="revokeChannel()" id="revoke-btn">Revocar conexiÃ³n</button>
+                    <button class="btn-secondary" onclick="testChannel()" id="test-btn">Probar conexión</button>
+                    <button class="btn-danger" onclick="revokeChannel()" id="revoke-btn">Revocar conexión</button>
                     <button class="btn-danger" onclick="deleteChannel()" id="delete-btn">Eliminar canal</button>
                 </div>
 
@@ -391,7 +391,7 @@
                 <div class="info-list">
                     <div class="info-item">
                         <small>Mensaje</small>
-                        <div id="status_message">Este canal aÃºn no estÃ¡ conectado con Google. ConÃ©ctalo para permitir que la app publique vÃ­deos.</div>
+                        <div id="status_message">Este canal aún no está conectado con Google. Conéctalo para permitir que la app publique vídeos.</div>
                     </div>
                     <div class="info-item">
                         <small>Canal real</small>
@@ -414,7 +414,7 @@
                         <div id="scopes_granted">-</div>
                     </div>
                     <div class="info-item">
-                        <small>Ãšltima prueba</small>
+                        <small>Última prueba</small>
                         <div id="last_test">-</div>
                     </div>
                     <div class="info-item">
@@ -422,7 +422,7 @@
                         <div id="token_expires_at">-</div>
                     </div>
                     <div class="info-item">
-                        <small>Error de conexiÃ³n</small>
+                        <small>Error de conexión</small>
                         <div id="last_error">-</div>
                     </div>
                 </div>
@@ -443,7 +443,7 @@
         }
 
         function formatDate(value) {
-            if (!value) return 'â€”';
+            if (!value) return '—';
             const d = new Date(value);
             if (Number.isNaN(d.getTime())) return value;
             return d.toLocaleString('es-ES');
@@ -492,7 +492,7 @@
                 subtitle.textContent = 'Selecciona un canal para ver su estado y datos reales de YouTube.';
                 thumb.classList.add('hidden');
                 thumb.removeAttribute('src');
-                document.getElementById('status_message').textContent = 'Este canal aÃºn no estÃ¡ conectado con Google. ConÃ©ctalo para permitir que la app publique vÃ­deos.';
+                document.getElementById('status_message').textContent = 'Este canal aún no está conectado con Google. Conéctalo para permitir que la app publique vídeos.';
                 document.getElementById('real_channel_name').textContent = '-';
                 document.getElementById('real_channel_id').textContent = '-';
                 document.getElementById('real_channel_url').textContent = '-';
@@ -520,9 +520,9 @@
                 thumb.classList.add('hidden');
             }
 
-            document.getElementById('status_message').textContent = connected
+                document.getElementById('status_message').textContent = connected
                 ? 'Canal conectado correctamente'
-                : 'Este canal aÃºn no estÃ¡ conectado con Google. ConÃ©ctalo para permitir que la app publique vÃ­deos.';
+                : 'Este canal aún no está conectado con Google. Conéctalo para permitir que la app publique vídeos.';
             document.getElementById('real_channel_name').textContent = channel.youtube_channel_title || '-';
             document.getElementById('real_channel_id').textContent = channel.youtube_channel_id || '-';
             document.getElementById('real_channel_url').textContent = channel.youtube_channel_handle || channel.youtube_channel_url || '-';
@@ -560,7 +560,7 @@
             const secretField = document.getElementById('google_client_secret');
             if (channel?.google_client_secret === '********') {
                 secretField.value = '';
-                secretField.placeholder = 'Secreto guardado; deja este campo vacÃ­o para conservarlo';
+                secretField.placeholder = 'Secreto guardado; deja este campo vacío para conservarlo';
             } else {
                 secretField.value = channel?.google_client_secret || '';
                 secretField.placeholder = 'Pega el secreto de este canal';
@@ -629,7 +629,7 @@
                 throw new Error('El nombre interno es obligatorio.');
             }
             if (!['private', 'unlisted', 'public'].includes(default_privacy_status)) {
-                throw new Error('La privacidad por defecto no es vÃ¡lida.');
+                throw new Error('La privacidad por defecto no es válida.');
             }
             if (!default_category_id) {
                 throw new Error('Category ID es obligatorio.');
@@ -667,7 +667,7 @@
                 }
                 currentChannelId = data.channel.id;
                 if (!silent) {
-                    showFormNote('ConfiguraciÃ³n guardada correctamente.', 'success');
+                    showFormNote('Configuración guardada correctamente.', 'success');
                 }
                 await loadChannels();
                 return data.channel;
@@ -711,10 +711,10 @@
                 const res = await fetch(`/api/youtube/channels/${targetId}/test`, { method: 'POST' });
                 const data = await res.json();
                 if (!res.ok) {
-                    throw new Error(data.detail || data.error || 'No se pudo probar la conexiÃ³n.');
+                    throw new Error(data.detail || data.error || 'No se pudo probar la conexión.');
                 }
                 if (data.ok) {
-                    const extra = data.refreshed ? 'Token caducado, se ha renovado correctamente.' : 'ConexiÃ³n correcta.';
+                    const extra = data.refreshed ? 'Token caducado, se ha renovado correctamente.' : 'Conexión correcta.';
                     showFormNote(extra, 'success');
                 } else {
                     throw new Error(data.error || 'No se pudo conectar.');
@@ -725,7 +725,7 @@
             } finally {
                 const btn = document.getElementById('test-btn');
                 btn.disabled = false;
-                btn.textContent = 'Probar conexiÃ³n';
+                btn.textContent = 'Probar conexión';
             }
         }
 
@@ -733,13 +733,13 @@
             try {
                 const targetId = channelId || currentChannelId;
                 if (!targetId) throw new Error('Selecciona o crea un canal antes de revocar.');
-                if (!confirm('Â¿Quieres revocar la conexiÃ³n de este canal?')) return;
+                if (!confirm('¿Quieres revocar la conexión de este canal?')) return;
                 const res = await fetch(`/api/youtube/channels/${targetId}/revoke`, { method: 'POST' });
                 const data = await res.json();
                 if (!res.ok) {
                     throw new Error(data.detail || data.error || 'No se pudo revocar.');
                 }
-                showFormNote('ConexiÃ³n revocada correctamente.', 'success');
+                showFormNote('Conexión revocada correctamente.', 'success');
                 await loadChannels();
             } catch (error) {
                 showFormNote(error.message, 'error');
@@ -750,7 +750,7 @@
             try {
                 const targetId = channelId || currentChannelId;
                 if (!targetId) throw new Error('Selecciona un canal para eliminar.');
-                if (!confirm('Â¿Eliminar este canal de forma permanente?')) return;
+                if (!confirm('¿Eliminar este canal de forma permanente?')) return;
                 const res = await fetch(`/api/youtube/channels/${targetId}`, { method: 'DELETE' });
                 const data = await res.json();
                 if (!res.ok) {
@@ -771,9 +771,9 @@
             const id = params.get('id');
             if (!oauth) return;
             if (oauth === 'success') {
-                showMessage(id ? 'Canal conectado correctamente.' : 'ConexiÃ³n completada.', 'success');
+                showMessage(id ? 'Canal conectado correctamente.' : 'Conexión completada.', 'success');
             } else {
-                showMessage(message ? decodeURIComponent(message) : 'No se pudo completar la conexiÃ³n OAuth.', 'error');
+                showMessage(message ? decodeURIComponent(message) : 'No se pudo completar la conexión OAuth.', 'error');
             }
         }
 
