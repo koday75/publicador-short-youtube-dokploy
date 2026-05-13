@@ -475,7 +475,7 @@
                             <h3>Últimos trabajos</h3>
                             <p>Lo más reciente del canal para controlar progreso y errores.</p>
                         </div>
-                        <a href="/jobs" id="jobs-link" class="badge" style="text-decoration:none; background:var(--accent); color:#000; font-weight:bold;">Abrir cola</a>
+                        <a href="/jobs" id="jobs-link" class="badge" style="text-decoration:none; background:var(--accent); color:#000; font-weight:bold;">Ver trabajos</a>
                     </div>
                     <div id="recent-jobs-list" class="activity-list">
                         <div class="empty-state">Cargando trabajos recientes...</div>
@@ -638,6 +638,7 @@
             const statusClassName = jobStatusClass(job.status);
             const canOpen = !!job.video_url;
             const title = job.title || (job.text ? job.text.substring(0, 60) + (job.text.length > 60 ? '...' : '') : job.job_id);
+            const editHref = job.channel_id ? `/storyboard?job_id=${job.job_id}&channel_id=${job.channel_id}` : `/storyboard?job_id=${job.job_id}`;
             return `
                 <div class="activity-row">
                     <div style="min-width:0;">
@@ -647,6 +648,7 @@
                     <div class="activity-meta">
                         <span class="status-pill ${statusClassName}">${jobStatusLabel(job.status)}</span>
                         <small>${shortDate(job.created_at)}</small>
+                        <a href="${editHref}" style="font-size:0.8rem; color:#58a6ff; text-decoration:none;">Editar</a>
                         ${canOpen ? `<a href="${job.video_url}" target="_blank" rel="noopener" style="font-size:0.8rem; color:#58a6ff; text-decoration:none;">Abrir vídeo</a>` : ''}
                     </div>
                 </div>
