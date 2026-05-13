@@ -163,6 +163,17 @@
             </div>
         </div>
 
+        <div id="saveSuccessModal" class="modal">
+            <div class="modal-content" style="max-width: 420px; text-align:center;">
+                <span class="close-modal" onclick="closeSaveSuccessModal()">&times;</span>
+                <h3>✅ Trabajo guardado</h3>
+                <p style="color:var(--text-muted); margin: 0.75rem 0 1rem;">
+                    El borrador se ha guardado correctamente. Puedes seguir creando el vídeo sin salir de esta pantalla.
+                </p>
+                <button class="badge badge-processing" onclick="closeSaveSuccessModal()">Seguir editando</button>
+            </div>
+        </div>
+
 
         <div id="timeline" class="timeline">
             <!-- Escenas aquí -->
@@ -519,9 +530,15 @@
                 });
                 const data = await res.json();
                 if (res.ok) {
-                    alert("Trabajo guardado correctamente. Te llevamos al historial de trabajos del canal.");
                     const channelId = getChannelIdFromQuery();
-                    window.location.href = channelId ? `/jobs?channel_id=${channelId}` : '/jobs';
+                    const savedJobId = data.job_id || requestData.job_id || null;
+                    if (savedJobId) {
+                        const newUrl = new URL(window.location.href);
+                        if (channelId) newUrl.searchParams.set('channel_id', String(channelId));
+                        newUrl.searchParams.set('job_id', savedJobId);
+                        window.history.replaceState({}, '', newUrl.toString());
+                    }
+                    openSaveSuccessModal();
                 } else {
                     let errorMsg = "Error desconocido";
                     if (data.detail) {
@@ -583,6 +600,14 @@
 
         function closeAiModal() {
             document.getElementById('aiModal').classList.remove('active');
+        }
+
+        function closeSaveSuccessModal() {
+            document.getElementById('saveSuccessModal').classList.remove('active');
+        }
+
+        function openSaveSuccessModal() {
+            document.getElementById('saveSuccessModal').classList.add('active');
         }
 
         async function executeAiGeneration() {

@@ -123,7 +123,7 @@
                     <td title="${job.title || job.text || ''}">${displayTitle}</td>
                     <td><span class="badge badge-${job.status}">${job.status}</span></td>
                     <td>
-                        <button class="badge" style="background:#333; cursor:pointer;" onclick="window.location.href='/storyboard?job_id=${job.job_id}'">Ver detalles</button>
+                        <button class="badge" style="background:#333; cursor:pointer;" onclick="window.location.href='${job.channel_id ? `/storyboard?job_id=${job.job_id}&channel_id=${job.channel_id}` : `/storyboard?job_id=${job.job_id}`}'">Ver detalles</button>
                     </td>
                 `;
                 table.appendChild(row);

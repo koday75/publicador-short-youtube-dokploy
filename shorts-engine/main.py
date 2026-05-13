@@ -120,7 +120,7 @@ async def channels_page(request: Request):
 
 @app.get("/overview", response_class=HTMLResponse)
 async def overview_page(request: Request):
-    return await render_dashboard_file(request, "static/dashboard/index.html")
+    return RedirectResponse(url="/channels")
 
 @app.get("/channels/{channel_id}", response_class=HTMLResponse)
 async def channel_workspace_page(channel_id: int, request: Request):
