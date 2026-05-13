@@ -300,7 +300,7 @@
                 <p>Empieza por elegir un canal. Cada canal abre su propio workspace con las herramientas de creación, galería, trabajos y publicación.</p>
             </div>
             <div class="toolbar">
-                <a href="#" class="toolbar-link primary" onclick="openCreateModal(); return false;">➕ Conectar Canal</a>
+                <button type="button" id="connect-channel-button" data-action="open-create-modal" class="toolbar-link primary">➕ Conectar Canal</button>
                 <a href="/settings" class="toolbar-link">⚙ Ajustes</a>
             </div>
         </header>
@@ -429,6 +429,18 @@
             document.body.style.overflow = '';
         }
 
+        const connectChannelButton = document.getElementById('connect-channel-button');
+        if (connectChannelButton) {
+            connectChannelButton.addEventListener('click', openCreateModal);
+        }
+
+        document.addEventListener('click', (event) => {
+            const trigger = event.target.closest('[data-action="open-create-modal"]');
+            if (!trigger) return;
+            event.preventDefault();
+            openCreateModal();
+        });
+
         function getCreatePayload() {
             const tags = document.getElementById('default_tags').value.trim();
             return {
@@ -508,7 +520,7 @@
                             <h3 style="margin-top:0;">Aún no has creado canales</h3>
                             <p>Primero crea un canal interno y conéctalo a su cuenta de YouTube. Después podrás entrar a su workspace.</p>
                             <div style="margin-top:1rem;">
-                                <a href="#" onclick="openCreateModal(); return false;" class="badge" style="text-decoration:none; background:var(--accent); color:#000; font-weight:bold;">Conectar canal</a>
+                                <button type="button" data-action="open-create-modal" class="badge" style="background:var(--accent); color:#000; font-weight:bold; border:none;">Conectar canal</button>
                             </div>
                         </div>
                     `;
