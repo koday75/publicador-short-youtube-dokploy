@@ -10,6 +10,12 @@ class JobDatabase:
     def _get_connection(self):
         return sqlite3.connect(self.db_path)
 
+    def _ensure_column(self, conn, table_name: str, column_name: str, column_type: str):
+        cursor = conn.execute(f"PRAGMA table_info({table_name})")
+        existing_columns = {row[1] for row in cursor.fetchall()}
+        if column_name not in existing_columns:
+            conn.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_type}")
+
     def _init_db(self):
         if not os.path.exists(os.path.dirname(self.db_path)):
             os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
@@ -73,37 +79,37 @@ class JobDatabase:
             
                 
             try:
-                conn.execute("ALTER TABLE media ADD COLUMN channel_id INTEGER")
+                self._ensure_column(conn, "media", "channel_id", "INTEGER")
             except Exception:
                 pass
 
             try:
-                conn.execute("ALTER TABLE jobs ADD COLUMN scenes_json TEXT")
+                self._ensure_column(conn, "jobs", "scenes_json", "TEXT")
             except Exception:
                 pass  # La columna ya existe
             
             try:
-                conn.execute("ALTER TABLE jobs ADD COLUMN music_filename TEXT")
+                self._ensure_column(conn, "jobs", "music_filename", "TEXT")
             except Exception:
                 pass
 
             try:
-                conn.execute("ALTER TABLE jobs ADD COLUMN tts_engine TEXT")
+                self._ensure_column(conn, "jobs", "tts_engine", "TEXT")
             except Exception:
                 pass
 
             try:
-                conn.execute("ALTER TABLE jobs ADD COLUMN tts_speed REAL")
+                self._ensure_column(conn, "jobs", "tts_speed", "REAL")
             except Exception:
                 pass
 
             # Migration: add unique title column to existing DBs
             try:
-                conn.execute("ALTER TABLE jobs ADD COLUMN title TEXT")
+                self._ensure_column(conn, "jobs", "title", "TEXT")
             except Exception:
                 pass  # Column already exists
             try:
-                conn.execute("ALTER TABLE jobs ADD COLUMN channel_id INTEGER")
+                self._ensure_column(conn, "jobs", "channel_id", "INTEGER")
             except Exception:
                 pass
             try:
@@ -178,9 +184,9 @@ class JobDatabase:
                 # Deduplicate if necessary before adding constraint (sqlite doesn't support easy ALTER for this)
                 # We'll just try to create a unique index which effectively acts as a constraint
                 conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_ai_assets_media_id ON ai_assets(media_id)")
-                # Add batch_id to ai_tasks if missing
-                conn.execute("ALTER TABLE ai_tasks ADD COLUMN batch_id TEXT")
-                conn.execute("ALTER TABLE ai_tasks ADD COLUMN channel_id INTEGER")
+                # Add batch_id and channel_id to ai_tasks if missing
+                self._ensure_column(conn, "ai_tasks", "batch_id", "TEXT")
+                self._ensure_column(conn, "ai_tasks", "channel_id", "INTEGER")
             except Exception as e:
                 # If column already exists or other error, ignore
                 pass
@@ -225,7 +231,7 @@ class JobDatabase:
                 ("subscriber_count", "INTEGER"),
             ]:
                 try:
-                    conn.execute(f"ALTER TABLE youtube_channels ADD COLUMN {column_def[0]} {column_def[1]}")
+                    self._ensure_column(conn, "youtube_channels", column_def[0], column_def[1])
                 except Exception:
                     pass
 
@@ -243,7 +249,7 @@ class JobDatabase:
             """)
 
             try:
-                conn.execute("ALTER TABLE youtube_oauth_states ADD COLUMN redirect_uri TEXT")
+                self._ensure_column(conn, "youtube_oauth_states", "redirect_uri", "TEXT")
             except Exception:
                 pass
                 
