@@ -90,6 +90,51 @@
         .pos-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; margin-top: 5px; }
         .pos-btn { background: #333; height: 25px; border-radius: 4px; cursor: pointer; border: 1px solid transparent; }
         .pos-btn.active { background: var(--primary); border-color: #fff; }
+        .volume-panel {
+            margin-top: 1rem;
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 1rem;
+        }
+        .volume-card {
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            background: rgba(255,255,255,0.03);
+            padding: 0.85rem;
+        }
+        .volume-card label {
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+        .volume-stepper {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .volume-stepper button {
+            width: 34px;
+            height: 34px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background: rgba(255,255,255,0.06);
+            color: #fff;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .volume-stepper button:hover {
+            border-color: rgba(88, 166, 255, 0.5);
+            background: rgba(88, 166, 255, 0.08);
+        }
+        .volume-stepper input[type="range"] {
+            flex: 1;
+        }
+        .volume-value {
+            min-width: 52px;
+            text-align: right;
+            color: var(--primary);
+            font-weight: 700;
+            font-size: 0.9rem;
+        }
         .channel-shell {
             border: 1px solid rgba(88, 166, 255, 0.18);
             background: rgba(88, 166, 255, 0.05);
@@ -207,6 +252,26 @@
                 <div id="voice-info-box" style="background:rgba(255,215,0,0.1); border:1px solid rgba(255,215,0,0.3); border-radius:8px; padding:10px; font-size:0.8rem; color:var(--text-muted);">
                     💡 <strong>gTTS:</strong> Voz femenina fija de Google. Sin control de velocidad.<br>
                     ⚡ <strong>Edge-TTS:</strong> Voces neurales Microsoft con género y velocidad ajustable.
+                </div>
+            </div>
+            <div class="volume-panel">
+                <div class="volume-card">
+                    <label for="music-volume-range">🎵 Volumen de música de fondo</label>
+                    <div class="volume-stepper">
+                        <button type="button" onclick="adjustVolume('music', -0.05)">−</button>
+                        <input id="music-volume-range" type="range" min="0" max="1" step="0.05" value="0.20" oninput="syncVolumeLabel('music')">
+                        <button type="button" onclick="adjustVolume('music', 0.05)">+</button>
+                        <span id="music-volume-value" class="volume-value">20%</span>
+                    </div>
+                </div>
+                <div class="volume-card">
+                    <label for="voice-volume-range">🎙 Volumen de la voz</label>
+                    <div class="volume-stepper">
+                        <button type="button" onclick="adjustVolume('voice', -0.05)">−</button>
+                        <input id="voice-volume-range" type="range" min="0" max="2" step="0.05" value="1.00" oninput="syncVolumeLabel('voice')">
+                        <button type="button" onclick="adjustVolume('voice', 0.05)">+</button>
+                        <span id="voice-volume-value" class="volume-value">100%</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -341,6 +406,24 @@
             voiceLabel.innerText = engine === 'edge-tts' ? 'Voz Neural ⚡' : 'Acento gTTS';
         }
 
+        function syncVolumeLabel(kind) {
+            const input = document.getElementById(kind === 'music' ? 'music-volume-range' : 'voice-volume-range');
+            const label = document.getElementById(kind === 'music' ? 'music-volume-value' : 'voice-volume-value');
+            if (!input || !label) return;
+            const value = parseFloat(input.value || '0');
+            label.textContent = `${Math.round(value * 100)}%`;
+        }
+
+        function adjustVolume(kind, delta) {
+            const input = document.getElementById(kind === 'music' ? 'music-volume-range' : 'voice-volume-range');
+            if (!input) return;
+            const min = parseFloat(input.min || '0');
+            const max = parseFloat(input.max || '1');
+            const next = Math.min(max, Math.max(min, parseFloat(input.value || '0') + delta));
+            input.value = next.toFixed(2);
+            syncVolumeLabel(kind);
+        }
+
         async function init() {
             await reloadGalleryData();
             
@@ -365,6 +448,18 @@
                     }
                     if(settings.DEFAULT_MUSIC_FILENAME) {
                         try { document.getElementById('global-music').value = settings.DEFAULT_MUSIC_FILENAME; } catch(e){}
+                    }
+                    if(settings.DEFAULT_MUSIC_VOLUME !== undefined && settings.DEFAULT_MUSIC_VOLUME !== null) {
+                        try {
+                            document.getElementById('music-volume-range').value = parseFloat(settings.DEFAULT_MUSIC_VOLUME).toFixed(2);
+                            syncVolumeLabel('music');
+                        } catch(e){}
+                    }
+                    if(settings.DEFAULT_VOICE_VOLUME !== undefined && settings.DEFAULT_VOICE_VOLUME !== null) {
+                        try {
+                            document.getElementById('voice-volume-range').value = parseFloat(settings.DEFAULT_VOICE_VOLUME).toFixed(2);
+                            syncVolumeLabel('voice');
+                        } catch(e){}
                     }
                 } else {
                     onEngineChange();
@@ -402,6 +497,14 @@
                         if(job.music_filename) {
                             document.getElementById('global-music').value = job.music_filename;
                             syncGlobalMusicSelection(job.music_filename, true);
+                        }
+                        if(job.music_volume !== null && job.music_volume !== undefined) {
+                            document.getElementById('music-volume-range').value = parseFloat(job.music_volume).toFixed(2);
+                            syncVolumeLabel('music');
+                        }
+                        if(job.voice_volume !== null && job.voice_volume !== undefined) {
+                            document.getElementById('voice-volume-range').value = parseFloat(job.voice_volume).toFixed(2);
+                            syncVolumeLabel('voice');
                         }
                         
                         // Guardar título para reenviarlo al renderizar
@@ -738,6 +841,8 @@
                 requestData: {
                     scenes,
                     music_filename: document.getElementById('global-music').value,
+                    music_volume: parseFloat(document.getElementById('music-volume-range').value),
+                    voice_volume: parseFloat(document.getElementById('voice-volume-range').value),
                     voice_id: document.getElementById('global-voice').value,
                     niche: document.getElementById('global-niche').value,
                     channel_id: getChannelIdFromQuery(),

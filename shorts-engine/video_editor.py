@@ -106,7 +106,7 @@ class VideoEditor:
         return output_path
 
     def create_short(self, background_video: str, audio_path: str, output_path: str,
-                     music_path: str = None, music_volume: float = 0.2,
+                     music_path: str = None, music_volume: float = 0.2, voice_volume: float = 1.0,
                      logo_path: str = None, logo_position: str = "top-right"):
         srt_path = f"temp_subs_{uuid.uuid4().hex[:8]}.srt"
         temp_render_path = f"{output_path}.render_{uuid.uuid4().hex[:8]}.mp4"
@@ -119,7 +119,8 @@ class VideoEditor:
 
         inputs = ['-stream_loop', '-1', '-i', background_video, '-i', audio_path]
         filter_complex = f"[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,setsar=1,{sub_filter}[v]"
-        audio_mix = "[1:a]volume=1.0[voice]"
+        voice_volume = max(0.0, float(voice_volume))
+        audio_mix = f"[1:a]volume={voice_volume:.3f}[voice]"
 
         if music_path:
             inputs.extend(['-stream_loop', '-1', '-i', music_path])
@@ -172,7 +173,7 @@ class VideoEditor:
                     except Exception:
                         pass
 
-    def assemble_storyboard(self, scenes, output_path, music_path=None, music_volume=0.2):
+    def assemble_storyboard(self, scenes, output_path, music_path=None, music_volume=0.2, voice_volume=1.0):
         """
         Ensambla escenas con transiciones crossfade (fundido) entre clips.
         scenes: list of {audio, video, text, sub_pos, sub_size}
@@ -249,13 +250,15 @@ class VideoEditor:
                     f":line_spacing=10:fix_bounds=true"
                 )
 
+                voice_volume = max(0.0, float(voice_volume))
                 cmd = ['ffmpeg', '-y'] + inputs + [
                     '-i', scene["audio"],
-                    '-vf', f"{video_filter},{drawtext},format=yuv420p,fps={fps}",
+                    '-filter_complex',
+                    f"[0:v]{video_filter},{drawtext},format=yuv420p,fps={fps}[v];[1:a]volume={voice_volume:.3f}[a]",
+                    '-map', '[v]', '-map', '[a]',
                     '-c:v', 'libx264', '-preset', 'ultrafast', '-pix_fmt', 'yuv420p'
                 ] + tune_settings + [
                     '-c:a', 'aac', '-ar', '44100',
-                    '-map', '0:v', '-map', '1:a',
                     '-shortest', clip_output
                 ]
 

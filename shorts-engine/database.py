@@ -94,6 +94,16 @@ class JobDatabase:
                 pass
 
             try:
+                self._ensure_column(conn, "jobs", "music_volume", "REAL")
+            except Exception:
+                pass
+
+            try:
+                self._ensure_column(conn, "jobs", "voice_volume", "REAL")
+            except Exception:
+                pass
+
+            try:
                 self._ensure_column(conn, "jobs", "tts_engine", "TEXT")
             except Exception:
                 pass
@@ -427,11 +437,11 @@ class JobDatabase:
             cursor = conn.execute(query, params)
             return cursor.fetchone()[0] > 0
 
-    def add_job(self, job_id, text, niche, voice_id, status="processing", scenes_json=None, music_filename=None, tts_engine=None, tts_speed=None, title=None, channel_id=None):
+    def add_job(self, job_id, text, niche, voice_id, status="processing", scenes_json=None, music_filename=None, music_volume=None, voice_volume=None, tts_engine=None, tts_speed=None, title=None, channel_id=None):
         with self._get_connection() as conn:
             conn.execute(
-                "INSERT INTO jobs (job_id, channel_id, title, text, niche, voice_id, status, scenes_json, music_filename, tts_engine, tts_speed) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                (job_id, channel_id, title, text, niche, voice_id, status, scenes_json, music_filename, tts_engine, tts_speed)
+                "INSERT INTO jobs (job_id, channel_id, title, text, niche, voice_id, status, scenes_json, music_filename, music_volume, voice_volume, tts_engine, tts_speed) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (job_id, channel_id, title, text, niche, voice_id, status, scenes_json, music_filename, music_volume, voice_volume, tts_engine, tts_speed)
             )
             conn.commit()
 

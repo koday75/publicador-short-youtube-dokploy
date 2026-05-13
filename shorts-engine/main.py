@@ -172,6 +172,8 @@ class StoryboardScene(BaseModel):
 class StoryboardRequest(BaseModel):
     scenes: List[StoryboardScene]
     music_filename: Optional[str] = None
+    music_volume: Optional[float] = None
+    voice_volume: Optional[float] = None
     voice_id: Optional[str] = None
     niche: str = "default"
     channel_id: Optional[int] = None
@@ -299,6 +301,8 @@ async def get_settings(session=Depends(get_current_user)):
     # Ajustes varios
     keys["2FA_ENABLED"] = db.get_setting("2FA_ENABLED", "true")
     keys["KIE_CURRENT_KEY_INDEX"] = db.get_setting("KIE_CURRENT_KEY_INDEX", "1")
+    keys["DEFAULT_MUSIC_VOLUME"] = db.get_setting("DEFAULT_MUSIC_VOLUME")
+    keys["DEFAULT_VOICE_VOLUME"] = db.get_setting("DEFAULT_VOICE_VOLUME")
 
     return keys
 
@@ -1221,6 +1225,22 @@ async def api_render_storyboard(req: StoryboardRequest, background_tasks: Backgr
     else:
         req.music_filename = db.get_setting("DEFAULT_MUSIC_FILENAME") or ""
 
+    if req.music_volume is not None:
+        db.set_setting("DEFAULT_MUSIC_VOLUME", str(req.music_volume))
+    else:
+        try:
+            req.music_volume = float(db.get_setting("DEFAULT_MUSIC_VOLUME") or 0.2)
+        except ValueError:
+            req.music_volume = 0.2
+
+    if req.voice_volume is not None:
+        db.set_setting("DEFAULT_VOICE_VOLUME", str(req.voice_volume))
+    else:
+        try:
+            req.voice_volume = float(db.get_setting("DEFAULT_VOICE_VOLUME") or 1.0)
+        except ValueError:
+            req.voice_volume = 1.0
+
     job_to_overwrite = None
     if req.job_id:
         existing = db.get_job(req.job_id)
@@ -1240,6 +1260,8 @@ async def api_render_storyboard(req: StoryboardRequest, background_tasks: Backgr
         req.voice_id, 
         scenes_json=scenes_json, 
         music_filename=req.music_filename,
+        music_volume=req.music_volume,
+        voice_volume=req.voice_volume,
         tts_engine=req.tts_engine,
         tts_speed=req.tts_speed,
         title=req.title,
@@ -1272,6 +1294,22 @@ async def api_draft_storyboard(req: StoryboardRequest, background_tasks: Backgro
     
     import json
     scenes_json = json.dumps([s.dict() for s in req.scenes])
+
+    if req.music_volume is not None:
+        db.set_setting("DEFAULT_MUSIC_VOLUME", str(req.music_volume))
+    else:
+        try:
+            req.music_volume = float(db.get_setting("DEFAULT_MUSIC_VOLUME") or 0.2)
+        except ValueError:
+            req.music_volume = 0.2
+
+    if req.voice_volume is not None:
+        db.set_setting("DEFAULT_VOICE_VOLUME", str(req.voice_volume))
+    else:
+        try:
+            req.voice_volume = float(db.get_setting("DEFAULT_VOICE_VOLUME") or 1.0)
+        except ValueError:
+            req.voice_volume = 1.0
     
     db.add_job(
         job_id, 
@@ -1281,6 +1319,8 @@ async def api_draft_storyboard(req: StoryboardRequest, background_tasks: Backgro
         status="draft", # Cambio clave
         scenes_json=scenes_json, 
         music_filename=req.music_filename or db.get_setting("DEFAULT_MUSIC_FILENAME"),
+        music_volume=req.music_volume if req.music_volume is not None else float(db.get_setting("DEFAULT_MUSIC_VOLUME") or 0.2),
+        voice_volume=req.voice_volume if req.voice_volume is not None else float(db.get_setting("DEFAULT_VOICE_VOLUME") or 1.0),
         tts_engine=req.tts_engine or db.get_setting("DEFAULT_TTS_ENGINE") or "edge-tts",
         tts_speed=req.tts_speed or float(db.get_setting("DEFAULT_TTS_SPEED") or 1.0),
         title=req.title,
@@ -1583,9 +1623,11 @@ async def process_storyboard_job(job_id, req: StoryboardRequest):
         output_path = os.path.join(BASE_DIR, "shorts", output_filename)
         
         final_video = video_editor.assemble_storyboard(
-            scene_clips, 
-            output_path, 
-            music_path=global_music_path
+            scene_clips,
+            output_path,
+            music_path=global_music_path,
+            music_volume=req.music_volume if req.music_volume is not None else float(db.get_setting("DEFAULT_MUSIC_VOLUME") or 0.2),
+            voice_volume=req.voice_volume if req.voice_volume is not None else float(db.get_setting("DEFAULT_VOICE_VOLUME") or 1.0)
         )
         
         db.update_job_status(job_id, "rendered", video_url=f"/static/shorts/{output_filename}")
@@ -1607,6 +1649,7 @@ class RenderRequest(BaseModel):
     voice_id: str = "pNInz6obpgnuM07pZNoR"
     music_filename: str = None
     music_volume: float = 0.2
+    voice_volume: float = 1.0
     logo_filename: str = None
     logo_position: str = "top-right"
     custom_background_filename: str = None
@@ -1623,7 +1666,15 @@ async def render_short(request: RenderRequest, background_tasks: BackgroundTasks
     output_path = os.path.join(BASE_DIR, "shorts", output_filename)
 
     # Log start to DB
-    db.add_job(job_id, request.text, request.niche, request.voice_id, channel_id=request.channel_id)
+    db.add_job(
+        job_id,
+        request.text,
+        request.niche,
+        request.voice_id,
+        channel_id=request.channel_id,
+        music_volume=request.music_volume,
+        voice_volume=request.voice_volume,
+    )
 
     # Background Selection Logic (Unified)
     bg_path = resolve_background_video(request.niche, request.background_video_name, request.custom_background_filename, channel_id=request.channel_id)
@@ -1642,7 +1693,7 @@ async def render_short(request: RenderRequest, background_tasks: BackgroundTasks
         # 2. Render Video (FFmpeg) with extra params
         video_editor.create_short(
             bg_path, audio_path, output_path,
-            music_path=music_path, music_volume=request.music_volume,
+            music_path=music_path, music_volume=request.music_volume, voice_volume=request.voice_volume,
             logo_path=logo_path, logo_position=request.logo_position
         )
         
