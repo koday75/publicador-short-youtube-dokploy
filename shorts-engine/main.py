@@ -873,10 +873,10 @@ async def api_generate_image(req: AiGenerateRequest, background_tasks: Backgroun
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/ai/tasks")
-async def api_get_ai_tasks(page: int = 1, limit: int = 25, search: str = None, user: str = Depends(get_current_user)):
+async def api_get_ai_tasks(page: int = 1, limit: int = 25, search: str = None, channel_id: int = None, user: str = Depends(get_current_user)):
     offset = (page - 1) * limit
-    tasks = db.get_ai_tasks(limit=limit, offset=offset, search=search)
-    total = db.count_ai_tasks(search=search)
+    tasks = db.get_ai_tasks(limit=limit, offset=offset, search=search, channel_id=channel_id)
+    total = db.count_ai_tasks(search=search, channel_id=channel_id)
     return {
         "tasks": tasks,
         "total": total,

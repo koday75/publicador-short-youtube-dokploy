@@ -27,6 +27,46 @@
         .pagination { display: flex; justify-content: center; gap: 10px; margin-top: 2rem; }
         .page-btn { padding: 8px 16px; background: var(--card-bg); border: 1px solid var(--border-color); color: #fff; border-radius: 6px; cursor: pointer; }
         .page-btn.active { background: var(--primary); border-color: var(--primary); }
+        .channel-shell {
+            border: 1px solid rgba(88, 166, 255, 0.18);
+            background: rgba(88, 166, 255, 0.05);
+            border-radius: 18px;
+            padding: 1rem 1.1rem;
+            margin: 0 0 1rem;
+        }
+        .channel-breadcrumb {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            align-items: center;
+            color: var(--text-muted);
+            font-size: 0.84rem;
+            margin-bottom: 0.8rem;
+        }
+        .channel-breadcrumb a {
+            color: #fff;
+            text-decoration: none;
+        }
+        .channel-tabs {
+            display: flex;
+            gap: 0.55rem;
+            flex-wrap: wrap;
+        }
+        .channel-tab {
+            text-decoration: none;
+            border: 1px solid var(--border-color);
+            border-radius: 999px;
+            padding: 0.55rem 0.85rem;
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            background: rgba(255,255,255,0.03);
+        }
+        .channel-tab.active {
+            background: rgba(88, 166, 255, 0.15);
+            color: #58a6ff;
+            border-color: rgba(88, 166, 255, 0.3);
+            font-weight: 700;
+        }
     </style>
 </head>
 <body>
@@ -47,6 +87,25 @@
             <a href="/ai-tasks" class="active">Registros IA</a>
             <a href="/settings">Ajustes</a>
         </nav>
+
+        <section id="channel-shell" class="channel-shell" style="display:none;">
+            <div class="channel-breadcrumb">
+                <a href="/channels">Canales</a>
+                <span>›</span>
+                <span id="channel-breadcrumb-name">Canal</span>
+                <span>›</span>
+                <strong>Registros IA</strong>
+            </div>
+            <div class="channel-tabs">
+                <a id="tab-overview" class="channel-tab" href="#">Resumen</a>
+                <a id="tab-storyboard" class="channel-tab" href="#">Crear vídeos</a>
+                <a id="tab-gallery" class="channel-tab" href="#">Galería</a>
+                <a id="tab-jobs" class="channel-tab" href="#">Trabajos</a>
+                <a id="tab-ai-tasks" class="channel-tab active" href="#">Registros IA</a>
+                <a id="tab-history" class="channel-tab" href="#">Historial</a>
+                <a id="tab-settings" class="channel-tab" href="#">Ajustes</a>
+            </div>
+        </section>
 
         <div id="tasks-list">
             <!-- Cargando -->
@@ -87,9 +146,40 @@
         let currentPage = 1;
         let pollingInterval;
 
+        function getChannelIdFromQuery() {
+            const params = new URLSearchParams(window.location.search);
+            const raw = params.get('channel_id');
+            if (!raw) return null;
+            const value = parseInt(raw, 10);
+            return Number.isFinite(value) ? value : null;
+        }
+
+        async function loadChannelContext() {
+            const channelId = getChannelIdFromQuery();
+            if (!channelId) return;
+            try {
+                const res = await fetch(`/api/youtube/channels/${channelId}`);
+                if (!res.ok) return;
+                const channel = await res.json();
+                document.title = `Registros IA - ${channel.internal_name || 'Canal'} - Shorts Engine`;
+                document.getElementById('channel-shell').style.display = 'block';
+                document.getElementById('channel-breadcrumb-name').textContent = channel.internal_name || `Canal ${channelId}`;
+                document.getElementById('tab-overview').href = `/channels/${channelId}`;
+                document.getElementById('tab-storyboard').href = `/storyboard?channel_id=${channelId}`;
+                document.getElementById('tab-gallery').href = `/gallery?channel_id=${channelId}`;
+                document.getElementById('tab-jobs').href = `/jobs?channel_id=${channelId}`;
+                document.getElementById('tab-ai-tasks').href = `/ai-tasks?channel_id=${channelId}`;
+                document.getElementById('tab-history').href = `/channels/${channelId}/history`;
+                document.getElementById('tab-settings').href = `/youtube-channels?channel_id=${channelId}`;
+            } catch (e) {
+                console.error('No se pudo cargar el canal:', e);
+            }
+        }
+
         async function fetchTasks(page = 1) {
             currentPage = page;
-            const res = await fetch(`/api/ai/tasks?page=${page}&limit=25`);
+            const channelId = getChannelIdFromQuery();
+            const res = await fetch(`/api/ai/tasks?page=${page}&limit=25${channelId ? `&channel_id=${channelId}` : ''}`);
             const data = await res.json();
             
             const list = document.getElementById('tasks-list');
@@ -129,7 +219,7 @@
                     </div>
                     <div class="task-actions" style="display:flex; flex-direction:column; gap:5px;">
                         ${task.status === 'draft' ? `<button class="btn-action" style="background:var(--primary); color:#000; font-weight:bold;" onclick="submitDraft('${task.task_id}')">🚀 Enviar a API</button>` : ''}
-                        ${task.status === 'completed' ? `<button class="btn-action btn-secondary" onclick="window.location.href='/gallery?search=${encodeURIComponent(task.prompt.substring(0,10))}'">📂 Ver en Galería</button>` : ''}
+                        ${task.status === 'completed' ? `<button class="btn-action btn-secondary" onclick="window.location.href='${task.channel_id ? `/gallery?channel_id=${task.channel_id}&search=${encodeURIComponent(task.prompt.substring(0,10))}` : `/gallery?search=${encodeURIComponent(task.prompt.substring(0,10))}`}'">📂 Ver en Galería</button>` : ''}
                         ${task.status === 'failed' ? `<button class="btn-action" style="background:#e3b341; color:#000;" onclick="submitDraft('${task.task_id}')">🔄 Reintentar / Enviar</button>` : ''}
                         <button class="btn-action" style="background:var(--error); color:#fff;" onclick="deleteTask('${task.task_id}')">🗑️ Borrar</button>
                     </div>
@@ -243,13 +333,17 @@
                 const res = await fetch('/api/ai/generate', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ prompt, niche })
+                    body: JSON.stringify({ prompt, niche, channel_id: getChannelIdFromQuery() })
                 });
                 
                 if (res.ok) {
                     closeGenerateModal();
                     fetchTasks(1);
                     document.getElementById('gen-prompt').value = '';
+                    const channelId = getChannelIdFromQuery();
+                    if (channelId) {
+                        window.location.href = `/ai-tasks?channel_id=${channelId}`;
+                    }
                 } else {
                     const err = await res.json();
                     alert("Error: " + (err.detail || "Fallo al iniciar tarea"));
@@ -262,7 +356,7 @@
             }
         }
 
-        fetchTasks();
+        loadChannelContext().then(() => fetchTasks());
     </script>
 </body>
 </html>

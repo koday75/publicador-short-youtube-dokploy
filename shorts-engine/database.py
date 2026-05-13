@@ -545,11 +545,14 @@ class JobDatabase:
         )
 
 
-    def get_ai_tasks(self, limit=25, offset=0, search=None):
+    def get_ai_tasks(self, limit=25, offset=0, search=None, channel_id=None):
         with self._get_connection() as conn:
             conn.row_factory = sqlite3.Row
             query = "SELECT * FROM ai_tasks WHERE 1=1"
             params = []
+            if channel_id is not None:
+                query += " AND channel_id = ?"
+                params.append(channel_id)
             if search:
                 query += " AND (prompt LIKE ? OR task_id LIKE ?)"
                 params.extend([f"%{search}%", f"%{search}%"])
@@ -560,10 +563,13 @@ class JobDatabase:
             cursor = conn.execute(query, params)
             return [dict(row) for row in cursor.fetchall()]
 
-    def count_ai_tasks(self, search=None):
+    def count_ai_tasks(self, search=None, channel_id=None):
         with self._get_connection() as conn:
             query = "SELECT COUNT(*) FROM ai_tasks WHERE 1=1"
             params = []
+            if channel_id is not None:
+                query += " AND channel_id = ?"
+                params.append(channel_id)
             if search:
                 query += " AND (prompt LIKE ? OR task_id LIKE ?)"
                 params.extend([f"%{search}%", f"%{search}%"])

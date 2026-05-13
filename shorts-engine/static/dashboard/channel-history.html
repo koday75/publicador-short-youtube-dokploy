@@ -163,6 +163,7 @@
                 <a id="tab-storyboard" class="channel-tab" href="#">Crear vídeos</a>
                 <a id="tab-gallery" class="channel-tab" href="#">Galería</a>
                 <a id="tab-jobs" class="channel-tab" href="#">Trabajos</a>
+                <a id="tab-ai-tasks" class="channel-tab" href="#">Registros IA</a>
                 <a id="tab-history" class="channel-tab active" href="#">Historial</a>
                 <a id="tab-settings" class="channel-tab" href="#">Ajustes</a>
             </div>
@@ -249,6 +250,7 @@
                 document.getElementById('tab-storyboard').href = `/storyboard?channel_id=${channelId}`;
                 document.getElementById('tab-gallery').href = `/gallery?channel_id=${channelId}`;
                 document.getElementById('tab-jobs').href = `/jobs?channel_id=${channelId}`;
+                document.getElementById('tab-ai-tasks').href = `/ai-tasks?channel_id=${channelId}`;
                 document.getElementById('tab-history').href = `/channels/${channelId}/history`;
                 document.getElementById('tab-settings').href = `/youtube-channels?channel_id=${channelId}`;
                 document.getElementById('history-channel').textContent = channel.internal_name || '-';

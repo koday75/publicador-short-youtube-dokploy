@@ -91,6 +91,7 @@
                 <a id="tab-storyboard" class="channel-tab active" href="#">Crear v&iacute;deos</a>
                 <a id="tab-gallery" class="channel-tab" href="#">Galer&iacute;a</a>
                 <a id="tab-jobs" class="channel-tab" href="#">Trabajos</a>
+                <a id="tab-ai-tasks" class="channel-tab" href="#">Registros IA</a>
                 <a id="tab-history" class="channel-tab" href="#">Historial</a>
                 <a id="tab-settings" class="channel-tab" href="#">Ajustes</a>
             </div>
@@ -194,6 +195,7 @@
                 document.getElementById('tab-storyboard').href = `/storyboard?channel_id=${channelId}`;
                 document.getElementById('tab-gallery').href = `/gallery?channel_id=${channelId}`;
                 document.getElementById('tab-jobs').href = `/jobs?channel_id=${channelId}`;
+                document.getElementById('tab-ai-tasks').href = `/ai-tasks?channel_id=${channelId}`;
                 document.getElementById('tab-history').href = `/channels/${channelId}/history`;
                 document.getElementById('tab-settings').href = `/youtube-channels?channel_id=${channelId}`;
             } catch (e) {}
@@ -605,8 +607,9 @@
                 if(res.ok) {
                     const data = await res.json();
                     closeAiModal();
-                    if(confirm("Tarea de IA iniciada con éxito. ¿Deseas ir a la página de Registros para ver el progreso?")) {
-                        window.location.href = "/ai-tasks";
+                    const channelId = getChannelIdFromQuery();
+                    if(confirm("Tarea de IA iniciada con éxito. ¿Deseas ir a los registros de IA de este canal para ver el progreso?")) {
+                        window.location.href = channelId ? `/ai-tasks?channel_id=${channelId}` : "/ai-tasks";
                     } else {
                         alert("La imagen se está generando en segundo plano. Aparecerá en la galería cuando esté lista.");
                     }
