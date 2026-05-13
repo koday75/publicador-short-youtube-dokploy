@@ -599,7 +599,7 @@
                 const res = await fetch('/api/ai/generate', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ prompt, niche })
+                    body: JSON.stringify({ prompt, niche, channel_id: getChannelIdFromQuery() })
                 });
 
                 if(res.ok) {

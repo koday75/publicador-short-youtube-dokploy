@@ -222,7 +222,7 @@ class KieAiManager:
 
         return task_status, task_data
 
-    def _process_completed_image(self, url: str, prompt: str, niche: str, model: str):
+    def _process_completed_image(self, url: str, prompt: str, niche: str, model: str, channel_id: int | None = None):
         """Downloads the image from URL and registers it in the database."""
         try:
             res = requests.get(url, timeout=60)
@@ -245,7 +245,8 @@ class KieAiManager:
                 original_name=f"IA: {prompt[:30]}",
                 file_type=f"image/{ext}",
                 file_path=file_path,
-                size_bytes=file_size
+                size_bytes=file_size,
+                channel_id=channel_id
             )
 
             self.db.tag_as_asset(

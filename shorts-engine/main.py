@@ -187,6 +187,7 @@ class AiGenerateRequest(BaseModel):
     prompt: str
     niche: str = "general"
     model: Optional[str] = None
+    channel_id: Optional[int] = None
 
 class AiScenePrompt(BaseModel):
     prompt: str
@@ -855,7 +856,13 @@ async def api_generate_image(req: AiGenerateRequest, background_tasks: Backgroun
     try:
         task_id, api_key = kie_manager.create_remote_task(req.prompt, req.model)
         # Register in local DB as processing
-        db.add_ai_task(task_id, req.prompt, req.niche, req.model or "seedream/5-lite-text-to-image")
+        db.add_ai_task(
+            task_id,
+            req.prompt,
+            req.niche,
+            req.model or "seedream/5-lite-text-to-image",
+            channel_id=req.channel_id,
+        )
         
         # Start polling in background
         background_tasks.add_task(process_ai_task_background, task_id, api_key, req)
@@ -1055,7 +1062,7 @@ async def process_ai_task_background(task_id: str, api_key: str, req: AiGenerate
                 image_url = kie_manager._extract_image_url(data)
                 if image_url:
                     try:
-                        result = kie_manager._process_completed_image(image_url, req.prompt, req.niche, req.model)
+                        result = kie_manager._process_completed_image(image_url, req.prompt, req.niche, req.model, req.channel_id)
                         db.update_ai_task(task_id, "completed", result_url=image_url, media_id=result["media_id"])
                         logger.info(f"AI Task {task_id} completada. URL: {image_url}")
                     except Exception as download_err:

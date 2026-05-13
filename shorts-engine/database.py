@@ -131,6 +131,7 @@ class JobDatabase:
                 CREATE TABLE IF NOT EXISTS ai_tasks (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     task_id TEXT UNIQUE,
+                    channel_id INTEGER,
                     prompt TEXT,
                     niche TEXT,
                     model TEXT,
@@ -179,6 +180,7 @@ class JobDatabase:
                 conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_ai_assets_media_id ON ai_assets(media_id)")
                 # Add batch_id to ai_tasks if missing
                 conn.execute("ALTER TABLE ai_tasks ADD COLUMN batch_id TEXT")
+                conn.execute("ALTER TABLE ai_tasks ADD COLUMN channel_id INTEGER")
             except Exception as e:
                 # If column already exists or other error, ignore
                 pass
@@ -472,11 +474,11 @@ class JobDatabase:
                 
             conn.commit()
 
-    def add_ai_task(self, task_id, prompt, niche, model, batch_id=None):
+    def add_ai_task(self, task_id, prompt, niche, model, batch_id=None, channel_id=None):
         with self._get_connection() as conn:
             conn.execute(
-                "INSERT INTO ai_tasks (task_id, prompt, niche, model, status, batch_id) VALUES (?, ?, ?, ?, ?, ?)",
-                (task_id, prompt, niche, model, "processing", batch_id)
+                "INSERT INTO ai_tasks (task_id, channel_id, prompt, niche, model, status, batch_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (task_id, channel_id, prompt, niche, model, "processing", batch_id)
             )
             conn.commit()
 
