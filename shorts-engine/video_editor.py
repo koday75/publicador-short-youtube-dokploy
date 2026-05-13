@@ -4,6 +4,7 @@ import logging
 import uuid
 import textwrap
 import re
+import unicodedata
 from faster_whisper import WhisperModel
 
 logger = logging.getLogger(__name__)
@@ -24,22 +25,34 @@ class VideoEditor:
             return f"{h:02}:{m:02}:{int(sr):02},{int((sr - int(sr)) * 1000):03}"
         with open(srt_path, "w", encoding="utf-8", newline="\n") as f:
             for i, seg in enumerate(segments):
-                f.write(f"{i+1}\n{fmt(seg['start'])} --> {fmt(seg['end'])}\n{seg['text']}\n\n")
+                text = self._sanitize_text_for_ffmpeg(seg.get("text", ""))
+                f.write(f"{i+1}\n{fmt(seg['start'])} --> {fmt(seg['end'])}\n{text}\n\n")
 
     def _sanitize_text_for_ffmpeg(self, text: str) -> str:
         """Normalize transcript text so FFmpeg drawtext does not render stray control chars."""
         if not text:
             return ""
-        cleaned = text.replace("\r", " ").replace("\n", " ")
+        cleaned = unicodedata.normalize("NFKC", str(text))
+        cleaned = cleaned.replace("\r\n", "\n").replace("\r", "\n")
         cleaned = re.sub(r"[\u200b\u200c\u200d\ufeff]", "", cleaned)
-        cleaned = re.sub(r"\s+", " ", cleaned).strip()
+        cleaned = re.sub(r"[ \t]+", " ", cleaned)
+        cleaned = "\n".join(line.strip() for line in cleaned.split("\n") if line.strip())
         return cleaned
 
     def _wrap_text_for_ffmpeg(self, text: str, max_chars: int = 35) -> str:
         """Wrap text at word boundaries (no escaping needed for textfile)."""
         cleaned = self._sanitize_text_for_ffmpeg(text)
-        lines = textwrap.wrap(cleaned, width=max_chars)
-        return "\n".join(lines)
+        paragraphs = [part.strip() for part in cleaned.split("\n") if part.strip()]
+        wrapped_lines = []
+        for paragraph in paragraphs:
+            lines = textwrap.wrap(
+                paragraph,
+                width=max_chars,
+                break_long_words=False,
+                break_on_hyphens=False,
+            )
+            wrapped_lines.extend(lines or [paragraph])
+        return "\n".join(wrapped_lines)
 
     def _get_audio_duration(self, audio_path: str) -> float:
         """Get audio duration in seconds using ffprobe."""
@@ -53,14 +66,55 @@ class VideoEditor:
         except Exception:
             return 5.0  # fallback
 
+    def _get_media_duration(self, media_path: str) -> float:
+        """Get media duration in seconds using ffprobe."""
+        try:
+            result = subprocess.run(
+                ['ffprobe', '-v', 'error', '-show_entries', 'format=duration',
+                 '-of', 'default=noprint_wrappers=1:nokey=1', media_path],
+                capture_output=True, text=True, check=True
+            )
+            return float(result.stdout.strip())
+        except Exception:
+            return 0.0
+
+    def _apply_global_fades(self, input_path: str, output_path: str, fade_duration: float = 0.8):
+        """Apply a fade in from black and fade out to black to the full video."""
+        total_duration = self._get_media_duration(input_path)
+        if total_duration <= 0:
+            import shutil
+            shutil.copy(input_path, output_path)
+            return output_path
+
+        fade_duration = max(0.2, min(fade_duration, total_duration / 4))
+        fade_out_start = max(0.0, total_duration - fade_duration)
+        cmd = [
+            'ffmpeg', '-y', '-i', input_path,
+            '-filter_complex',
+            (
+                f"[0:v]fade=t=in:st=0:d={fade_duration:.3f},"
+                f"fade=t=out:st={fade_out_start:.3f}:d={fade_duration:.3f}[v];"
+                f"[0:a]afade=t=in:st=0:d={fade_duration:.3f},"
+                f"afade=t=out:st={fade_out_start:.3f}:d={fade_duration:.3f}[a]"
+            ),
+            '-map', '[v]', '-map', '[a]',
+            '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '22',
+            '-c:a', 'aac', '-ar', '44100',
+            '-shortest', output_path
+        ]
+        subprocess.run(cmd, check=True, capture_output=True)
+        return output_path
+
     def create_short(self, background_video: str, audio_path: str, output_path: str,
                      music_path: str = None, music_volume: float = 0.2,
                      logo_path: str = None, logo_position: str = "top-right"):
         srt_path = f"temp_subs_{uuid.uuid4().hex[:8]}.srt"
+        temp_render_path = f"{output_path}.render_{uuid.uuid4().hex[:8]}.mp4"
+        temp_audio_mix_path = f"{output_path}.mix_{uuid.uuid4().hex[:8]}.mp4"
         segments = self.transcribe_audio(audio_path)
         self.generate_srt(segments, srt_path)
 
-        style = "FontSize=10,PrimaryColour=&H00FFFF,Alignment=2,OutlineColour=&H000000,BorderStyle=1,Outline=1"
+        style = "FontName=DejaVu Sans,FontSize=10,PrimaryColour=&H00FFFF,Alignment=2,OutlineColour=&H000000,BorderStyle=1,Outline=1"
         sub_filter = f"subtitles={srt_path}:force_style='{style}'"
 
         inputs = ['-stream_loop', '-1', '-i', background_video, '-i', audio_path]
@@ -97,7 +151,13 @@ class VideoEditor:
 
         logger.info(f"Running FFmpeg for /render endpoint")
         try:
+            cmd[-1] = temp_render_path
             subprocess.run(cmd, check=True, capture_output=True)
+            if music_path:
+                self._add_global_music(temp_render_path, music_path, music_volume, temp_audio_mix_path)
+                self._apply_global_fades(temp_audio_mix_path, output_path)
+            else:
+                self._apply_global_fades(temp_render_path, output_path)
             return output_path
         except subprocess.CalledProcessError as e:
             logger.error(f"FFmpeg failed: {e.stderr.decode()}")
@@ -105,6 +165,12 @@ class VideoEditor:
         finally:
             if os.path.exists(srt_path):
                 os.remove(srt_path)
+            for tmp_path in [temp_render_path, temp_audio_mix_path]:
+                if os.path.exists(tmp_path):
+                    try:
+                        os.remove(tmp_path)
+                    except Exception:
+                        pass
 
     def assemble_storyboard(self, scenes, output_path, music_path=None, music_volume=0.2):
         """
@@ -116,6 +182,7 @@ class VideoEditor:
         FADE_DURATION = 0.5  # seconds for crossfade
         import time
         render_id = str(int(time.time()))
+        temp_music_path = f"{output_path}.music_{uuid.uuid4().hex[:8]}.mp4"
 
         try:
             for idx, scene in enumerate(scenes):
@@ -175,6 +242,7 @@ class VideoEditor:
                 escaped_txt_output = txt_output.replace("\\", "/") # Escaping path for FFmpeg
                 drawtext = (
                     f"drawtext=textfile='{escaped_txt_output}'"
+                    f":font='DejaVu Sans'"
                     f":fontcolor=white:fontsize={sub_size}"
                     f":box=1:boxcolor=black@0.6:boxborderw=15"
                     f":x=(w-text_w)/2:y={y_pos}"
@@ -241,10 +309,10 @@ class VideoEditor:
 
             # Add global music if provided
             if music_path:
-                self._add_global_music(assembled, music_path, music_volume, output_path)
+                self._add_global_music(assembled, music_path, music_volume, temp_music_path)
+                self._apply_global_fades(temp_music_path, output_path)
             else:
-                import shutil
-                shutil.copy(assembled, output_path)
+                self._apply_global_fades(assembled, output_path)
 
             if assembled != output_path and os.path.exists(assembled):
                 os.remove(assembled)
@@ -257,7 +325,7 @@ class VideoEditor:
             raise Exception(f"FFmpeg error: {stderr}")
         finally:
             # Clean original temp clips and text files
-            for c in temp_clips + temp_text_files:
+            for c in temp_clips + temp_text_files + [temp_music_path]:
                 if os.path.exists(c) and c != output_path:
                     try:
                         os.remove(c)
@@ -265,9 +333,18 @@ class VideoEditor:
                         pass
 
     def _add_global_music(self, video_path, music_path, volume, output_path):
+        video_duration = self._get_media_duration(video_path)
+        music_fade_out = 2.0 if video_duration >= 2.0 else max(0.2, video_duration / 4)
+        music_fade_out_start = max(0.0, video_duration - music_fade_out)
         cmd = [
             'ffmpeg', '-y', '-i', video_path, '-stream_loop', '-1', '-i', music_path,
-            '-filter_complex', f"[1:a]volume={volume}[bg];[0:a][bg]amix=inputs=2:duration=first[aout]",
+            '-filter_complex',
+            (
+                f"[1:a]volume={volume},"
+                f"afade=t=in:st=0:d=1.0,"
+                f"afade=t=out:st={music_fade_out_start:.3f}:d={music_fade_out:.3f}[bg];"
+                f"[0:a][bg]amix=inputs=2:duration=first[aout]"
+            ),
             '-map', '0:v', '-map', '[aout]',
             '-c:v', 'copy', '-c:a', 'aac', '-shortest', output_path
         ]
