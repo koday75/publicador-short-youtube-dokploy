@@ -244,6 +244,8 @@ class JobDatabase:
                 ("google_client_secret", "TEXT"),
                 ("google_redirect_uri", "TEXT"),
                 ("subscriber_count", "INTEGER"),
+                ("view_count", "INTEGER"),
+                ("video_count", "INTEGER"),
             ]:
                 try:
                     self._ensure_column(conn, "youtube_channels", column_def[0], column_def[1])

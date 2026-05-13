@@ -36,6 +36,19 @@
         .action-btn { padding: 4px 10px; font-size: 0.75rem; border-radius: 5px; cursor: pointer; border: none; }
         .btn-delete { background: rgba(248,81,73,0.2); color: #f85149; border: 1px solid #f85149; }
         .btn-view { background: rgba(88,166,255,0.15); color: #58a6ff; border: 1px solid #58a6ff; }
+        .views-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.35rem 0.65rem;
+            border-radius: 999px;
+            border: 1px solid rgba(88,166,255,0.25);
+            background: rgba(88,166,255,0.08);
+            color: #58a6ff;
+            font-weight: 700;
+            font-size: 0.8rem;
+            white-space: nowrap;
+        }
         .status-pill {
             display: inline-flex;
             align-items: center;
@@ -204,13 +217,14 @@
                         <th>ID</th>
                         <th>Título</th>
                         <th>Estado</th>
+                        <th>Vistas</th>
                         <th>Creado</th>
                         <th>Acciones</th>
                     </tr>
                 </thead>
                 <tbody id="jobs-table">
                     <tr>
-                        <td colspan="5" class="empty-state">Cargando trabajos...</td>
+                        <td colspan="6" class="empty-state">Cargando trabajos...</td>
                     </tr>
                 </tbody>
             </table>
@@ -279,13 +293,13 @@
             const search = document.getElementById('job-search').value;
             const channelId = getChannelIdFromQuery();
             const table = document.getElementById('jobs-table');
-            table.innerHTML = '<tr><td colspan="5" class="empty-state">Cargando trabajos...</td></tr>';
+            table.innerHTML = '<tr><td colspan="6" class="empty-state">Cargando trabajos...</td></tr>';
 
             const res = await fetch(`/api/jobs?page=${page}&limit=25&search=${encodeURIComponent(search)}${channelId ? `&channel_id=${channelId}` : ''}`);
             const data = await res.json();
 
             if (!data.jobs || !data.jobs.length) {
-                table.innerHTML = '<tr><td colspan="5" class="empty-state">No se encontraron trabajos.</td></tr>';
+                table.innerHTML = '<tr><td colspan="6" class="empty-state">No se encontraron trabajos.</td></tr>';
                 renderPagination(data.total || 0, data.page || 1, data.limit || 25);
                 return;
             }
@@ -307,6 +321,7 @@
                     <td style="font-family:monospace; font-size:0.8rem;">${job.job_id.substring(0, 12)}</td>
                     <td style="max-width:320px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${job.title || job.text || ''}">${displayTitle}</td>
                     <td>${statusCell}</td>
+                    <td>${job.youtube_view_count !== null && job.youtube_view_count !== undefined ? `<span class="views-pill">👁 ${new Intl.NumberFormat('es-ES').format(job.youtube_view_count)}</span>` : '<span style="color:var(--text-muted);">—</span>'}</td>
                     <td style="font-size:0.85rem; color:var(--text-muted);">${new Date(job.created_at).toLocaleString('es-ES')}</td>
                     <td style="display:flex; gap:6px; flex-wrap:wrap;">
                         <button class="action-btn" style="background:#333; color:#fff;" onclick="window.location.href='${job.channel_id ? `/storyboard?job_id=${job.job_id}&channel_id=${job.channel_id}` : `/storyboard?job_id=${job.job_id}`}'">✏️</button>

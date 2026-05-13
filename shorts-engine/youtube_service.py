@@ -202,6 +202,8 @@ class YouTubeChannelService:
             "youtube_channel_url": channel_url,
             "thumbnail_url": self._extract_thumbnail(channel_info),
             "subscriber_count": self._parse_int(channel_info.get("statistics", {}).get("subscriberCount")),
+            "view_count": self._parse_int(channel_info.get("statistics", {}).get("viewCount")),
+            "video_count": self._parse_int(channel_info.get("statistics", {}).get("videoCount")),
             "connected_google_email": profile.get("email"),
             "scopes_granted": token_payload.get("scope") or " ".join(self.scopes),
             "access_token_encrypted": self.encrypt_token(token_payload.get("access_token")),
@@ -676,3 +678,38 @@ class YouTubeChannelService:
         if not res.ok:
             raise YouTubeAuthError(f"No se pudo asignar la miniatura: {res.text}")
         return res.json()
+
+    def get_video_statistics(self, channel_id: int, video_ids: list[str]) -> dict[str, dict[str, Any]]:
+        self.reload_oauth_config()
+        self._resolve_channel_oauth_config(channel_id)
+        auth = self.get_authorized_client(channel_id)
+        access_token = auth["access_token"]
+        ids = [str(video_id).strip() for video_id in video_ids if str(video_id).strip()]
+        if not ids:
+            return {}
+
+        stats_map: dict[str, dict[str, Any]] = {}
+        for idx in range(0, len(ids), 50):
+            chunk = ids[idx:idx + 50]
+            res = requests.get(
+                f"{self.YOUTUBE_API_BASE}/videos",
+                params={
+                    "part": "statistics",
+                    "id": ",".join(chunk),
+                    "fields": "items(id,statistics(viewCount,likeCount,commentCount))",
+                },
+                headers={"Authorization": f"Bearer {access_token}"},
+                timeout=30,
+            )
+            if not res.ok:
+                raise YouTubeAuthError(f"No se pudieron leer las estadísticas del vídeo: {res.text}")
+
+            payload = res.json()
+            for item in payload.get("items") or []:
+                stats = item.get("statistics") or {}
+                stats_map[item.get("id")] = {
+                    "view_count": self._parse_int(stats.get("viewCount")),
+                    "like_count": self._parse_int(stats.get("likeCount")),
+                    "comment_count": self._parse_int(stats.get("commentCount")),
+                }
+        return stats_map

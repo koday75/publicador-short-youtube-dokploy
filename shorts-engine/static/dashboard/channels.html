@@ -140,7 +140,7 @@
         }
         .channel-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
             gap: 1.2rem;
             margin-top: 1.25rem;
         }
@@ -152,6 +152,7 @@
             display: flex;
             flex-direction: column;
             gap: 1rem;
+            min-width: 0;
         }
         .channel-card:hover {
             border-color: rgba(88, 166, 255, 0.35);
@@ -206,6 +207,7 @@
             border-radius: 12px;
             padding: 0.8rem 0.9rem;
             background: rgba(0,0,0,0.16);
+            min-width: 0;
         }
         .meta-item small {
             display: block;
@@ -216,8 +218,38 @@
             margin-bottom: 0.3rem;
         }
         .meta-item strong {
+            display: block;
             font-size: 0.92rem;
             font-weight: 600;
+            line-height: 1.35;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+        }
+        .stat-strip {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 0.75rem;
+        }
+        .stat-pill {
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 0.75rem 0.85rem;
+            background: rgba(0,0,0,0.16);
+            min-width: 0;
+        }
+        .stat-pill small {
+            display: block;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-size: 0.68rem;
+            margin-bottom: 0.3rem;
+        }
+        .stat-pill strong {
+            display: block;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+            line-height: 1.35;
         }
         .card-actions {
             display: flex;
@@ -256,6 +288,7 @@
         @media (max-width: 720px) {
             .hero { flex-direction: column; }
             .meta-grid { grid-template-columns: 1fr; }
+            .stat-strip { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -510,11 +543,22 @@
                                 <small>Privacidad</small>
                                 <strong>${channel.default_privacy_status || 'private'}</strong>
                             </div>
-                            <div class="meta-item">
+                        </div>
+
+                        <div class="stat-strip">
+                            <div class="stat-pill">
                                 <small>Suscriptores</small>
                                 <strong>${formatSubscribers(channel.subscriber_count)}</strong>
                             </div>
-                            <div class="meta-item">
+                            <div class="stat-pill">
+                                <small>Vistas</small>
+                                <strong>${formatSubscribers(channel.view_count)}</strong>
+                            </div>
+                            <div class="stat-pill">
+                                <small>Vídeos</small>
+                                <strong>${formatSubscribers(channel.video_count)}</strong>
+                            </div>
+                            <div class="stat-pill">
                                 <small>Trabajos</small>
                                 <strong>${formatSubscribers(channel.jobs_count)}</strong>
                             </div>

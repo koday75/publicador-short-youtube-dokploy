@@ -309,7 +309,11 @@ async def api_list_youtube_channels(user: str = Depends(get_current_user)):
     for ch in raw_channels:
         if (
             ch.get("connection_status") == "connected"
-            and ch.get("subscriber_count") is None
+            and (
+                ch.get("subscriber_count") is None
+                or ch.get("view_count") is None
+                or ch.get("video_count") is None
+            )
             and ch.get("access_token_encrypted")
         ):
             try:
@@ -673,6 +677,39 @@ async def api_get_jobs(page: int = 1, limit: int = 25, search: str = None, chann
     offset = (page - 1) * limit
     jobs = db.get_recent_jobs(limit=limit, offset=offset, search=search, channel_id=channel_id)
     total = db.count_jobs(search=search, channel_id=channel_id)
+
+    jobs_by_channel: dict[int, list[str]] = {}
+    for job in jobs:
+        video_id = job.get("youtube_video_id")
+        job_channel_id = job.get("channel_id")
+        if video_id and job_channel_id is not None:
+            try:
+                channel_key = int(job_channel_id)
+            except Exception:
+                continue
+            jobs_by_channel.setdefault(channel_key, []).append(str(video_id))
+
+    for job in jobs:
+        job["youtube_view_count"] = None
+
+    for job_channel_id, video_ids in jobs_by_channel.items():
+        try:
+            stats_map = youtube_manager.get_video_statistics(job_channel_id, video_ids)
+        except Exception as exc:
+            logger.debug(f"No se pudieron cargar estadísticas de vídeos para canal {job_channel_id}: {exc}")
+            continue
+        for job in jobs:
+            if job.get("channel_id") is None:
+                continue
+            try:
+                if int(job["channel_id"]) != int(job_channel_id):
+                    continue
+            except Exception:
+                continue
+            video_id = job.get("youtube_video_id")
+            if video_id and video_id in stats_map:
+                job["youtube_view_count"] = stats_map[video_id].get("view_count")
+
     return {
         "jobs": jobs,
         "total": total,

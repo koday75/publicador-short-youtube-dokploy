@@ -493,7 +493,7 @@
             document.getElementById('thumb-preview').innerHTML = 'Sin miniatura';
         }
 
-        async function uploadThumbnail() {
+        async function uploadThumbnail(quiet = false) {
             const jobId = getJobId();
             const channelId = getChannelId();
             if (!currentJob || !currentJob.youtube_video_id) {
@@ -516,7 +516,9 @@
                 alert(data.detail || 'No se pudo asignar la miniatura.');
                 return;
             }
-            alert('Miniatura asignada correctamente.');
+            if (!quiet) {
+                alert('Miniatura asignada correctamente.');
+            }
         }
 
         async function loadPublishContext() {
@@ -615,7 +617,7 @@
 
                 if (selectedThumbnailFile) {
                     try {
-                        await uploadThumbnail();
+                        await uploadThumbnail(true);
                     } catch (thumbError) {
                         alert('El vídeo se publicó, pero no se pudo asignar la miniatura.');
                     }
