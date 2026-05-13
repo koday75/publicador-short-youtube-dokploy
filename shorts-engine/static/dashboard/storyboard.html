@@ -399,7 +399,10 @@
                         }
                         
                         document.getElementById('global-niche').value = job.niche || 'default';
-                        if(job.music_filename) document.getElementById('global-music').value = job.music_filename;
+                        if(job.music_filename) {
+                            document.getElementById('global-music').value = job.music_filename;
+                            syncGlobalMusicSelection(job.music_filename, true);
+                        }
                         
                         // Guardar título para reenviarlo al renderizar
                         if(job.title) {
@@ -633,16 +636,37 @@
 
         async function reloadGalleryData() {
             const channelId = getChannelIdFromQuery();
+            const musicSelect = document.getElementById('global-music');
+            const selectedMusic = musicSelect ? musicSelect.value : '';
             const res = await fetch(channelId ? `/api/gallery?limit=1000&channel_id=${channelId}` : '/api/gallery?limit=1000');
             const data = await res.json();
             galleryData = data.items || [];
 
-            const musicSelect = document.getElementById('global-music');
             if (musicSelect) {
                 musicSelect.innerHTML = '<option value="">Ninguna</option>';
                 galleryData.forEach(item => {
                     if(item.file_type === 'audio') musicSelect.innerHTML += `<option value="${item.filename}">${item.original_name}</option>`;
                 });
+                syncGlobalMusicSelection(selectedMusic, true);
+            }
+        }
+
+        function syncGlobalMusicSelection(value, force = false) {
+            const musicSelect = document.getElementById('global-music');
+            if (!musicSelect) return;
+            const nextValue = value !== undefined && value !== null ? value : musicSelect.value;
+            if (!nextValue) {
+                if (force) musicSelect.value = '';
+                return;
+            }
+
+            const exists = Array.from(musicSelect.options).some(opt => opt.value === nextValue);
+            if (!exists) {
+                const label = nextValue.split('/').pop();
+                const option = new Option(`🎵 ${label}`, nextValue, true, true);
+                musicSelect.add(option, 1);
+            } else {
+                musicSelect.value = nextValue;
             }
         }
 
