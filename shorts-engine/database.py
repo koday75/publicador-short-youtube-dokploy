@@ -875,6 +875,10 @@ class JobDatabase:
 
     def delete_youtube_channel(self, channel_id: int) -> bool:
         with self._get_connection() as conn:
+            conn.execute("DELETE FROM youtube_oauth_states WHERE channel_id = ?", (channel_id,))
+            conn.execute("DELETE FROM ai_tasks WHERE channel_id = ?", (channel_id,))
+            conn.execute("DELETE FROM jobs WHERE channel_id = ?", (channel_id,))
+            conn.execute("DELETE FROM media WHERE channel_id = ?", (channel_id,))
             result = conn.execute("DELETE FROM youtube_channels WHERE id = ?", (channel_id,))
             conn.commit()
             return result.rowcount > 0

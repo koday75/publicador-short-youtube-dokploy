@@ -365,7 +365,7 @@
                     <button class="btn-secondary" onclick="reconnectChannel()" id="reconnect-btn">Reconectar cuenta</button>
                     <button class="btn-secondary" onclick="testChannel()" id="test-btn">Probar conexión</button>
                     <button class="btn-danger" onclick="revokeChannel()" id="revoke-btn">Revocar conexión</button>
-                    <button class="btn-danger" onclick="deleteChannel()" id="delete-btn">Eliminar canal</button>
+                    <button type="button" class="btn-danger" onclick="deleteChannel(currentChannelId)" id="delete-btn">Eliminar canal</button>
                 </div>
 
                 <div id="form-note" class="message hidden"></div>
