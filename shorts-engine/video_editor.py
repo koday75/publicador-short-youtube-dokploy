@@ -3,6 +3,7 @@ import os
 import logging
 import uuid
 import textwrap
+import re
 from faster_whisper import WhisperModel
 
 logger = logging.getLogger(__name__)
@@ -21,13 +22,23 @@ class VideoEditor:
             h, m = int(s // 3600), int((s % 3600) // 60)
             sr = s % 60
             return f"{h:02}:{m:02}:{int(sr):02},{int((sr - int(sr)) * 1000):03}"
-        with open(srt_path, "w", encoding="utf-8") as f:
+        with open(srt_path, "w", encoding="utf-8", newline="\n") as f:
             for i, seg in enumerate(segments):
                 f.write(f"{i+1}\n{fmt(seg['start'])} --> {fmt(seg['end'])}\n{seg['text']}\n\n")
 
+    def _sanitize_text_for_ffmpeg(self, text: str) -> str:
+        """Normalize transcript text so FFmpeg drawtext does not render stray control chars."""
+        if not text:
+            return ""
+        cleaned = text.replace("\r", " ").replace("\n", " ")
+        cleaned = re.sub(r"[\u200b\u200c\u200d\ufeff]", "", cleaned)
+        cleaned = re.sub(r"\s+", " ", cleaned).strip()
+        return cleaned
+
     def _wrap_text_for_ffmpeg(self, text: str, max_chars: int = 35) -> str:
         """Wrap text at word boundaries (no escaping needed for textfile)."""
-        lines = textwrap.wrap(text, width=max_chars)
+        cleaned = self._sanitize_text_for_ffmpeg(text)
+        lines = textwrap.wrap(cleaned, width=max_chars)
         return "\n".join(lines)
 
     def _get_audio_duration(self, audio_path: str) -> float:
@@ -142,7 +153,7 @@ class VideoEditor:
                 wrapped_text = self._wrap_text_for_ffmpeg(scene["text"], max_chars=max_chars)
                 
                 txt_output = os.path.join("storage", "shorts", f"tmp_text_{render_id}_{idx}.txt")
-                with open(txt_output, "w", encoding="utf-8") as f:
+                with open(txt_output, "w", encoding="utf-8", newline="\n") as f:
                     f.write(wrapped_text)
                 temp_text_files.append(txt_output)
                 
