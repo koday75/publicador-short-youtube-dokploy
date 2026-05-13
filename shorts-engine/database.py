@@ -103,6 +103,21 @@ class JobDatabase:
             except Exception:
                 pass
 
+            try:
+                self._ensure_column(conn, "jobs", "youtube_video_id", "TEXT")
+            except Exception:
+                pass
+
+            try:
+                self._ensure_column(conn, "jobs", "youtube_video_url", "TEXT")
+            except Exception:
+                pass
+
+            try:
+                self._ensure_column(conn, "jobs", "youtube_published_at", "TIMESTAMP")
+            except Exception:
+                pass
+
             # Migration: add unique title column to existing DBs
             try:
                 self._ensure_column(conn, "jobs", "title", "TEXT")
@@ -431,6 +446,14 @@ class JobDatabase:
             conn.execute(
                 "UPDATE jobs SET status = ?, video_url = ?, error_message = ?, finished_at = ? WHERE job_id = ?",
                 (status, video_url, error_message, finished_at, job_id)
+            )
+            conn.commit()
+
+    def mark_job_published(self, job_id: str, youtube_video_id: str, youtube_video_url: str):
+        with self._get_connection() as conn:
+            conn.execute(
+                "UPDATE jobs SET youtube_video_id = ?, youtube_video_url = ?, youtube_published_at = CURRENT_TIMESTAMP WHERE job_id = ?",
+                (youtube_video_id, youtube_video_url, job_id)
             )
             conn.commit()
 

@@ -134,6 +134,10 @@ async def channel_history_page(channel_id: int, request: Request):
 async def jobs_page(request: Request):
     return await render_dashboard_file(request, "static/dashboard/jobs.html")
 
+@app.get("/publish", response_class=HTMLResponse)
+async def publish_page(request: Request):
+    return await render_dashboard_file(request, "static/dashboard/publish.html")
+
 @app.get("/gallery", response_class=HTMLResponse)
 async def gallery_page(request: Request):
     return await render_dashboard_file(request, "static/dashboard/gallery.html")
@@ -175,6 +179,27 @@ class StoryboardRequest(BaseModel):
     tts_engine: Optional[str] = None
     tts_speed: Optional[float] = None
     title: Optional[str] = None  # Título único del Short (para deduplicación)
+
+class PublishVideoRequest(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    tags: Optional[Union[List[str], str]] = []
+    privacy_status: Optional[str] = None
+    category_id: Optional[str] = None
+    channel_id: Optional[int] = None
+
+def resolve_job_video_path(job: dict) -> str | None:
+    video_url = (job or {}).get("video_url") or ""
+    if not video_url:
+        return None
+    if video_url.startswith("/static/shorts/"):
+        return os.path.join(BASE_DIR, "shorts", os.path.basename(video_url))
+    if video_url.startswith("/static/"):
+        return os.path.join(BASE_DIR, video_url.lstrip("/"))
+    if os.path.isabs(video_url) and os.path.exists(video_url):
+        return video_url
+    candidate = os.path.join(BASE_DIR, video_url.lstrip("/"))
+    return candidate if os.path.exists(candidate) else None
 
 class LoginRequest(BaseModel):
     password: str
@@ -1235,6 +1260,92 @@ async def api_get_job_details(job_id: str, channel_id: int = None, user: str = D
         job["scenes"] = []
         
     return job
+
+@app.get("/api/jobs/{job_id}/publish-context")
+async def api_get_job_publish_context(job_id: str, channel_id: int = None, user: str = Depends(get_current_user)):
+    job = db.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Trabajo no encontrado")
+    if channel_id is not None and job.get("channel_id") != channel_id:
+        raise HTTPException(status_code=404, detail="Trabajo no encontrado para este canal")
+
+    resolved_channel_id = channel_id or job.get("channel_id")
+    channel = db.get_youtube_channel(resolved_channel_id) if resolved_channel_id else None
+    if not channel:
+        raise HTTPException(status_code=404, detail="Canal no encontrado")
+
+    import json
+    try:
+        job["scenes"] = json.loads(job["scenes_json"]) if job.get("scenes_json") else []
+    except Exception:
+        job["scenes"] = []
+
+    return {
+        "job": job,
+        "channel": serialize_youtube_channel(channel),
+        "defaults": {
+            "title": job.get("title") or job.get("text") or job_id,
+            "description": job.get("text") or "",
+            "tags": normalize_tags_input(channel.get("default_tags")),
+            "privacy_status": channel.get("default_privacy_status") or "private",
+            "category_id": channel.get("default_category_id") or "22",
+        },
+    }
+
+@app.post("/api/jobs/{job_id}/publish")
+async def api_publish_job_to_youtube(job_id: str, req: PublishVideoRequest, user: str = Depends(get_current_user)):
+    job = db.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Trabajo no encontrado")
+
+    resolved_channel_id = req.channel_id or job.get("channel_id")
+    if not resolved_channel_id:
+        raise HTTPException(status_code=400, detail="El trabajo no tiene canal asociado")
+    if job.get("channel_id") is not None and int(job["channel_id"]) != int(resolved_channel_id):
+        raise HTTPException(status_code=404, detail="Trabajo no encontrado para este canal")
+
+    channel = db.get_youtube_channel(int(resolved_channel_id))
+    if not channel:
+        raise HTTPException(status_code=404, detail="Canal no encontrado")
+
+    video_path = resolve_job_video_path(job)
+    if not video_path or not os.path.exists(video_path):
+        raise HTTPException(status_code=400, detail="No se encontró el vídeo renderizado para publicar")
+
+    title = (req.title or job.get("title") or job.get("text") or job_id).strip()
+    description = (req.description if req.description is not None else job.get("text") or "").strip()
+    tags = normalize_tags_input(req.tags or channel.get("default_tags"))
+    privacy_status = (req.privacy_status or channel.get("default_privacy_status") or "private").strip().lower()
+    if privacy_status not in {"private", "unlisted", "public"}:
+        raise HTTPException(status_code=400, detail="privacy_status inválido")
+    category_id = str(req.category_id or channel.get("default_category_id") or "22")
+
+    try:
+        upload_result = youtube_manager.upload_video(
+            int(resolved_channel_id),
+            video_path,
+            {
+                "title": title,
+                "description": description,
+                "tags": tags,
+                "categoryId": category_id,
+                "privacyStatus": privacy_status,
+                "mimeType": "video/mp4",
+            },
+        )
+        youtube_video_id = upload_result.get("id")
+        youtube_video_url = f"https://www.youtube.com/watch?v={youtube_video_id}" if youtube_video_id else upload_result.get("webViewLink") or ""
+        db.mark_job_published(job_id, youtube_video_id, youtube_video_url)
+        return {
+            "status": "success",
+            "youtube_video_id": youtube_video_id,
+            "youtube_video_url": youtube_video_url,
+        }
+    except YouTubeAuthError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        logger.error(f"Error publicando trabajo {job_id}: {exc}")
+        raise HTTPException(status_code=500, detail=str(exc))
 
 def resolve_background_video(niche: str, bg_name: str, custom_id: str = None, channel_id: int = None) -> str:
     """Resuelve la ruta definitiva del vídeo o imagen de fondo."""

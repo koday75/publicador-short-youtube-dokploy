@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Publicar en YouTube - Shorts Engine</title>
+    <link rel="stylesheet" href="/assets/style.css">
+    <style>
+        .toolbar-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            text-decoration: none;
+            border-radius: 999px;
+            padding: 0.65rem 0.95rem;
+            font-weight: 700;
+            border: 1px solid var(--border-color);
+            background: rgba(255,255,255,0.05);
+            color: #fff;
+        }
+        .toolbar-link:hover {
+            border-color: rgba(88, 166, 255, 0.35);
+            background: rgba(88, 166, 255, 0.12);
+        }
+        .channel-shell {
+            border: 1px solid rgba(88, 166, 255, 0.18);
+            background: rgba(88, 166, 255, 0.05);
+            border-radius: 18px;
+            padding: 1rem 1.1rem;
+            margin: 0 0 1rem;
+        }
+        .channel-breadcrumb {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            align-items: center;
+            color: var(--text-muted);
+            font-size: 0.84rem;
+            margin-bottom: 0.8rem;
+        }
+        .channel-breadcrumb a {
+            color: #fff;
+            text-decoration: none;
+        }
+        .channel-tabs {
+            display: flex;
+            gap: 0.55rem;
+            flex-wrap: wrap;
+        }
+        .channel-tab {
+            text-decoration: none;
+            border: 1px solid var(--border-color);
+            border-radius: 999px;
+            padding: 0.55rem 0.85rem;
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            background: rgba(255,255,255,0.03);
+        }
+        .channel-tab.active {
+            background: rgba(88, 166, 255, 0.15);
+            color: #58a6ff;
+            border-color: rgba(88, 166, 255, 0.3);
+            font-weight: 700;
+        }
+        .publish-layout {
+            display: grid;
+            grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+            gap: 1rem;
+            align-items: start;
+        }
+        .publish-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 18px;
+            padding: 1.25rem;
+        }
+        .field-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.9rem;
+        }
+        .field {
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+        .field label {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+        .field input,
+        .field textarea,
+        .field select {
+            width: 100%;
+            background: rgba(0,0,0,0.2);
+            border: 1px solid var(--border-color);
+            color: #fff;
+            border-radius: 8px;
+            padding: 0.75rem 0.8rem;
+            box-sizing: border-box;
+        }
+        .field textarea {
+            min-height: 140px;
+            resize: vertical;
+        }
+        .helper-box {
+            background: rgba(88, 166, 255, 0.07);
+            border: 1px solid rgba(88, 166, 255, 0.18);
+            border-radius: 14px;
+            padding: 1rem;
+            color: var(--text-muted);
+        }
+        .video-frame {
+            width: 100%;
+            aspect-ratio: 9 / 16;
+            border-radius: 14px;
+            overflow: hidden;
+            background: #000;
+            border: 1px solid var(--border-color);
+        }
+        .video-frame video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            background: #000;
+        }
+        .actions {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            margin-top: 1rem;
+        }
+        .btn {
+            border: none;
+            border-radius: 10px;
+            padding: 0.8rem 1rem;
+            cursor: pointer;
+            font-weight: 700;
+            color: #fff;
+        }
+        .btn-primary { background: var(--primary); }
+        .btn-secondary { background: rgba(255,255,255,0.08); border: 1px solid var(--border-color); }
+        .btn-success { background: rgba(46, 160, 67, 0.95); }
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.3rem 0.6rem;
+            border-radius: 999px;
+            font-size: 0.74rem;
+            font-weight: 700;
+            background: rgba(255,255,255,0.06);
+            color: #d1d5db;
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.72);
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            z-index: 1000;
+        }
+        .modal.open { display: flex; }
+        .modal-content {
+            width: min(420px, 100%);
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 1rem;
+            text-align: center;
+            position: relative;
+        }
+        .close-modal {
+            position: absolute;
+            top: 0.75rem;
+            right: 0.75rem;
+            cursor: pointer;
+            color: var(--text-muted);
+            font-size: 1.2rem;
+        }
+        @media (max-width: 900px) {
+            .publish-layout { grid-template-columns: 1fr; }
+            .field-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📤 Publicar en YouTube</h1>
+            <div style="display:flex; gap:0.75rem; flex-wrap: wrap;">
+                <a id="backJobs" class="toolbar-link" href="/jobs">← Volver a trabajos</a>
+            </div>
+        </header>
+
+        <section id="channel-shell" class="channel-shell" style="display:none;">
+            <div class="channel-breadcrumb">
+                <a href="/channels">Canales</a>
+                <span>›</span>
+                <span id="channel-breadcrumb-name">Canal</span>
+                <span>›</span>
+                <strong>Publicar en YouTube</strong>
+            </div>
+            <div class="channel-tabs">
+                <a id="tab-overview" class="channel-tab" href="#">Resumen</a>
+                <a id="tab-storyboard" class="channel-tab" href="#">Crear vídeos</a>
+                <a id="tab-gallery" class="channel-tab" href="#">Galería</a>
+                <a id="tab-jobs" class="channel-tab active" href="#">Trabajos</a>
+                <a id="tab-ai-tasks" class="channel-tab" href="#">Registros IA</a>
+                <a id="tab-history" class="channel-tab" href="#">Historial</a>
+                <a id="tab-settings" class="channel-tab" href="#">Ajustes</a>
+            </div>
+        </section>
+
+        <div class="publish-layout">
+            <section class="publish-card">
+                <h2 id="job-title" style="margin-top:0;">Cargando trabajo...</h2>
+                <div id="job-status" style="margin:0.25rem 0 1rem;"></div>
+                <div class="helper-box" id="job-summary" style="margin-bottom:1rem;">Cargando datos de publicación...</div>
+
+                <div class="field-grid">
+                    <div class="field">
+                        <label for="publish-title">Título de YouTube</label>
+                        <input id="publish-title" type="text" placeholder="Título del vídeo">
+                    </div>
+                    <div class="field">
+                        <label for="publish-privacy">Privacidad</label>
+                        <select id="publish-privacy">
+                            <option value="private">Privado</option>
+                            <option value="unlisted">No listado</option>
+                            <option value="public">Público</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label for="publish-category">Categoría</label>
+                        <input id="publish-category" type="text" value="22" placeholder="22">
+                    </div>
+                    <div class="field">
+                        <label for="publish-tags">Etiquetas</label>
+                        <input id="publish-tags" type="text" placeholder="viral, shorts, curiosidades">
+                    </div>
+                </div>
+
+                <div class="field" style="margin-top:0.9rem;">
+                    <label for="publish-description">Descripción</label>
+                    <textarea id="publish-description" placeholder="Escribe la descripción del vídeo..."></textarea>
+                </div>
+
+                <div class="actions">
+                    <button class="btn btn-success" onclick="publishNow(event)">Publicar ahora</button>
+                    <button class="btn btn-secondary" onclick="window.location.href = backJobsUrl()">Volver a trabajos</button>
+                </div>
+            </section>
+
+            <aside class="publish-card">
+                <h3 style="margin-top:0;">Vista previa del vídeo</h3>
+                <div class="video-frame">
+                    <video id="preview-video" controls></video>
+                </div>
+                <div style="margin-top:1rem;">
+                    <div style="color:var(--text-muted); font-size:0.8rem; margin-bottom:0.35rem;">Canal</div>
+                    <div id="channel-name" style="font-weight:700;">-</div>
+                </div>
+                <div style="margin-top:0.75rem;">
+                    <div style="color:var(--text-muted); font-size:0.8rem; margin-bottom:0.35rem;">Vídeo local</div>
+                    <div id="video-url" style="word-break:break-all;">-</div>
+                </div>
+            </aside>
+        </div>
+    </div>
+
+    <div id="publishModal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closePublishModal()">&times;</span>
+            <h3 id="publish-modal-title">Publicado</h3>
+            <p id="publish-modal-message" style="color:var(--text-muted); margin:0.8rem 0 1rem;"></p>
+            <button class="btn btn-primary" onclick="window.location.href = backJobsUrl()">Volver a trabajos</button>
+        </div>
+    </div>
+
+    <script>
+        let currentJob = null;
+        let currentChannel = null;
+
+        function getQueryParam(name) {
+            const params = new URLSearchParams(window.location.search);
+            return params.get(name);
+        }
+
+        function getJobId() {
+            return getQueryParam('job_id');
+        }
+
+        function getChannelId() {
+            const raw = getQueryParam('channel_id');
+            const value = parseInt(raw, 10);
+            return Number.isFinite(value) ? value : null;
+        }
+
+        function backJobsUrl() {
+            const channelId = getChannelId();
+            return channelId ? `/jobs?channel_id=${channelId}` : '/jobs';
+        }
+
+        async function loadChannelContext(channelId) {
+            if (!channelId) return;
+            const res = await fetch(`/api/youtube/channels/${channelId}`);
+            if (!res.ok) return;
+            const channel = await res.json();
+            currentChannel = channel;
+            document.getElementById('channel-shell').style.display = 'block';
+            document.getElementById('channel-breadcrumb-name').textContent = channel.internal_name || `Canal ${channelId}`;
+            document.title = `Publicar - ${channel.internal_name || 'Canal'} - Shorts Engine`;
+            document.getElementById('tab-overview').href = `/channels/${channelId}`;
+            document.getElementById('tab-storyboard').href = `/storyboard?channel_id=${channelId}`;
+            document.getElementById('tab-gallery').href = `/gallery?channel_id=${channelId}`;
+            document.getElementById('tab-jobs').href = `/jobs?channel_id=${channelId}`;
+            document.getElementById('tab-ai-tasks').href = `/ai-tasks?channel_id=${channelId}`;
+            document.getElementById('tab-history').href = `/channels/${channelId}/history`;
+            document.getElementById('tab-settings').href = `/youtube-channels?channel_id=${channelId}`;
+            document.getElementById('channel-name').textContent = channel.internal_name || '-';
+        }
+
+        function formatTags(value) {
+            if (Array.isArray(value)) return value.join(', ');
+            return value || '';
+        }
+
+        async function loadPublishContext() {
+            const jobId = getJobId();
+            const channelId = getChannelId();
+            if (!jobId) {
+                document.getElementById('job-title').textContent = 'Falta el ID del trabajo';
+                return;
+            }
+
+            await loadChannelContext(channelId);
+
+            const res = await fetch(`/api/jobs/${jobId}/publish-context${channelId ? `?channel_id=${channelId}` : ''}`);
+            if (!res.ok) {
+                const error = await res.text();
+                document.getElementById('job-title').textContent = 'No se pudo cargar el trabajo';
+                document.getElementById('job-summary').textContent = error;
+                return;
+            }
+
+            const data = await res.json();
+            currentJob = data.job;
+            currentChannel = data.channel;
+
+            const defaults = data.defaults || {};
+            const title = currentJob.title || defaults.title || '';
+            const description = currentJob.text || defaults.description || '';
+
+            document.getElementById('job-title').textContent = title || 'Publicar vídeo';
+            document.getElementById('job-status').innerHTML = currentJob.youtube_video_url
+                ? '<span class="status-pill">Publicado en YouTube</span>'
+                : (currentJob.status === 'draft' ? '<span class="status-pill">Borrador</span>' : '');
+            document.getElementById('job-summary').textContent = currentJob.text || 'Prepara los datos de publicación para este trabajo.';
+            document.getElementById('publish-title').value = title;
+            document.getElementById('publish-description').value = description;
+            document.getElementById('publish-privacy').value = defaults.privacy_status || 'private';
+            document.getElementById('publish-category').value = defaults.category_id || '22';
+            document.getElementById('publish-tags').value = formatTags(defaults.tags);
+            document.getElementById('video-url').textContent = currentJob.video_url || '-';
+            if (currentJob.video_url) {
+                document.getElementById('preview-video').src = currentJob.video_url;
+            }
+        }
+
+        async function publishNow(event) {
+            const jobId = getJobId();
+            const channelId = getChannelId();
+            const btn = event?.target;
+            if (btn) {
+                btn.disabled = true;
+                btn.textContent = 'PUBLICANDO...';
+            }
+
+            try {
+                const res = await fetch(`/api/jobs/${jobId}/publish`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        title: document.getElementById('publish-title').value.trim(),
+                        description: document.getElementById('publish-description').value.trim(),
+                        tags: document.getElementById('publish-tags').value.trim(),
+                        privacy_status: document.getElementById('publish-privacy').value,
+                        category_id: document.getElementById('publish-category').value.trim(),
+                        channel_id: channelId
+                    })
+                });
+
+                const data = await res.json();
+                if (!res.ok) {
+                    alert(data.detail || 'No se pudo publicar el vídeo.');
+                    return;
+                }
+
+                document.getElementById('publish-modal-title').textContent = 'Vídeo publicado';
+                document.getElementById('publish-modal-message').textContent = data.youtube_video_url || 'Publicación completada con éxito.';
+                document.getElementById('publishModal').classList.add('open');
+            } catch (error) {
+                alert(error.message || 'No se pudo publicar el vídeo.');
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.textContent = 'Publicar ahora';
+                }
+            }
+        }
+
+        function closePublishModal() {
+            document.getElementById('publishModal').classList.remove('open');
+        }
+
+        loadPublishContext();
+    </script>
+</body>
+</html>

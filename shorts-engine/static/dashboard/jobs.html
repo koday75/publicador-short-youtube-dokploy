@@ -36,16 +36,25 @@
         .action-btn { padding: 4px 10px; font-size: 0.75rem; border-radius: 5px; cursor: pointer; border: none; }
         .btn-delete { background: rgba(248,81,73,0.2); color: #f85149; border: 1px solid #f85149; }
         .btn-view { background: rgba(88,166,255,0.15); color: #58a6ff; border: 1px solid #58a6ff; }
-        .status-select {
-            background: var(--card-bg);
-            border: 1px solid var(--border-color);
-            color: #fff;
-            border-radius: 6px;
-            padding: 3px 6px;
-            font-size: 0.75rem;
-            cursor: pointer;
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.3rem 0.6rem;
+            border-radius: 999px;
+            font-size: 0.74rem;
+            font-weight: 700;
+            border: 1px solid transparent;
         }
-        .status-select:focus { outline: none; border-color: var(--primary); }
+        .status-pill.draft {
+            background: rgba(255,255,255,0.06);
+            color: #d1d5db;
+            border-color: rgba(255,255,255,0.08);
+        }
+        .status-pill.published {
+            background: rgba(46, 160, 67, 0.18);
+            color: #3fb950;
+            border-color: rgba(46, 160, 67, 0.25);
+        }
         .channel-shell {
             border: 1px solid rgba(88, 166, 255, 0.18);
             background: rgba(88, 166, 255, 0.05);
@@ -285,14 +294,14 @@
             data.jobs.forEach(job => {
                 const row = document.createElement('tr');
                 const displayTitle = job.title || (job.text ? `${job.text.substring(0, 50)}...` : job.job_id);
-                const canPlay = job.status === 'rendered' || job.status === 'completed';
+                const canPlay = !!job.video_url;
+                const canPublish = !!job.video_url && !job.youtube_video_url;
 
-                const statusCell = job.status === 'rendered'
-                    ? `<select class="status-select" id="sel-${job.job_id}" onchange="updateStatus('${job.job_id}', this.value)">
-                            <option value="rendered" ${job.status === 'rendered' ? 'selected' : ''}>⏳ Renderizado</option>
-                            <option value="completed" ${job.status === 'completed' ? 'selected' : ''}>✅ Completado</option>
-                       </select>`
-                    : `<span class="badge badge-${job.status}">${job.status}</span>`;
+                const statusCell = job.youtube_video_url
+                    ? `<span class="status-pill published">Publicado en YouTube</span>`
+                    : (job.status === 'draft'
+                        ? `<span class="status-pill draft">Borrador</span>`
+                        : `<span style="color:var(--text-muted);">—</span>`);
 
                 row.innerHTML = `
                     <td style="font-family:monospace; font-size:0.8rem;">${job.job_id.substring(0, 12)}</td>
@@ -302,6 +311,7 @@
                     <td style="display:flex; gap:6px; flex-wrap:wrap;">
                         <button class="action-btn" style="background:#333; color:#fff;" onclick="window.location.href='${job.channel_id ? `/storyboard?job_id=${job.job_id}&channel_id=${job.channel_id}` : `/storyboard?job_id=${job.job_id}`}'">✏️</button>
                         ${canPlay ? `<button class="action-btn btn-view" onclick="previewVideo('${job.video_url}', ${job.channel_id ?? 'null'})">▶</button>` : ''}
+                        ${canPublish ? `<button class="action-btn" style="background:rgba(88,166,255,0.15); color:#58a6ff; border:1px solid rgba(88,166,255,0.3);" onclick="window.location.href='${job.channel_id ? `/publish?job_id=${job.job_id}&channel_id=${job.channel_id}` : `/publish?job_id=${job.job_id}`}'">📤 Publicar</button>` : ''}
                         <button class="action-btn btn-delete" onclick="deleteJob('${job.job_id}')">🗑</button>
                     </td>
                 `;
@@ -334,19 +344,6 @@
             next.disabled = page >= totalPages;
             next.onclick = () => fetchJobs(page + 1);
             container.appendChild(next);
-        }
-
-        async function updateStatus(jobId, newStatus) {
-            const res = await fetch(`/api/jobs/${jobId}/status`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status: newStatus })
-            });
-            if (!res.ok) {
-                alert('No se pudo actualizar el estado.');
-                return;
-            }
-            fetchJobs(currentPage);
         }
 
         async function deleteJob(jobId) {
