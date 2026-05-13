@@ -593,9 +593,11 @@
         }
 
         function mediaLabel(type) {
-            if (type === 'video') return 'Video';
-            if (type === 'image') return 'Imagen';
-            if (type === 'audio') return 'Audio';
+            const normalized = (type || '').toLowerCase();
+            if (!normalized) return 'Archivo';
+            if (normalized.startsWith('video')) return 'Vídeo';
+            if (normalized.startsWith('image')) return 'Imagen';
+            if (normalized.startsWith('audio')) return 'Audio';
             return 'Archivo';
         }
 
@@ -652,9 +654,12 @@
         }
 
         function renderMediaCard(item) {
-            const thumb = item.file_type === 'video'
+            const fileType = (item.file_type || '').toLowerCase();
+            const isVideo = fileType.startsWith('video');
+            const isImage = fileType.startsWith('image');
+            const thumb = isVideo
                 ? `<video class="media-card-thumb" src="/static/uploads/${item.filename}" muted playsinline></video>`
-                : item.file_type === 'image'
+                : isImage
                     ? `<img class="media-card-thumb" src="/static/uploads/${item.filename}" alt="${item.original_name || item.filename}">`
                     : `<div class="media-card-thumb" style="display:flex;align-items:center;justify-content:center;color:var(--accent);background:#111;">${mediaLabel(item.file_type)}</div>`;
             return `
