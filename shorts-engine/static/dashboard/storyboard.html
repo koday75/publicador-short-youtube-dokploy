@@ -13,6 +13,76 @@
         textarea { width: 100%; height: 100px; background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); color: #fff; border-radius: 8px; padding: 10px; resize: none; }
         .controls { display: flex; flex-direction: column; gap: 0.8rem; }
         .media-picker { background: #222; padding: 10px; border-radius: 8px; font-size: 0.8rem; }
+        .media-picker-button {
+            width: 100%;
+            padding: 0.6rem 0.8rem;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background: rgba(255,255,255,0.04);
+            color: #fff;
+            cursor: pointer;
+            text-align: left;
+        }
+        .media-picker-button:hover {
+            border-color: rgba(88, 166, 255, 0.5);
+            background: rgba(88, 166, 255, 0.08);
+        }
+        .media-picker-button span {
+            display: block;
+            font-size: 0.74rem;
+            color: var(--text-muted);
+            margin-top: 0.15rem;
+        }
+        .media-picker-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 0.8rem;
+            max-height: 55vh;
+            overflow: auto;
+            padding-right: 0.25rem;
+        }
+        .media-picker-item {
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            background: rgba(255,255,255,0.03);
+            overflow: hidden;
+            cursor: pointer;
+            transition: border-color 0.2s ease, transform 0.2s ease;
+        }
+        .media-picker-item:hover {
+            border-color: rgba(88, 166, 255, 0.5);
+            transform: translateY(-1px);
+        }
+        .media-picker-item.active {
+            border-color: #58a6ff;
+            box-shadow: 0 0 0 1px rgba(88, 166, 255, 0.35);
+        }
+        .media-picker-thumb {
+            aspect-ratio: 9 / 16;
+            background: #0b0f14;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+        .media-picker-thumb img, .media-picker-thumb video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .media-picker-meta {
+            padding: 0.65rem 0.75rem 0.8rem;
+        }
+        .media-picker-meta strong {
+            display: block;
+            font-size: 0.85rem;
+            line-height: 1.2;
+            margin-bottom: 0.3rem;
+        }
+        .media-picker-meta small {
+            color: var(--text-muted);
+            font-size: 0.72rem;
+        }
         .preview-box { width: 150px; aspect-ratio: 9/16; border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden; background: #000; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; color: var(--text-muted); }
         .preview-box img, .preview-box video { width: 100%; height: 100%; object-fit: contain; background: #000; }
         .btn-add { background: var(--accent); width: 100%; margin-top: 1rem; padding: 1rem; font-weight: bold; }
@@ -163,6 +233,23 @@
             </div>
         </div>
 
+        <div id="mediaPickerModal" class="modal">
+            <div class="modal-content" style="max-width: 900px;">
+                <span class="close-modal" onclick="closeMediaPickerModal()">&times;</span>
+                <h3>🖼️ Elegir imagen o vídeo</h3>
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem;">
+                    Selecciona un archivo de la galería del canal o sube uno nuevo desde tu equipo.
+                </p>
+                <div style="display:flex; gap:10px; align-items:center; margin-bottom: 1rem; flex-wrap: wrap;">
+                    <button class="badge badge-processing" style="background: var(--accent); color: #000; border:none;" onclick="triggerSceneUpload()">+ Subir archivo</button>
+                    <button class="badge" style="background: rgba(88,166,255,0.15); color: #58a6ff; border:1px solid rgba(88,166,255,0.3);" onclick="refreshMediaPicker()">↻ Recargar galería</button>
+                    <span id="media-picker-context" style="color: var(--text-muted); font-size: 0.8rem;"></span>
+                    <input type="file" id="scene-media-upload" accept="image/*,video/*" style="display:none" onchange="uploadSceneMedia(this)">
+                </div>
+                <div id="media-picker-grid" class="media-picker-grid"></div>
+            </div>
+        </div>
+
         <div id="saveSuccessModal" class="modal">
             <div class="modal-content" style="max-width: 420px; text-align:center;">
                 <span class="close-modal" onclick="closeSaveSuccessModal()">&times;</span>
@@ -255,15 +342,7 @@
         }
 
         async function init() {
-            const channelId = getChannelIdFromQuery();
-            const res = await fetch(channelId ? `/api/gallery?limit=1000&channel_id=${channelId}` : '/api/gallery?limit=1000'); // Get more for the selector
-            const data = await res.json();
-            galleryData = data.items;
-            
-            const musicSelect = document.getElementById('global-music');
-            galleryData.forEach(item => {
-                if(item.file_type === 'audio') musicSelect.innerHTML += `<option value="${item.filename}">${item.original_name}</option>`;
-            });
+            await reloadGalleryData();
             
             // Cargar settings globales del backend
             try {
@@ -364,11 +443,13 @@
                     <div class="media-picker">
                         <label>Imagen/Vídeo de Fondo</label>
                         <div style="display: flex; gap: 5px;">
-                            <select id="media-${id}" style="flex: 1;" onchange="updatePreview(${id})">
-                                ${galleryData.filter(m => m.file_type && !m.file_type.includes('audio')).map(m => `<option value="${m.filename}">${m.file_type && m.file_type.includes('video') ? '🎥' : '🖼️'} ${m.original_name}</option>`).join('')}
-                            </select>
+                            <button type="button" class="media-picker-button" onclick="openMediaPicker(${id})" title="Elegir imagen o vídeo de la galería">
+                                + Imagen
+                                <span id="media-label-${id}">Sin archivo seleccionado</span>
+                            </button>
                             <button class="badge" style="padding: 0 10px; background: #333; border: 1px solid var(--border-color); cursor: pointer;" onclick="openAiModal(${id})" title="Generar con IA">✨</button>
                         </div>
+                        <input type="hidden" id="media-${id}" value="">
                     </div>
                     <div class="media-picker">
                         <label>Posición Subtítulo</label>
@@ -392,10 +473,9 @@
                 document.getElementById(`text-${id}`).value = sceneData.text || '';
                 
                 // Cargar media
-                const mediaSelect = document.getElementById(`media-${id}`);
-                const optionExists = Array.from(mediaSelect.options).some(opt => opt.value === sceneData.media_filename);
-                if(sceneData.media_filename && optionExists) {
-                    mediaSelect.value = sceneData.media_filename;
+                if(sceneData.media_filename) {
+                    document.getElementById(`media-${id}`).value = sceneData.media_filename;
+                    updateMediaLabel(id);
                 }
                 
                 // Cargar tamaño
@@ -453,16 +533,145 @@
         function updatePreview(id) {
             const val = document.getElementById(`media-${id}`).value;
             const preview = document.getElementById(`preview-${id}`);
+            const label = document.getElementById(`media-label-${id}`);
             const item = galleryData.find(m => m.filename === val);
+            if (label) {
+                label.textContent = item ? item.original_name : (val || 'Sin archivo seleccionado');
+            }
+            if (!val) {
+                preview.innerHTML = '<div style="text-align:center; padding: 10px; color:var(--text-muted);">Selecciona una imagen o vídeo</div>';
+                return;
+            }
             if(item) {
                 if(item.file_type && item.file_type.includes('image')) {
                     preview.innerHTML = `<img src="/static/uploads/${val}">`;
                 } else if(item.file_type && item.file_type.includes('video')) {
                     preview.innerHTML = `<video src="/static/uploads/${val}" muted loop autoplay></video>`;
+                } else {
+                    preview.innerHTML = '<div style="text-align:center; padding: 10px; color:var(--error);">Archivo no compatible</div>';
                 }
             } else {
-                preview.innerHTML = '<div style="text-align:center; padding: 10px; color:var(--error);">Archivo no encontrado</div>';
+                const lower = val.toLowerCase();
+                const isVideo = /\.(mp4|mov|avi|webm|mkv)$/i.test(lower);
+                const isImage = /\.(jpg|jpeg|png|webp|gif)$/i.test(lower);
+                if(isVideo) {
+                    preview.innerHTML = `<video src="/static/uploads/${val}" muted loop autoplay></video>`;
+                } else if(isImage) {
+                    preview.innerHTML = `<img src="/static/uploads/${val}">`;
+                } else {
+                    preview.innerHTML = '<div style="text-align:center; padding: 10px; color:var(--error);">Archivo no encontrado</div>';
+                }
             }
+        }
+
+        function updateMediaLabel(id) {
+            const input = document.getElementById(`media-${id}`);
+            const label = document.getElementById(`media-label-${id}`);
+            if (!input || !label) return;
+            const item = galleryData.find(m => m.filename === input.value);
+            label.textContent = item ? item.original_name : (input.value || 'Sin archivo seleccionado');
+        }
+
+        let currentMediaSceneId = null;
+        function openMediaPicker(sceneId) {
+            currentMediaSceneId = sceneId;
+            document.getElementById('mediaPickerModal').classList.add('active');
+            refreshMediaPicker();
+        }
+
+        function closeMediaPickerModal() {
+            document.getElementById('mediaPickerModal').classList.remove('active');
+            currentMediaSceneId = null;
+        }
+
+        function refreshMediaPicker() {
+            const grid = document.getElementById('media-picker-grid');
+            const context = document.getElementById('media-picker-context');
+            const channelId = getChannelIdFromQuery();
+            if (context) {
+                context.textContent = channelId ? `Canal ${channelId}` : 'Galería global';
+            }
+            const items = galleryData.filter(item => !item.file_type || !item.file_type.includes('audio'));
+            if (!grid) return;
+            if (!items.length) {
+                grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; color:var(--text-muted); padding:2rem;">No hay imágenes ni vídeos en la galería de este canal.</div>';
+                return;
+            }
+            const currentValue = currentMediaSceneId ? document.getElementById(`media-${currentMediaSceneId}`)?.value : '';
+            grid.innerHTML = items.map(item => {
+                const isActive = currentValue === item.filename ? 'active' : '';
+                const src = `/static/uploads/${item.filename}`;
+                const thumb = item.file_type && item.file_type.includes('video')
+                    ? `<video src="${src}" muted loop autoplay></video>`
+                    : `<img src="${src}" alt="${item.original_name}">`;
+                return `
+                    <button type="button" class="media-picker-item ${isActive}" onclick="selectSceneMedia('${item.filename}')">
+                        <div class="media-picker-thumb">${thumb}</div>
+                        <div class="media-picker-meta">
+                            <strong>${item.original_name}</strong>
+                            <small>${item.file_type || 'archivo'}</small>
+                        </div>
+                    </button>
+                `;
+            }).join('');
+        }
+
+        function selectSceneMedia(filename) {
+            if (!currentMediaSceneId) return;
+            const input = document.getElementById(`media-${currentMediaSceneId}`);
+            if (input) {
+                input.value = filename;
+                updateMediaLabel(currentMediaSceneId);
+                updatePreview(currentMediaSceneId);
+            }
+            closeMediaPickerModal();
+        }
+
+        function triggerSceneUpload() {
+            document.getElementById('scene-media-upload').click();
+        }
+
+        async function reloadGalleryData() {
+            const channelId = getChannelIdFromQuery();
+            const res = await fetch(channelId ? `/api/gallery?limit=1000&channel_id=${channelId}` : '/api/gallery?limit=1000');
+            const data = await res.json();
+            galleryData = data.items || [];
+
+            const musicSelect = document.getElementById('global-music');
+            if (musicSelect) {
+                musicSelect.innerHTML = '<option value="">Ninguna</option>';
+                galleryData.forEach(item => {
+                    if(item.file_type === 'audio') musicSelect.innerHTML += `<option value="${item.filename}">${item.original_name}</option>`;
+                });
+            }
+        }
+
+        async function uploadSceneMedia(input) {
+            if(!input.files.length) return;
+            const file = input.files[0];
+            const formData = new FormData();
+            formData.append('file', file);
+            const channelId = getChannelIdFromQuery();
+            const res = await fetch(channelId ? `/api/gallery/upload?channel_id=${channelId}` : '/api/gallery/upload', {
+                method: 'POST',
+                body: formData
+            });
+            if(res.ok) {
+                const data = await res.json();
+                await reloadGalleryData();
+                if(currentMediaSceneId) {
+                    const mediaField = document.getElementById(`media-${currentMediaSceneId}`);
+                    if (mediaField) {
+                        mediaField.value = data.filename;
+                        updateMediaLabel(currentMediaSceneId);
+                        updatePreview(currentMediaSceneId);
+                    }
+                }
+                refreshMediaPicker();
+            } else {
+                alert('No se pudo subir el archivo');
+            }
+            input.value = '';
         }
 
         function removeScene(id) {
