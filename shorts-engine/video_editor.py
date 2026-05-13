@@ -5,17 +5,30 @@ import uuid
 import textwrap
 import re
 import unicodedata
-from faster_whisper import WhisperModel
+
+try:
+    from faster_whisper import WhisperModel
+except Exception:  # pragma: no cover - only used when the optional dependency is unavailable
+    WhisperModel = None
 
 logger = logging.getLogger(__name__)
 
 class VideoEditor:
     def __init__(self, whisper_model_size: str = "base"):
-        self.model = WhisperModel(whisper_model_size, device="cpu", compute_type="int8")
+        self.whisper_model_size = whisper_model_size
+        self.model = None
+
+    def _get_model(self):
+        if self.model is None:
+            if WhisperModel is None:
+                raise RuntimeError("faster-whisper no está disponible en este entorno")
+            logger.info(f"Loading Whisper model lazily: {self.whisper_model_size}")
+            self.model = WhisperModel(self.whisper_model_size, device="cpu", compute_type="int8")
+        return self.model
 
     def transcribe_audio(self, audio_path: str):
         logger.info(f"Transcribing audio: {audio_path}")
-        segments, info = self.model.transcribe(audio_path, beam_size=5)
+        segments, info = self._get_model().transcribe(audio_path, beam_size=5)
         return [{"start": s.start, "end": s.end, "text": s.text.strip()} for s in segments]
 
     def generate_srt(self, segments, srt_path):
