@@ -26,7 +26,7 @@ from youtube_service import YouTubeChannelService, YouTubeAuthError
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 app = FastAPI(title="Shorts Generation Engine")
 
@@ -187,6 +187,14 @@ class PublishVideoRequest(BaseModel):
     privacy_status: Optional[str] = None
     category_id: Optional[str] = None
     channel_id: Optional[int] = None
+    publish_at: Optional[str] = None
+    license: Optional[str] = None
+    embeddable: Optional[bool] = None
+    public_stats_viewable: Optional[bool] = None
+    made_for_kids: Optional[bool] = None
+    contains_synthetic_media: Optional[bool] = None
+    default_language: Optional[str] = None
+    notify_subscribers: Optional[bool] = None
 
 def resolve_job_video_path(job: dict) -> str | None:
     video_url = (job or {}).get("video_url") or ""
@@ -200,6 +208,17 @@ def resolve_job_video_path(job: dict) -> str | None:
         return video_url
     candidate = os.path.join(BASE_DIR, video_url.lstrip("/"))
     return candidate if os.path.exists(candidate) else None
+
+def parse_iso_datetime(value: Optional[str]) -> Optional[str]:
+    if not value:
+        return None
+    try:
+        dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(timezone.utc).isoformat()
+    except Exception:
+        raise HTTPException(status_code=400, detail="publish_at inválido. Usa un ISO 8601 válido.")
 
 class LoginRequest(BaseModel):
     password: str
@@ -1289,6 +1308,13 @@ async def api_get_job_publish_context(job_id: str, channel_id: int = None, user:
             "tags": normalize_tags_input(channel.get("default_tags")),
             "privacy_status": channel.get("default_privacy_status") or "private",
             "category_id": channel.get("default_category_id") or "22",
+            "license": "youtube",
+            "embeddable": True,
+            "public_stats_viewable": True,
+            "made_for_kids": False,
+            "contains_synthetic_media": False,
+            "default_language": channel.get("default_language") or "es",
+            "notify_subscribers": bool(channel.get("notify_subscribers")),
         },
     }
 
@@ -1319,6 +1345,9 @@ async def api_publish_job_to_youtube(job_id: str, req: PublishVideoRequest, user
     if privacy_status not in {"private", "unlisted", "public"}:
         raise HTTPException(status_code=400, detail="privacy_status inválido")
     category_id = str(req.category_id or channel.get("default_category_id") or "22")
+    publish_at = parse_iso_datetime(req.publish_at)
+    if publish_at:
+        privacy_status = "private"
 
     try:
         upload_result = youtube_manager.upload_video(
@@ -1331,6 +1360,14 @@ async def api_publish_job_to_youtube(job_id: str, req: PublishVideoRequest, user
                 "categoryId": category_id,
                 "privacyStatus": privacy_status,
                 "mimeType": "video/mp4",
+                "publishAt": publish_at,
+                "license": req.license or "youtube",
+                "embeddable": True if req.embeddable is None else bool(req.embeddable),
+                "publicStatsViewable": True if req.public_stats_viewable is None else bool(req.public_stats_viewable),
+                "selfDeclaredMadeForKids": bool(req.made_for_kids) if req.made_for_kids is not None else False,
+                "containsSyntheticMedia": bool(req.contains_synthetic_media) if req.contains_synthetic_media is not None else False,
+                "defaultLanguage": req.default_language or channel.get("default_language") or "es",
+                "notifySubscribers": True if req.notify_subscribers is None else bool(req.notify_subscribers),
             },
         )
         youtube_video_id = upload_result.get("id")
@@ -1340,12 +1377,44 @@ async def api_publish_job_to_youtube(job_id: str, req: PublishVideoRequest, user
             "status": "success",
             "youtube_video_id": youtube_video_id,
             "youtube_video_url": youtube_video_url,
+            "publish_at": publish_at,
         }
     except YouTubeAuthError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     except Exception as exc:
         logger.error(f"Error publicando trabajo {job_id}: {exc}")
         raise HTTPException(status_code=500, detail=str(exc))
+
+@app.post("/api/jobs/{job_id}/thumbnail")
+async def api_set_job_thumbnail(job_id: str, file: UploadFile = File(...), channel_id: int = None, user: str = Depends(get_current_user)):
+    job = db.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Trabajo no encontrado")
+    if channel_id is not None and job.get("channel_id") != channel_id:
+        raise HTTPException(status_code=404, detail="Trabajo no encontrado para este canal")
+    if not job.get("youtube_video_id"):
+        raise HTTPException(status_code=400, detail="Primero debes publicar el vídeo para poder asignar miniatura")
+
+    ext = os.path.splitext(file.filename or "")[1].lower()
+    if ext not in [".jpg", ".jpeg", ".png"]:
+        raise HTTPException(status_code=400, detail="La miniatura debe ser JPG o PNG")
+
+    tmp_path = os.path.join(BASE_DIR, "storage", "tmp", f"thumb_{uuid.uuid4().hex[:8]}{ext}")
+    os.makedirs(os.path.dirname(tmp_path), exist_ok=True)
+    with open(tmp_path, "wb") as buffer:
+        buffer.write(await file.read())
+
+    try:
+        result = youtube_manager.set_thumbnail(int(job["channel_id"] or channel_id), job["youtube_video_id"], tmp_path)
+        return {"status": "success", "thumbnail": result}
+    except YouTubeAuthError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    finally:
+        try:
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
+        except Exception:
+            pass
 
 def resolve_background_video(niche: str, bg_name: str, custom_id: str = None, channel_id: int = None) -> str:
     """Resuelve la ruta definitiva del vídeo o imagen de fondo."""

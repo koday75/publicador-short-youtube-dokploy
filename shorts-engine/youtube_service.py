@@ -230,6 +230,17 @@ class YouTubeChannelService:
         except Exception:
             return None
 
+    def _coerce_bool(self, value: Any, default: bool = False) -> bool:
+        if value is None:
+            return default
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, (int, float)):
+            return bool(value)
+        if isinstance(value, str):
+            return value.strip().lower() in {"1", "true", "yes", "on"}
+        return default
+
     def generate_auth_url(self, channel_id: int, redirect_uri: str | None = None, force_consent: bool = True) -> dict[str, Any]:
         self.reload_oauth_config()
         state = secrets.token_urlsafe(32)
@@ -563,7 +574,19 @@ class YouTubeChannelService:
         }
         status = {
             "privacyStatus": metadata.get("privacyStatus", "private"),
+            "license": metadata.get("license", "youtube"),
+            "embeddable": self._coerce_bool(metadata.get("embeddable"), True),
+            "publicStatsViewable": self._coerce_bool(metadata.get("publicStatsViewable"), True),
+            "selfDeclaredMadeForKids": self._coerce_bool(metadata.get("selfDeclaredMadeForKids"), False),
+            "containsSyntheticMedia": self._coerce_bool(metadata.get("containsSyntheticMedia"), False),
         }
+        default_language = metadata.get("defaultLanguage")
+        if default_language:
+            snippet["defaultLanguage"] = default_language
+        publish_at = metadata.get("publishAt")
+        if publish_at:
+            status["privacyStatus"] = "private"
+            status["publishAt"] = publish_at
         mime_type = metadata.get("mimeType")
         if not mime_type:
             if isinstance(file_path_or_stream, str):
@@ -584,7 +607,11 @@ class YouTubeChannelService:
 
         init_res = requests.post(
             "https://www.googleapis.com/upload/youtube/v3/videos",
-            params={"uploadType": "resumable", "part": "snippet,status"},
+            params={
+                "uploadType": "resumable",
+                "part": "snippet,status",
+                "notifySubscribers": str(self._coerce_bool(metadata.get("notifySubscribers"), True)).lower(),
+            },
             headers={
                 "Authorization": f"Bearer {access_token}",
                 "Content-Type": "application/json; charset=UTF-8",
@@ -613,3 +640,39 @@ class YouTubeChannelService:
         if not upload_res.ok:
             raise YouTubeAuthError(f"No se pudo completar la subida: {upload_res.text}")
         return upload_res.json()
+
+    def set_thumbnail(self, channel_id: int, video_id: str, file_path_or_stream):
+        self.reload_oauth_config()
+        self._resolve_channel_oauth_config(channel_id)
+        auth = self.get_authorized_client(channel_id)
+        access_token = auth["access_token"]
+
+        if hasattr(file_path_or_stream, "read"):
+            stream = file_path_or_stream
+            if hasattr(stream, "seek"):
+                try:
+                    stream.seek(0)
+                except Exception:
+                    pass
+            file_bytes = stream.read()
+            mime_type = getattr(stream, "content_type", None) or "image/jpeg"
+        else:
+            with open(file_path_or_stream, "rb") as fh:
+                file_bytes = fh.read()
+            mime_type, _ = mimetypes.guess_type(str(file_path_or_stream))
+            mime_type = mime_type or "image/jpeg"
+
+        res = requests.post(
+            "https://www.googleapis.com/upload/youtube/v3/thumbnails/set",
+            params={"videoId": video_id},
+            headers={
+                "Authorization": f"Bearer {access_token}",
+                "Content-Type": mime_type,
+                "Content-Length": str(len(file_bytes)),
+            },
+            data=file_bytes,
+            timeout=120,
+        )
+        if not res.ok:
+            raise YouTubeAuthError(f"No se pudo asignar la miniatura: {res.text}")
+        return res.json()

@@ -103,6 +103,68 @@
             min-height: 140px;
             resize: vertical;
         }
+        .advanced-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            color: #58a6ff;
+            cursor: pointer;
+            font-weight: 700;
+            margin-top: 1rem;
+            user-select: none;
+        }
+        .advanced-panel {
+            display: none;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(255,255,255,0.06);
+        }
+        .advanced-panel.open {
+            display: block;
+        }
+        .checkbox-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.75rem;
+        }
+        .check-card {
+            display: flex;
+            align-items: center;
+            gap: 0.65rem;
+            padding: 0.85rem;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+        }
+        .check-card input {
+            width: 18px;
+            height: 18px;
+            accent-color: var(--primary);
+        }
+        .thumb-box {
+            display: grid;
+            grid-template-columns: 160px 1fr;
+            gap: 0.9rem;
+            align-items: start;
+        }
+        .thumb-preview {
+            width: 160px;
+            aspect-ratio: 9 / 16;
+            border-radius: 14px;
+            overflow: hidden;
+            background: #000;
+            border: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            font-size: 0.8rem;
+        }
+        .thumb-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
         .helper-box {
             background: rgba(88, 166, 255, 0.07);
             border: 1px solid rgba(88, 166, 255, 0.18);
@@ -248,6 +310,73 @@
                     <textarea id="publish-description" placeholder="Escribe la descripción del vídeo..."></textarea>
                 </div>
 
+                <div class="advanced-toggle" onclick="toggleAdvanced()">
+                    <span id="advanced-arrow">▸</span>
+                    <span>Opciones avanzadas</span>
+                </div>
+
+                <div id="advanced-panel" class="advanced-panel">
+                    <div class="field-grid">
+                        <div class="field">
+                            <label for="publish-at">Programar publicación</label>
+                            <input id="publish-at" type="datetime-local">
+                        </div>
+                        <div class="field">
+                            <label for="publish-language">Idioma por defecto</label>
+                            <input id="publish-language" type="text" placeholder="es">
+                        </div>
+                    </div>
+
+                    <div class="field" style="margin-top:0.9rem;">
+                        <label>Miniatura / portada</label>
+                        <div class="thumb-box">
+                            <div id="thumb-preview" class="thumb-preview">Sin miniatura</div>
+                            <div>
+                                <p style="margin-top:0; color:var(--text-muted);">
+                                    Shorts no permite miniatura personalizada como los vídeos largos. Si la subida falla, usa un fotograma del vídeo y la API de YouTube elegirá la portada disponible.
+                                </p>
+                                <input id="publish-thumbnail" type="file" accept="image/jpeg,image/png" onchange="previewThumbnail(this)">
+                                <div style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-top:0.75rem;">
+                                    <button class="btn btn-secondary" type="button" onclick="clearThumbnail(event)">Quitar miniatura</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="margin-top:0.9rem;">
+                        <label style="display:block; color:var(--text-muted); font-size:0.8rem; margin-bottom:0.5rem;">Opciones de YouTube</label>
+                        <div class="checkbox-grid">
+                            <label class="check-card"><input id="publish-notify" type="checkbox" checked><span>Notificar suscriptores</span></label>
+                            <label class="check-card"><input id="publish-embeddable" type="checkbox" checked><span>Permitir incrustación</span></label>
+                            <label class="check-card"><input id="publish-stats" type="checkbox" checked><span>Estadísticas públicas</span></label>
+                            <label class="check-card"><input id="publish-kids" type="checkbox"><span>Contenido para niños</span></label>
+                            <label class="check-card"><input id="publish-synth" type="checkbox"><span>Contenido sintético</span></label>
+                            <label class="check-card" style="gap:0.8rem;">
+                                <span style="min-width:110px;">Licencia</span>
+                                <select id="publish-license" style="flex:1; background:rgba(0,0,0,0.2); color:#fff; border:1px solid var(--border-color); border-radius:8px; padding:0.45rem 0.55rem;">
+                                    <option value="youtube">Licencia estándar de YouTube</option>
+                                    <option value="creativeCommon">Creative Commons</option>
+                                </select>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="field-grid" style="margin-top:0.9rem;">
+                        <div class="field">
+                            <label for="publish-privacy-advanced">Privacidad avanzada</label>
+                            <select id="publish-privacy-advanced" onchange="syncPrivacyFields(this.value)">
+                                <option value="private">Privado</option>
+                                <option value="unlisted">No listado</option>
+                                <option value="public">Público</option>
+                            </select>
+                        </div>
+                        <div class="field">
+                            <label for="publish-category-advanced">Categoría avanzada</label>
+                            <input id="publish-category-advanced" type="text" value="22">
+                        </div>
+                    </div>
+                </div>
+
                 <div class="actions">
                     <button class="btn btn-success" onclick="publishNow(event)">Publicar ahora</button>
                     <button class="btn btn-secondary" onclick="window.location.href = backJobsUrl()">Volver a trabajos</button>
@@ -267,6 +396,9 @@
                     <div style="color:var(--text-muted); font-size:0.8rem; margin-bottom:0.35rem;">Vídeo local</div>
                     <div id="video-url" style="word-break:break-all;">-</div>
                 </div>
+                <div style="margin-top:0.9rem;">
+                    <button class="btn btn-secondary" style="width:100%;" type="button" onclick="uploadThumbnail()">Subir miniatura</button>
+                </div>
             </aside>
         </div>
     </div>
@@ -283,6 +415,7 @@
     <script>
         let currentJob = null;
         let currentChannel = null;
+        let selectedThumbnailFile = null;
 
         function getQueryParam(name) {
             const params = new URLSearchParams(window.location.search);
@@ -328,6 +461,64 @@
             return value || '';
         }
 
+        function toggleAdvanced() {
+            const panel = document.getElementById('advanced-panel');
+            const arrow = document.getElementById('advanced-arrow');
+            const open = !panel.classList.contains('open');
+            panel.classList.toggle('open', open);
+            arrow.textContent = open ? '▾' : '▸';
+        }
+
+        function syncPrivacyFields(value) {
+            document.getElementById('publish-privacy').value = value;
+            document.getElementById('publish-privacy-advanced').value = value;
+        }
+
+        function previewThumbnail(input) {
+            if (!input.files || !input.files.length) return;
+            selectedThumbnailFile = input.files[0];
+            const preview = document.getElementById('thumb-preview');
+            const reader = new FileReader();
+            reader.onload = () => {
+                preview.innerHTML = `<img src="${reader.result}" alt="Miniatura seleccionada">`;
+            };
+            reader.readAsDataURL(selectedThumbnailFile);
+        }
+
+        function clearThumbnail(event) {
+            event?.preventDefault?.();
+            selectedThumbnailFile = null;
+            const input = document.getElementById('publish-thumbnail');
+            if (input) input.value = '';
+            document.getElementById('thumb-preview').innerHTML = 'Sin miniatura';
+        }
+
+        async function uploadThumbnail() {
+            const jobId = getJobId();
+            const channelId = getChannelId();
+            if (!currentJob || !currentJob.youtube_video_id) {
+                alert('Primero publica el vídeo para poder asignar la miniatura.');
+                return;
+            }
+            if (!selectedThumbnailFile) {
+                alert('Selecciona una imagen JPG o PNG para la miniatura.');
+                return;
+            }
+
+            const form = new FormData();
+            form.append('file', selectedThumbnailFile);
+            const res = await fetch(`/api/jobs/${jobId}/thumbnail${channelId ? `?channel_id=${channelId}` : ''}`, {
+                method: 'POST',
+                body: form
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                alert(data.detail || 'No se pudo asignar la miniatura.');
+                return;
+            }
+            alert('Miniatura asignada correctamente.');
+        }
+
         async function loadPublishContext() {
             const jobId = getJobId();
             const channelId = getChannelId();
@@ -361,12 +552,23 @@
             document.getElementById('job-summary').textContent = currentJob.text || 'Prepara los datos de publicación para este trabajo.';
             document.getElementById('publish-title').value = title;
             document.getElementById('publish-description').value = description;
-            document.getElementById('publish-privacy').value = defaults.privacy_status || 'private';
+            syncPrivacyFields(defaults.privacy_status || 'private');
             document.getElementById('publish-category').value = defaults.category_id || '22';
+            document.getElementById('publish-category-advanced').value = defaults.category_id || '22';
             document.getElementById('publish-tags').value = formatTags(defaults.tags);
             document.getElementById('video-url').textContent = currentJob.video_url || '-';
+            document.getElementById('publish-language').value = defaults.default_language || 'es';
+            document.getElementById('publish-notify').checked = Boolean(defaults.notify_subscribers);
+            document.getElementById('publish-embeddable').checked = true;
+            document.getElementById('publish-stats').checked = true;
+            document.getElementById('publish-kids').checked = Boolean(defaults.made_for_kids);
+            document.getElementById('publish-synth').checked = Boolean(defaults.contains_synthetic_media);
+            document.getElementById('publish-license').value = defaults.license || 'youtube';
             if (currentJob.video_url) {
                 document.getElementById('preview-video').src = currentJob.video_url;
+            }
+            if (currentJob.youtube_video_url) {
+                document.getElementById('publish-modal-message').textContent = currentJob.youtube_video_url;
             }
         }
 
@@ -388,8 +590,16 @@
                         description: document.getElementById('publish-description').value.trim(),
                         tags: document.getElementById('publish-tags').value.trim(),
                         privacy_status: document.getElementById('publish-privacy').value,
-                        category_id: document.getElementById('publish-category').value.trim(),
-                        channel_id: channelId
+                        category_id: document.getElementById('publish-category-advanced').value.trim() || document.getElementById('publish-category').value.trim(),
+                        channel_id: channelId,
+                        publish_at: document.getElementById('publish-at').value ? new Date(document.getElementById('publish-at').value).toISOString() : null,
+                        license: document.getElementById('publish-license').value || 'youtube',
+                        embeddable: document.getElementById('publish-embeddable').checked,
+                        public_stats_viewable: document.getElementById('publish-stats').checked,
+                        made_for_kids: document.getElementById('publish-kids').checked,
+                        contains_synthetic_media: document.getElementById('publish-synth').checked,
+                        default_language: document.getElementById('publish-language').value.trim() || 'es',
+                        notify_subscribers: document.getElementById('publish-notify').checked
                     })
                 });
 
@@ -397,6 +607,18 @@
                 if (!res.ok) {
                     alert(data.detail || 'No se pudo publicar el vídeo.');
                     return;
+                }
+
+                currentJob = currentJob || {};
+                currentJob.youtube_video_id = data.youtube_video_id || currentJob.youtube_video_id;
+                currentJob.youtube_video_url = data.youtube_video_url || currentJob.youtube_video_url;
+
+                if (selectedThumbnailFile) {
+                    try {
+                        await uploadThumbnail();
+                    } catch (thumbError) {
+                        alert('El vídeo se publicó, pero no se pudo asignar la miniatura.');
+                    }
                 }
 
                 document.getElementById('publish-modal-title').textContent = 'Vídeo publicado';
