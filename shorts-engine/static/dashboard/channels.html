@@ -60,7 +60,7 @@
             z-index: 1000;
         }
         .modal-backdrop.open { display: flex; }
-        .modal {
+        .channel-create-modal {
             width: min(860px, 100%);
             max-height: 90vh;
             overflow: auto;
@@ -70,15 +70,15 @@
             box-shadow: 0 24px 80px rgba(0,0,0,0.45);
             padding: 1.35rem;
         }
-        .modal-head {
+        .channel-create-modal-head {
             display: flex;
             justify-content: space-between;
             gap: 1rem;
             align-items: flex-start;
             margin-bottom: 1rem;
         }
-        .modal-head h3 { margin: 0; font-size: 1.2rem; }
-        .modal-head p { margin: 0.35rem 0 0; color: var(--text-muted); line-height: 1.5; }
+        .channel-create-modal-head h3 { margin: 0; font-size: 1.2rem; }
+        .channel-create-modal-head p { margin: 0.35rem 0 0; color: var(--text-muted); line-height: 1.5; }
         .modal-close {
             border: 1px solid var(--border-color);
             background: rgba(255,255,255,0.05);
@@ -89,12 +89,12 @@
             cursor: pointer;
             font-size: 1rem;
         }
-        .modal-form {
+        .channel-create-modal-form {
             display: grid;
             grid-template-columns: repeat(2, minmax(0, 1fr));
             gap: 1rem;
         }
-        .modal-form .full { grid-column: 1 / -1; }
+        .channel-create-modal-form .full { grid-column: 1 / -1; }
         .field label {
             display: block;
             font-size: 0.72rem;
@@ -115,7 +115,7 @@
             font: inherit;
         }
         .field textarea { min-height: 92px; resize: vertical; }
-        .modal-actions {
+        .channel-create-modal-actions {
             display: flex;
             justify-content: flex-end;
             gap: 0.75rem;
@@ -320,8 +320,8 @@
     </div>
 
     <div id="create-modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="create-modal-title">
-        <div class="modal">
-            <div class="modal-head">
+        <div class="channel-create-modal">
+            <div class="channel-create-modal-head">
                 <div>
                     <h3 id="create-modal-title">Conectar Canal</h3>
                     <p>Introduce la información del canal interno y las credenciales de Google para dejarlo listo para conectar después.</p>
@@ -329,7 +329,7 @@
                 <button class="modal-close" onclick="closeCreateModal()" aria-label="Cerrar">✕</button>
             </div>
 
-            <form id="create-channel-form" class="modal-form">
+            <form id="create-channel-form" class="channel-create-modal-form">
                 <div class="field full">
                     <label for="internal_name">Nombre interno del canal</label>
                     <input id="internal_name" name="internal_name" type="text" placeholder="Ej. 5 Datos Sorprendentes" required>
@@ -379,7 +379,7 @@
                 </div>
             </form>
 
-            <div class="modal-actions">
+            <div class="channel-create-modal-actions">
                 <button type="button" class="btn-soft" onclick="closeCreateModal()">Cancelar</button>
                 <button type="button" class="btn-strong" onclick="submitCreateChannel()">Crear canal</button>
             </div>
