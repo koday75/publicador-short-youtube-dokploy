@@ -168,6 +168,7 @@ class StoryboardScene(BaseModel):
     media_filename: Optional[str] = ""
     subtitle_pos: Optional[Union[int, str]] = 5
     subtitle_size: Optional[Union[int, str]] = 48
+    show_text: Optional[bool] = True
 
 class StoryboardRequest(BaseModel):
     scenes: List[StoryboardScene]
@@ -1613,7 +1614,8 @@ async def process_storyboard_job(job_id, req: StoryboardRequest):
                 "video": bg_path,
                 "text": scene.text,
                 "sub_pos": scene.subtitle_pos,
-                "sub_size": scene.subtitle_size
+                "sub_size": scene.subtitle_size,
+                "show_text": scene.show_text if scene.show_text is not None else True
             })
 
         # 3. Final Assembly

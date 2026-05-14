@@ -201,7 +201,7 @@ class VideoEditor:
         try:
             for idx, scene in enumerate(scenes):
                 clip_output = os.path.join("storage", "shorts", f"tmp_{render_id}_{idx}.mp4")
-                
+
                 # Get audio duration to sync zoom
                 audio_duration = self._get_audio_duration(scene["audio"])
                 fps = 25
@@ -229,16 +229,28 @@ class VideoEditor:
                 except:
                     sub_size = 48
 
-                char_width = sub_size * 0.55
-                max_chars = int(864 / char_width) if char_width > 0 else 30
-                wrapped_text = self._wrap_text_for_ffmpeg(scene["text"], max_chars=max_chars)
-                
-                txt_output = os.path.join("storage", "shorts", f"tmp_text_{render_id}_{idx}.txt")
-                with open(txt_output, "w", encoding="utf-8", newline="\n") as f:
-                    f.write(wrapped_text)
-                temp_text_files.append(txt_output)
-                
                 tune_settings = ['-tune', 'stillimage'] if is_image else []
+                show_text = bool(scene.get("show_text", True))
+                drawtext = ""
+                if show_text and str(scene.get("text", "")).strip():
+                    char_width = sub_size * 0.55
+                    max_chars = int(864 / char_width) if char_width > 0 else 30
+                    wrapped_text = self._wrap_text_for_ffmpeg(scene["text"], max_chars=max_chars)
+
+                    txt_output = os.path.join("storage", "shorts", f"tmp_text_{render_id}_{idx}.txt")
+                    with open(txt_output, "w", encoding="utf-8", newline="\n") as f:
+                        f.write(wrapped_text)
+                    temp_text_files.append(txt_output)
+
+                    escaped_txt_output = txt_output.replace("\\", "/") # Escaping path for FFmpeg
+                    drawtext = (
+                        f",drawtext=textfile='{escaped_txt_output}'"
+                        f":font='DejaVu Sans'"
+                        f":fontcolor=white:fontsize={sub_size}"
+                        f":box=1:boxcolor=black@0.6:boxborderw=15"
+                        f":x=(w-text_w)/2:y={y_pos}"
+                        f":line_spacing=10:fix_bounds=true"
+                    )
 
                 if is_image:
                     inputs = ['-loop', '1', '-i', scene["video"]]
@@ -253,21 +265,11 @@ class VideoEditor:
                     inputs = ['-stream_loop', '-1', '-i', scene["video"]]
                     video_filter = "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,setsar=1"
 
-                escaped_txt_output = txt_output.replace("\\", "/") # Escaping path for FFmpeg
-                drawtext = (
-                    f"drawtext=textfile='{escaped_txt_output}'"
-                    f":font='DejaVu Sans'"
-                    f":fontcolor=white:fontsize={sub_size}"
-                    f":box=1:boxcolor=black@0.6:boxborderw=15"
-                    f":x=(w-text_w)/2:y={y_pos}"
-                    f":line_spacing=10:fix_bounds=true"
-                )
-
                 voice_volume = max(0.0, float(voice_volume))
                 cmd = ['ffmpeg', '-y'] + inputs + [
                     '-i', scene["audio"],
                     '-filter_complex',
-                    f"[0:v]{video_filter},{drawtext},format=yuv420p,fps={fps}[v];[1:a]volume={voice_volume:.3f}[a]",
+                    f"[0:v]{video_filter}{drawtext},format=yuv420p,fps={fps}[v];[1:a]volume={voice_volume:.3f}[a]",
                     '-map', '[v]', '-map', '[a]',
                     '-c:v', 'libx264', '-preset', 'ultrafast', '-pix_fmt', 'yuv420p'
                 ] + tune_settings + [

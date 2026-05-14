@@ -90,6 +90,19 @@
         .pos-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; margin-top: 5px; }
         .pos-btn { background: #333; height: 25px; border-radius: 4px; cursor: pointer; border: 1px solid transparent; }
         .pos-btn.active { background: var(--primary); border-color: #fff; }
+        .text-toggle {
+            margin-top: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text-color);
+            font-size: 0.9rem;
+        }
+        .text-toggle input {
+            width: 16px;
+            height: 16px;
+            accent-color: var(--primary);
+        }
         .volume-panel {
             margin-top: 1rem;
             display: grid;
@@ -567,6 +580,10 @@
                         <input type="hidden" id="pos-${id}" value="5">
                         <label style="margin-top:5px; display:block;">Tamaño: <span id="size-val-${id}">48</span>px</label>
                         <input type="range" id="size-${id}" min="20" max="100" value="48" oninput="document.getElementById('size-val-${id}').innerText=this.value">
+                        <label class="text-toggle">
+                            <input type="checkbox" id="show-text-${id}" checked>
+                            Mostrar texto en pantalla
+                        </label>
                     </div>
                 </div>
                 <div class="preview-box" id="preview-${id}">
@@ -588,6 +605,11 @@
                 if(sceneData.subtitle_size) {
                     document.getElementById(`size-${id}`).value = sceneData.subtitle_size;
                     document.getElementById(`size-val-${id}`).innerText = sceneData.subtitle_size;
+                }
+
+                const showTextField = document.getElementById(`show-text-${id}`);
+                if (showTextField) {
+                    showTextField.checked = sceneData.show_text !== false;
                 }
                 
                 // Cargar posición
@@ -827,7 +849,8 @@
                     text: document.getElementById(`text-${id}`).value,
                     media_filename: document.getElementById(`media-${id}`).value,
                     subtitle_pos: parseInt(document.getElementById(`pos-${id}`).value),
-                    subtitle_size: parseInt(document.getElementById(`size-${id}`).value)
+                    subtitle_size: parseInt(document.getElementById(`size-${id}`).value),
+                    show_text: document.getElementById(`show-text-${id}`).checked
                 });
             });
 
