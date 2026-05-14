@@ -49,6 +49,15 @@
             font-size: 0.8rem;
             white-space: nowrap;
         }
+        .views-pill.buttonish {
+            cursor: pointer;
+            appearance: none;
+            font: inherit;
+        }
+        .views-pill.buttonish:hover {
+            background: rgba(88,166,255,0.14);
+            border-color: rgba(88,166,255,0.45);
+        }
         .status-pill {
             display: inline-flex;
             align-items: center;
@@ -175,6 +184,33 @@
             color: #fff;
             font-weight: 700;
         }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.75rem;
+            margin-top: 1rem;
+        }
+        .stat-card {
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            background: rgba(255,255,255,0.03);
+            padding: 0.8rem;
+            min-width: 0;
+        }
+        .stat-card small {
+            display: block;
+            color: var(--text-muted);
+            font-size: 0.68rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.25rem;
+        }
+        .stat-card strong {
+            display: block;
+            font-size: 1rem;
+            line-height: 1.35;
+            overflow-wrap: anywhere;
+        }
     </style>
 </head>
 <body>
@@ -243,9 +279,30 @@
         </div>
     </div>
 
+    <div id="statsModal" class="modal" aria-hidden="true">
+        <div class="modal-content" style="width:min(560px, 100%);">
+            <span class="close-modal" onclick="closeStatsModal()">&times;</span>
+            <h3 style="margin:0 1.5rem 0 0;">Estadísticas del vídeo</h3>
+            <p id="statsModalTitle" style="color:var(--text-muted); margin:0.45rem 0 0;">Cargando...</p>
+            <div class="stats-grid">
+                <div class="stat-card"><small>Vistas</small><strong id="stat-views">—</strong></div>
+                <div class="stat-card"><small>Likes</small><strong id="stat-likes">—</strong></div>
+                <div class="stat-card"><small>Comentarios</small><strong id="stat-comments">—</strong></div>
+                <div class="stat-card"><small>Publicado</small><strong id="stat-published-at">—</strong></div>
+                <div class="stat-card"><small>Canal</small><strong id="stat-channel">—</strong></div>
+                <div class="stat-card"><small>Video ID</small><strong id="stat-video-id">—</strong></div>
+            </div>
+            <div class="modal-footer">
+                <a id="statsVideoLink" class="modal-btn modal-link" href="#" style="background: var(--primary);">Abrir en YouTube</a>
+                <button class="modal-btn" onclick="closeStatsModal()" style="background: #333;">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         let currentPage = 1;
         let currentVideoUrl = '';
+        let currentStatsJob = null;
 
         function getChannelIdFromQuery() {
             const params = new URLSearchParams(window.location.search);
@@ -318,7 +375,7 @@
                     <td style="font-family:monospace; font-size:0.8rem;">${job.job_id.substring(0, 12)}</td>
                     <td style="max-width:320px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${job.title || job.text || ''}">${displayTitle}</td>
                     <td>${statusCell}</td>
-                    <td>${job.youtube_view_count !== null && job.youtube_view_count !== undefined ? `<span class="views-pill">👁 ${new Intl.NumberFormat('es-ES').format(job.youtube_view_count)}</span>` : '<span style="color:var(--text-muted);">—</span>'}</td>
+                    <td>${job.youtube_view_count !== null && job.youtube_view_count !== undefined ? `<button type="button" class="views-pill buttonish" onclick="openVideoStats('${job.job_id}', ${job.channel_id ?? 'null'})">👁 ${new Intl.NumberFormat('es-ES').format(job.youtube_view_count)}</button>` : '<span style="color:var(--text-muted);">—</span>'}</td>
                     <td style="font-size:0.85rem; color:var(--text-muted);">${new Date(job.created_at).toLocaleString('es-ES')}</td>
                     <td style="display:flex; gap:6px; flex-wrap:wrap;">
                         <button class="action-btn" style="background:#333; color:#fff;" onclick="window.location.href='${job.channel_id ? `/storyboard?job_id=${job.job_id}&channel_id=${job.channel_id}` : `/storyboard?job_id=${job.job_id}`}'">✏️</button>
@@ -405,12 +462,95 @@
             }
         }
 
+        function closeStatsModal() {
+            const modal = document.getElementById('statsModal');
+            modal.classList.remove('open');
+            modal.setAttribute('aria-hidden', 'true');
+            currentStatsJob = null;
+        }
+
+        async function openVideoStats(jobId, channelId = null) {
+            const modal = document.getElementById('statsModal');
+            const title = document.getElementById('statsModalTitle');
+            const views = document.getElementById('stat-views');
+            const likes = document.getElementById('stat-likes');
+            const comments = document.getElementById('stat-comments');
+            const publishedAt = document.getElementById('stat-published-at');
+            const channel = document.getElementById('stat-channel');
+            const videoId = document.getElementById('stat-video-id');
+            const videoLink = document.getElementById('statsVideoLink');
+
+            currentStatsJob = { jobId, channelId };
+            title.textContent = 'Cargando estadísticas...';
+            views.textContent = '—';
+            likes.textContent = '—';
+            comments.textContent = '—';
+            publishedAt.textContent = '—';
+            channel.textContent = '—';
+            videoId.textContent = '—';
+            videoLink.href = '#';
+            videoLink.style.pointerEvents = 'none';
+            videoLink.style.opacity = '0.6';
+
+            modal.classList.add('open');
+            modal.setAttribute('aria-hidden', 'false');
+
+            try {
+                const url = channelId
+                    ? `/api/jobs/${encodeURIComponent(jobId)}/statistics?channel_id=${encodeURIComponent(channelId)}`
+                    : `/api/jobs/${encodeURIComponent(jobId)}/statistics`;
+                const res = await fetch(url);
+                if (!res.ok) {
+                    throw new Error('No se pudieron cargar las estadísticas.');
+                }
+
+                const data = await res.json();
+                const job = data.job || {};
+                const stats = data.stats || {};
+                const hasVideo = Boolean(data.has_video);
+
+                title.textContent = job.title || job.job_id || 'Trabajo';
+                views.textContent = stats.view_count !== null && stats.view_count !== undefined ? new Intl.NumberFormat('es-ES').format(stats.view_count) : '—';
+                likes.textContent = stats.like_count !== null && stats.like_count !== undefined ? new Intl.NumberFormat('es-ES').format(stats.like_count) : '—';
+                comments.textContent = stats.comment_count !== null && stats.comment_count !== undefined ? new Intl.NumberFormat('es-ES').format(stats.comment_count) : '—';
+                publishedAt.textContent = job.youtube_published_at || job.created_at || '—';
+                channel.textContent = job.youtube_channel_title || job.youtube_channel_id || '—';
+                videoId.textContent = job.youtube_video_id || '—';
+
+                if (hasVideo && job.youtube_video_url) {
+                    videoLink.href = job.youtube_video_url;
+                    videoLink.style.pointerEvents = '';
+                    videoLink.style.opacity = '1';
+                } else {
+                    videoLink.href = '#';
+                    videoLink.style.pointerEvents = 'none';
+                    videoLink.style.opacity = '0.6';
+                }
+            } catch (error) {
+                title.textContent = 'No se pudieron cargar las estadísticas';
+                views.textContent = '—';
+                likes.textContent = '—';
+                comments.textContent = '—';
+                publishedAt.textContent = '—';
+                channel.textContent = '—';
+                videoId.textContent = '—';
+                console.error('Error al abrir estadísticas del vídeo:', error);
+            }
+        }
+
         document.getElementById('videoModal').addEventListener('click', (event) => {
             if (event.target.id === 'videoModal') closeVideoModal();
         });
 
+        document.getElementById('statsModal').addEventListener('click', (event) => {
+            if (event.target.id === 'statsModal') closeStatsModal();
+        });
+
         document.addEventListener('keydown', (event) => {
-            if (event.key === 'Escape') closeVideoModal();
+            if (event.key === 'Escape') {
+                closeVideoModal();
+                closeStatsModal();
+            }
         });
 
         loadChannelContext().then(() => fetchJobs(1));

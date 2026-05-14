@@ -1358,6 +1358,32 @@ async def api_get_job_details(job_id: str, channel_id: int = None, user: str = D
         
     return job
 
+@app.get("/api/jobs/{job_id}/statistics")
+async def api_get_job_statistics(job_id: str, channel_id: int = None, user: str = Depends(get_current_user)):
+    job = db.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Trabajo no encontrado")
+    if channel_id is not None and job.get("channel_id") != channel_id:
+        raise HTTPException(status_code=404, detail="Trabajo no encontrado para este canal")
+
+    video_id = job.get("youtube_video_id")
+    resolved_channel_id = channel_id or job.get("channel_id")
+    stats = None
+    if video_id and resolved_channel_id is not None:
+        try:
+            stats_map = youtube_manager.get_video_statistics(int(resolved_channel_id), [str(video_id)])
+            stats = stats_map.get(str(video_id), {})
+        except Exception as exc:
+            logger.debug(f"No se pudieron cargar estadÃ­sticas del trabajo {job_id}: {exc}")
+            stats = {}
+
+    return {
+        "job": job,
+        "stats": stats or {},
+        "has_video": bool(video_id),
+        "channel_id": resolved_channel_id,
+    }
+
 @app.get("/api/jobs/{job_id}/publish-context")
 async def api_get_job_publish_context(job_id: str, channel_id: int = None, user: str = Depends(get_current_user)):
     job = db.get_job(job_id)
