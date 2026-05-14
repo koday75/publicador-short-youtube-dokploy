@@ -203,6 +203,7 @@
         .btn-primary { background: var(--primary); }
         .btn-secondary { background: rgba(255,255,255,0.08); border: 1px solid var(--border-color); }
         .btn-success { background: rgba(46, 160, 67, 0.95); }
+        .btn-danger { background: rgba(220, 38, 38, 0.95); }
         .status-pill {
             display: inline-flex;
             align-items: center;
@@ -377,6 +378,19 @@
                 <div class="actions">
                     <button class="btn btn-success" onclick="publishNow(event)">Publicar ahora</button>
                     <button class="btn btn-secondary" onclick="window.location.href = backJobsUrl()">Volver a trabajos</button>
+                </div>
+
+                <div id="youtube-tools" class="helper-box" style="margin-top:1rem; display:none;">
+                    <h3 style="margin-top:0;">Configuración de YouTube</h3>
+                    <p style="margin-top:0; color:var(--text-muted);">
+                        Gestiona el vídeo ya publicado sin salir de esta pantalla: abre en una pestaña nueva, actualiza la miniatura, modifica la privacidad o elimínalo del canal.
+                    </p>
+                    <div class="actions" style="margin-top:0.75rem;">
+                        <a id="youtube-open-link" class="btn btn-secondary" href="#" target="_blank" rel="noopener noreferrer" style="text-decoration:none; display:inline-flex; align-items:center;">Abrir en YouTube</a>
+                        <button class="btn btn-secondary" type="button" onclick="saveYoutubeChanges()">Guardar cambios</button>
+                        <button class="btn btn-secondary" type="button" onclick="uploadThumbnail()">Subir miniatura</button>
+                        <button class="btn btn-danger" type="button" onclick="deleteYoutubeVideo()">Eliminar de YouTube</button>
+                    </div>
                 </div>
             </section>
 
@@ -568,21 +582,28 @@
             }
             if (currentJob.youtube_video_url) {
                 document.getElementById('publish-modal-message').textContent = currentJob.youtube_video_url;
+                document.getElementById('youtube-tools').style.display = 'block';
+                document.getElementById('youtube-open-link').href = currentJob.youtube_video_url;
+                document.querySelector('.actions .btn-success').textContent = 'Guardar cambios en YouTube';
+            } else {
+                document.getElementById('youtube-tools').style.display = 'none';
+                document.querySelector('.actions .btn-success').textContent = 'Publicar ahora';
             }
         }
 
         async function publishNow(event) {
             const jobId = getJobId();
             const channelId = getChannelId();
+            const isAlreadyPublished = Boolean(currentJob && currentJob.youtube_video_url);
             const btn = event?.target;
             if (btn) {
                 btn.disabled = true;
-                btn.textContent = 'PUBLICANDO...';
+                btn.textContent = isAlreadyPublished ? 'GUARDANDO...' : 'PUBLICANDO...';
             }
 
             try {
-                const res = await fetch(`/api/jobs/${jobId}/publish`, {
-                    method: 'POST',
+                const res = await fetch(isAlreadyPublished ? `/api/jobs/${jobId}/youtube` : `/api/jobs/${jobId}/publish`, {
+                    method: isAlreadyPublished ? 'PUT' : 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         title: document.getElementById('publish-title').value.trim(),
@@ -604,7 +625,7 @@
 
                 const data = await res.json();
                 if (!res.ok) {
-                    alert(data.detail || 'No se pudo publicar el vídeo.');
+                    alert(data.detail || (isAlreadyPublished ? 'No se pudieron guardar los cambios.' : 'No se pudo publicar el v??deo.'));
                     return;
                 }
 
@@ -612,29 +633,85 @@
                 currentJob.youtube_video_id = data.youtube_video_id || currentJob.youtube_video_id;
                 currentJob.youtube_video_url = data.youtube_video_url || currentJob.youtube_video_url;
 
+                if (currentJob.youtube_video_url) {
+                    document.getElementById('youtube-tools').style.display = 'block';
+                    document.getElementById('youtube-open-link').href = currentJob.youtube_video_url;
+                    document.querySelector('.actions .btn-success').textContent = 'Guardar cambios en YouTube';
+                }
+
                 if (selectedThumbnailFile) {
                     try {
                         await uploadThumbnail(true);
                     } catch (thumbError) {
-                        alert('El vídeo se publicó, pero no se pudo asignar la miniatura.');
+                        alert(isAlreadyPublished ? 'Los cambios se guardaron, pero no se pudo asignar la miniatura.' : 'El v??deo se public??, pero no se pudo asignar la miniatura.');
                     }
                 }
 
-                document.getElementById('publish-modal-title').textContent = 'Vídeo publicado';
-                document.getElementById('publish-modal-message').textContent = data.youtube_video_url || 'Publicación completada con éxito.';
+                document.getElementById('publish-modal-title').textContent = isAlreadyPublished ? 'V?deo actualizado' : 'V??deo publicado';
+                document.getElementById('publish-modal-message').textContent = data.youtube_video_url || (isAlreadyPublished ? 'Cambios guardados con ??xito.' : 'Publicaci??n completada con ??xito.');
                 document.getElementById('publishModal').classList.add('open');
             } catch (error) {
-                alert(error.message || 'No se pudo publicar el vídeo.');
+                alert(error.message || (isAlreadyPublished ? 'No se pudieron guardar los cambios.' : 'No se pudo publicar el v??deo.'));
             } finally {
                 if (btn) {
                     btn.disabled = false;
-                    btn.textContent = 'Publicar ahora';
+                    btn.textContent = currentJob && currentJob.youtube_video_url ? 'Guardar cambios en YouTube' : 'Publicar ahora';
                 }
             }
         }
 
         function closePublishModal() {
             document.getElementById('publishModal').classList.remove('open');
+        }
+
+        async function saveYoutubeChanges() {
+            const jobId = getJobId();
+            const channelId = getChannelId();
+            const res = await fetch(`/api/jobs/${jobId}/youtube`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    title: document.getElementById('publish-title').value.trim(),
+                    description: document.getElementById('publish-description').value.trim(),
+                    tags: document.getElementById('publish-tags').value.trim(),
+                    privacy_status: document.getElementById('publish-privacy').value,
+                    category_id: document.getElementById('publish-category-advanced').value.trim() || document.getElementById('publish-category').value.trim(),
+                    channel_id: channelId,
+                    publish_at: document.getElementById('publish-at').value ? new Date(document.getElementById('publish-at').value).toISOString() : null,
+                    license: document.getElementById('publish-license').value || 'youtube',
+                    embeddable: document.getElementById('publish-embeddable').checked,
+                    public_stats_viewable: document.getElementById('publish-stats').checked,
+                    made_for_kids: document.getElementById('publish-kids').checked,
+                    contains_synthetic_media: document.getElementById('publish-synth').checked,
+                    default_language: document.getElementById('publish-language').value.trim() || 'es'
+                })
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                alert(data.detail || 'No se pudieron guardar los cambios.');
+                return;
+            }
+            document.getElementById('publish-modal-title').textContent = 'V?deo actualizado';
+            document.getElementById('publish-modal-message').textContent = 'Los cambios de YouTube se guardaron correctamente.';
+            document.getElementById('publishModal').classList.add('open');
+        }
+
+        async function deleteYoutubeVideo() {
+            const jobId = getJobId();
+            if (!confirm('?Seguro que quieres eliminar este v?deo de YouTube? Esta acci?n no se puede deshacer.')) return;
+            const res = await fetch(`/api/jobs/${jobId}/youtube`, { method: 'DELETE' });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                alert(data.detail || 'No se pudo eliminar el v?deo de YouTube.');
+                return;
+            }
+            currentJob.youtube_video_id = null;
+            currentJob.youtube_video_url = null;
+            document.getElementById('youtube-tools').style.display = 'none';
+            document.querySelector('.actions .btn-success').textContent = 'Publicar ahora';
+            document.getElementById('publish-modal-title').textContent = 'V?deo eliminado';
+            document.getElementById('publish-modal-message').textContent = 'El v?deo se elimin? de YouTube y ya no est? asociado al trabajo.';
+            document.getElementById('publishModal').classList.add('open');
         }
 
         loadPublishContext();

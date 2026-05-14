@@ -293,7 +293,7 @@
                 <div class="stat-card"><small>Video ID</small><strong id="stat-video-id">—</strong></div>
             </div>
             <div class="modal-footer">
-                <a id="statsVideoLink" class="modal-btn modal-link" href="#" style="background: var(--primary);">Abrir en YouTube</a>
+                <a id="statsVideoLink" class="modal-btn modal-link" href="#" target="_blank" rel="noopener noreferrer" style="background: var(--primary);">Abrir en YouTube</a>
                 <button class="modal-btn" onclick="closeStatsModal()" style="background: #333;">Cerrar</button>
             </div>
         </div>
@@ -384,6 +384,21 @@
                         <button class="action-btn btn-delete" onclick="deleteJob('${job.job_id}')">🗑</button>
                     </td>
                 `;
+                if (job.youtube_video_id) {
+                    const actionsCell = row.querySelector('td:last-child');
+                    const configButton = document.createElement('button');
+                    configButton.className = 'action-btn';
+                    configButton.style.background = 'rgba(170,120,255,0.18)';
+                    configButton.style.color = '#cdb4ff';
+                    configButton.style.border = '1px solid rgba(170,120,255,0.35)';
+                    configButton.textContent = 'âš™ YouTube';
+                    configButton.onclick = () => {
+                        window.location.href = job.channel_id
+                            ? `/publish?job_id=${job.job_id}&channel_id=${job.channel_id}`
+                            : `/publish?job_id=${job.job_id}`;
+                    };
+                    actionsCell.insertBefore(configButton, actionsCell.lastElementChild);
+                }
                 table.appendChild(row);
             });
 

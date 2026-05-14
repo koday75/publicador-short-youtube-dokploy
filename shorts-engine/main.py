@@ -199,6 +199,20 @@ class PublishVideoRequest(BaseModel):
     default_language: Optional[str] = None
     notify_subscribers: Optional[bool] = None
 
+class UpdateYoutubeVideoRequest(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    tags: Optional[Union[List[str], str]] = []
+    privacy_status: Optional[str] = None
+    category_id: Optional[str] = None
+    publish_at: Optional[str] = None
+    license: Optional[str] = None
+    embeddable: Optional[bool] = None
+    public_stats_viewable: Optional[bool] = None
+    made_for_kids: Optional[bool] = None
+    contains_synthetic_media: Optional[bool] = None
+    default_language: Optional[str] = None
+
 def resolve_job_video_path(job: dict) -> str | None:
     video_url = (job or {}).get("video_url") or ""
     if not video_url:
@@ -1519,6 +1533,81 @@ async def api_set_job_thumbnail(job_id: str, file: UploadFile = File(...), chann
                 os.remove(tmp_path)
         except Exception:
             pass
+
+@app.put("/api/jobs/{job_id}/youtube")
+async def api_update_job_youtube(job_id: str, req: UpdateYoutubeVideoRequest, user: str = Depends(get_current_user)):
+    job = db.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Trabajo no encontrado")
+
+    channel_id = job.get("channel_id")
+    if not channel_id:
+        raise HTTPException(status_code=400, detail="El trabajo no tiene canal asociado")
+    if not job.get("youtube_video_id"):
+        raise HTTPException(status_code=400, detail="Primero debes publicar el vídeo para poder editarlo en YouTube")
+
+    channel = db.get_youtube_channel(int(channel_id))
+    if not channel:
+        raise HTTPException(status_code=404, detail="Canal no encontrado")
+
+    title = (req.title or job.get("title") or job.get("text") or job_id).strip()
+    description = (req.description if req.description is not None else job.get("text") or "").strip()
+    tags = normalize_tags_input(req.tags or channel.get("default_tags"))
+    privacy_status = (req.privacy_status or channel.get("default_privacy_status") or "private").strip().lower()
+    if privacy_status not in {"private", "unlisted", "public"}:
+        raise HTTPException(status_code=400, detail="privacy_status inválido")
+    category_id = str(req.category_id or channel.get("default_category_id") or "22")
+    publish_at = parse_iso_datetime(req.publish_at)
+    if publish_at:
+        privacy_status = "private"
+
+    try:
+        result = youtube_manager.update_video_metadata(
+            int(channel_id),
+            job["youtube_video_id"],
+            {
+                "title": title,
+                "description": description,
+                "tags": tags,
+                "categoryId": category_id,
+                "privacyStatus": privacy_status,
+                "publishAt": publish_at,
+                "license": req.license or "youtube",
+                "embeddable": True if req.embeddable is None else bool(req.embeddable),
+                "publicStatsViewable": True if req.public_stats_viewable is None else bool(req.public_stats_viewable),
+                "selfDeclaredMadeForKids": bool(req.made_for_kids) if req.made_for_kids is not None else False,
+                "containsSyntheticMedia": bool(req.contains_synthetic_media) if req.contains_synthetic_media is not None else False,
+                "defaultLanguage": req.default_language or channel.get("default_language") or "es",
+            },
+        )
+        return {"status": "success", "youtube": result}
+    except YouTubeAuthError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        logger.error(f"Error actualizando vídeo de YouTube {job_id}: {exc}")
+        raise HTTPException(status_code=500, detail=str(exc))
+
+@app.delete("/api/jobs/{job_id}/youtube")
+async def api_delete_job_youtube(job_id: str, user: str = Depends(get_current_user)):
+    job = db.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Trabajo no encontrado")
+
+    channel_id = job.get("channel_id")
+    if not channel_id:
+        raise HTTPException(status_code=400, detail="El trabajo no tiene canal asociado")
+    if not job.get("youtube_video_id"):
+        raise HTTPException(status_code=400, detail="El trabajo no tiene un vídeo de YouTube asociado")
+
+    try:
+        result = youtube_manager.delete_video(int(channel_id), job["youtube_video_id"])
+        db.clear_job_publication(job_id)
+        return {"status": "success", "youtube": result}
+    except YouTubeAuthError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        logger.error(f"Error eliminando vídeo de YouTube {job_id}: {exc}")
+        raise HTTPException(status_code=500, detail=str(exc))
 
 def resolve_background_video(niche: str, bg_name: str, custom_id: str = None, channel_id: int = None) -> str:
     """Resuelve la ruta definitiva del vídeo o imagen de fondo."""

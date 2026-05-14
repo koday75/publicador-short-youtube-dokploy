@@ -679,6 +679,67 @@ class YouTubeChannelService:
             raise YouTubeAuthError(f"No se pudo asignar la miniatura: {res.text}")
         return res.json()
 
+    def update_video_metadata(self, channel_id: int, video_id: str, metadata: dict[str, Any]):
+        self.reload_oauth_config()
+        self._resolve_channel_oauth_config(channel_id)
+        auth = self.get_authorized_client(channel_id)
+        access_token = auth["access_token"]
+
+        snippet = {
+            "title": metadata["title"],
+            "description": metadata.get("description", ""),
+            "tags": metadata.get("tags") or [],
+            "categoryId": str(metadata.get("categoryId", "22")),
+        }
+        default_language = metadata.get("defaultLanguage")
+        if default_language:
+            snippet["defaultLanguage"] = default_language
+
+        status = {
+            "privacyStatus": metadata.get("privacyStatus", "private"),
+            "license": metadata.get("license", "youtube"),
+            "embeddable": self._coerce_bool(metadata.get("embeddable"), True),
+            "publicStatsViewable": self._coerce_bool(metadata.get("publicStatsViewable"), True),
+            "selfDeclaredMadeForKids": self._coerce_bool(metadata.get("selfDeclaredMadeForKids"), False),
+            "containsSyntheticMedia": self._coerce_bool(metadata.get("containsSyntheticMedia"), False),
+        }
+        publish_at = metadata.get("publishAt")
+        if publish_at:
+            status["privacyStatus"] = "private"
+            status["publishAt"] = publish_at
+
+        res = requests.put(
+            f"{self.YOUTUBE_API_BASE}/videos",
+            params={"part": "snippet,status"},
+            headers={
+                "Authorization": f"Bearer {access_token}",
+                "Content-Type": "application/json; charset=UTF-8",
+            },
+            data=json.dumps({"id": video_id, "snippet": snippet, "status": status}),
+            timeout=60,
+        )
+        if not res.ok:
+            raise YouTubeAuthError(f"No se pudo actualizar el vídeo: {res.text}")
+        return res.json()
+
+    def delete_video(self, channel_id: int, video_id: str):
+        self.reload_oauth_config()
+        self._resolve_channel_oauth_config(channel_id)
+        auth = self.get_authorized_client(channel_id)
+        access_token = auth["access_token"]
+
+        res = requests.delete(
+            f"{self.YOUTUBE_API_BASE}/videos",
+            params={"id": video_id},
+            headers={
+                "Authorization": f"Bearer {access_token}",
+            },
+            timeout=60,
+        )
+        if res.status_code not in {200, 204}:
+            raise YouTubeAuthError(f"No se pudo eliminar el vídeo: {res.text}")
+        return {"deleted": True, "video_id": video_id}
+
     def get_video_statistics(self, channel_id: int, video_ids: list[str]) -> dict[str, dict[str, Any]]:
         self.reload_oauth_config()
         self._resolve_channel_oauth_config(channel_id)
