@@ -85,6 +85,7 @@ class YouTubeChannelService:
         else:
             scopes.extend([
                 "https://www.googleapis.com/auth/youtube.upload",
+                "https://www.googleapis.com/auth/youtube.force-ssl",
                 "https://www.googleapis.com/auth/youtube.readonly",
                 "openid",
                 "email",
@@ -93,6 +94,7 @@ class YouTubeChannelService:
 
         for scope in [
             "https://www.googleapis.com/auth/youtube.upload",
+            "https://www.googleapis.com/auth/youtube.force-ssl",
             "https://www.googleapis.com/auth/youtube.readonly",
             "openid",
             "email",
@@ -101,6 +103,18 @@ class YouTubeChannelService:
             if scope not in scopes:
                 scopes.append(scope)
         return scopes
+
+    def _ensure_required_scopes(self, channel_id: int, required_scopes: list[str]):
+        channel = self.db.get_youtube_channel(channel_id)
+        granted = (channel or {}).get("scopes_granted") or ""
+        granted_set = {scope.strip() for scope in granted.split() if scope.strip()}
+        missing = [scope for scope in required_scopes if scope not in granted_set]
+        if missing:
+            friendly = ", ".join(scope.rsplit("/", 1)[-1] for scope in missing)
+            raise YouTubeAuthError(
+                "Este canal se autorizó antes de que la app pidiera permisos de edición de YouTube. "
+                f"Vuelve a conectar el canal para conceder: {friendly}."
+            )
 
     def _resolve_fernet_key(self) -> bytes:
         raw_key = os.getenv("YOUTUBE_TOKEN_ENCRYPTION_KEY", "").strip()
@@ -646,6 +660,7 @@ class YouTubeChannelService:
     def set_thumbnail(self, channel_id: int, video_id: str, file_path_or_stream):
         self.reload_oauth_config()
         self._resolve_channel_oauth_config(channel_id)
+        self._ensure_required_scopes(channel_id, ["https://www.googleapis.com/auth/youtube.force-ssl"])
         auth = self.get_authorized_client(channel_id)
         access_token = auth["access_token"]
 
@@ -682,6 +697,7 @@ class YouTubeChannelService:
     def update_video_metadata(self, channel_id: int, video_id: str, metadata: dict[str, Any]):
         self.reload_oauth_config()
         self._resolve_channel_oauth_config(channel_id)
+        self._ensure_required_scopes(channel_id, ["https://www.googleapis.com/auth/youtube.force-ssl"])
         auth = self.get_authorized_client(channel_id)
         access_token = auth["access_token"]
 
@@ -725,6 +741,7 @@ class YouTubeChannelService:
     def delete_video(self, channel_id: int, video_id: str):
         self.reload_oauth_config()
         self._resolve_channel_oauth_config(channel_id)
+        self._ensure_required_scopes(channel_id, ["https://www.googleapis.com/auth/youtube.force-ssl"])
         auth = self.get_authorized_client(channel_id)
         access_token = auth["access_token"]
 
