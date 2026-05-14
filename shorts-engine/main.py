@@ -237,6 +237,36 @@ def parse_iso_datetime(value: Optional[str]) -> Optional[str]:
     except Exception:
         raise HTTPException(status_code=400, detail="publish_at inválido. Usa un ISO 8601 válido.")
 
+def log_job_event(
+    job_id: str,
+    event_type: str,
+    message: str,
+    status: str = "info",
+    details: dict | None = None,
+    channel_id: int | None = None,
+    scene_id: str | None = None,
+    actor: str = "system",
+    duration_ms: int | None = None,
+    error_code: str | None = None,
+    error_message: str | None = None,
+):
+    try:
+        db.add_job_log(
+            job_id=job_id,
+            event_type=event_type,
+            message=message,
+            status=status,
+            details=details,
+            channel_id=channel_id,
+            scene_id=scene_id,
+            actor=actor,
+            duration_ms=duration_ms,
+            error_code=error_code,
+            error_message=error_message,
+        )
+    except Exception as exc:
+        logger.debug(f"No se pudo guardar el log del trabajo {job_id}: {exc}")
+
 class LoginRequest(BaseModel):
     password: str
 
@@ -1282,8 +1312,15 @@ async def api_render_storyboard(req: StoryboardRequest, background_tasks: Backgr
         title=req.title,
         channel_id=req.channel_id
     )
+    log_job_event(
+        job_id,
+        "created",
+        "Trabajo creado y enviado a render autom?tico.",
+        status="info",
+        channel_id=req.channel_id,
+        details={"niche": req.niche, "scenes": len(req.scenes), "voice_id": req.voice_id},
+    )
     
-    # Run in background as it takes time (Cloudinary + FFmpeg)
     background_tasks.add_task(process_storyboard_job, job_id, req)
     return {"status": "processing", "job_id": job_id}
 
@@ -1341,8 +1378,14 @@ async def api_draft_storyboard(req: StoryboardRequest, background_tasks: Backgro
         title=req.title,
         channel_id=req.channel_id
     )
-    
-    return {"status": "draft", "job_id": job_id, "title": req.title}
+    log_job_event(
+        job_id,
+        "saved",
+        "Trabajo guardado como borrador.",
+        status="info",
+        channel_id=req.channel_id,
+        details={"niche": req.niche, "scenes": len(req.scenes), "title": req.title},
+    )
 
 class JobStatusRequest(BaseModel):
     status: str
@@ -1354,6 +1397,14 @@ async def api_update_job_status(job_id: str, req: JobStatusRequest, user: str = 
         raise HTTPException(status_code=404, detail="Trabajo no encontrado")
         
     db.update_job_status(job_id, req.status)
+    log_job_event(
+        job_id,
+        "status_changed",
+        f"Estado cambiado a {req.status}",
+        status="info",
+        channel_id=job.get("channel_id"),
+        details={"status": req.status},
+    )
     return {"status": "success"}
 
 @app.get("/api/jobs/{job_id}")
@@ -1371,6 +1422,22 @@ async def api_get_job_details(job_id: str, channel_id: int = None, user: str = D
         job["scenes"] = []
         
     return job
+
+@app.get("/api/jobs/{job_id}/logs")
+async def api_get_job_logs(job_id: str, channel_id: int = None, limit: int = 100, user: str = Depends(get_current_user)):
+    job = db.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Trabajo no encontrado")
+    if channel_id is not None and job.get("channel_id") != channel_id:
+        raise HTTPException(status_code=404, detail="Trabajo no encontrado para este canal")
+
+    logs = db.get_job_logs(job_id, limit=max(1, min(limit, 200)))
+    logs.reverse()
+    return {
+        "job": job,
+        "logs": logs,
+        "count": len(logs),
+    }
 
 @app.get("/api/jobs/{job_id}/statistics")
 async def api_get_job_statistics(job_id: str, channel_id: int = None, user: str = Depends(get_current_user)):
@@ -1491,6 +1558,14 @@ async def api_publish_job_to_youtube(job_id: str, req: PublishVideoRequest, user
         youtube_video_id = upload_result.get("id")
         youtube_video_url = f"https://www.youtube.com/watch?v={youtube_video_id}" if youtube_video_id else upload_result.get("webViewLink") or ""
         db.mark_job_published(job_id, youtube_video_id, youtube_video_url)
+        log_job_event(
+            job_id,
+            "publish_success",
+            "V?deo publicado en YouTube correctamente.",
+            status="success",
+            channel_id=int(resolved_channel_id),
+            details={"youtube_video_id": youtube_video_id, "youtube_video_url": youtube_video_url, "publish_at": publish_at},
+        )
         return {
             "status": "success",
             "youtube_video_id": youtube_video_id,
@@ -1498,9 +1573,25 @@ async def api_publish_job_to_youtube(job_id: str, req: PublishVideoRequest, user
             "publish_at": publish_at,
         }
     except YouTubeAuthError as exc:
+        log_job_event(
+            job_id,
+            "publish_failed",
+            "La publicaci?n en YouTube ha fallado.",
+            status="error",
+            channel_id=int(resolved_channel_id),
+            error_message=str(exc),
+        )
         raise HTTPException(status_code=400, detail=str(exc))
     except Exception as exc:
         logger.error(f"Error publicando trabajo {job_id}: {exc}")
+        log_job_event(
+            job_id,
+            "publish_failed",
+            "La publicaci?n en YouTube ha fallado.",
+            status="error",
+            channel_id=int(resolved_channel_id),
+            error_message=str(exc),
+        )
         raise HTTPException(status_code=500, detail=str(exc))
 
 @app.post("/api/jobs/{job_id}/thumbnail")
@@ -1524,8 +1615,24 @@ async def api_set_job_thumbnail(job_id: str, file: UploadFile = File(...), chann
 
     try:
         result = youtube_manager.set_thumbnail(int(job["channel_id"] or channel_id), job["youtube_video_id"], tmp_path)
+        log_job_event(
+            job_id,
+            "youtube_updated",
+            "Miniatura actualizada en YouTube.",
+            status="success",
+            channel_id=int(job["channel_id"] or channel_id),
+            details={"youtube_video_id": job["youtube_video_id"]},
+        )
         return {"status": "success", "thumbnail": result}
     except YouTubeAuthError as exc:
+        log_job_event(
+            job_id,
+            "youtube_update_failed",
+            "No se pudo asignar la miniatura en YouTube.",
+            status="error",
+            channel_id=int(job["channel_id"] or channel_id),
+            error_message=str(exc),
+        )
         raise HTTPException(status_code=400, detail=str(exc))
     finally:
         try:
@@ -1674,6 +1781,14 @@ def resolve_background_video(niche: str, bg_name: str, custom_id: str = None, ch
 
 async def process_storyboard_job(job_id, req: StoryboardRequest):
     try:
+        log_job_event(
+            job_id,
+            "render_started",
+            "Render de storyboard iniciado.",
+            status="info",
+            channel_id=req.channel_id,
+            details={"scenes": len(req.scenes), "music_filename": req.music_filename, "tts_engine": req.tts_engine},
+        )
         scene_clips = []
         global_music_path = os.path.join(UPLOAD_DIR, req.music_filename) if req.music_filename else None
         
@@ -1746,14 +1861,28 @@ async def process_storyboard_job(job_id, req: StoryboardRequest):
             music_volume=req.music_volume if req.music_volume is not None else float(db.get_setting("DEFAULT_MUSIC_VOLUME") or 0.2),
             voice_volume=req.voice_volume if req.voice_volume is not None else float(db.get_setting("DEFAULT_VOICE_VOLUME") or 1.0)
         )
-        
         db.update_job_status(job_id, "rendered", video_url=f"/static/shorts/{output_filename}")
-        logger.info(f"Cinema Storyboard {job_id} renderizado. Esperando aprobación humana.")
+        log_job_event(
+            job_id,
+            "render_finished",
+            "Render de storyboard completado correctamente.",
+            status="success",
+            channel_id=req.channel_id,
+            details={"output_filename": output_filename},
+        )
+        logger.info(f"Cinema Storyboard {job_id} renderizado. Esperando aprobaci?n humana.")
 
     except Exception as e:
         logger.error(f"Storyboard Render Failed: {str(e)}")
         db.update_job_status(job_id, "failed", error_message=str(e))
-
+        log_job_event(
+            job_id,
+            "render_failed",
+            "El render del storyboard ha fallado.",
+            status="error",
+            channel_id=req.channel_id,
+            error_message=str(e),
+        )
 @app.get("/")
 def read_root():
     return RedirectResponse(url="/dashboard")
@@ -1792,6 +1921,14 @@ async def render_short(request: RenderRequest, background_tasks: BackgroundTasks
         music_volume=request.music_volume,
         voice_volume=request.voice_volume,
     )
+    log_job_event(
+        job_id,
+        "created",
+        "Trabajo de render directo creado.",
+        status="info",
+        channel_id=request.channel_id,
+        details={"niche": request.niche, "voice_id": request.voice_id},
+    )
 
     # Background Selection Logic (Unified)
     bg_path = resolve_background_video(request.niche, request.background_video_name, request.custom_background_filename, channel_id=request.channel_id)
@@ -1819,6 +1956,14 @@ async def render_short(request: RenderRequest, background_tasks: BackgroundTasks
 
         # Update DB success
         db.update_job_status(job_id, "completed", video_url=download_url)
+        log_job_event(
+            job_id,
+            "render_finished",
+            "Render del v?deo directo completado correctamente.",
+            status="success",
+            channel_id=request.channel_id,
+            details={"video_url": download_url, "output_filename": output_filename},
+        )
 
         return {
             "status": "success",
@@ -1830,6 +1975,14 @@ async def render_short(request: RenderRequest, background_tasks: BackgroundTasks
     except Exception as e:
         logger.error(f"Render failed: {e}")
         db.update_job_status(job_id, "failed", error_message=str(e))
+        log_job_event(
+            job_id,
+            "render_failed",
+            "El render del v?deo directo ha fallado.",
+            status="error",
+            channel_id=request.channel_id,
+            error_message=str(e),
+        )
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":

@@ -204,6 +204,24 @@ class JobDatabase:
                 )
             """)
 
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS job_logs (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    job_id TEXT NOT NULL,
+                    channel_id INTEGER,
+                    event_type TEXT NOT NULL,
+                    status TEXT NOT NULL DEFAULT 'info',
+                    message TEXT NOT NULL,
+                    details_json TEXT,
+                    scene_id TEXT,
+                    actor TEXT DEFAULT 'system',
+                    duration_ms INTEGER,
+                    error_code TEXT,
+                    error_message TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+
             # Migration: Ensure UNIQUE constraint on existing table if it was created without it
             try:
                 # Deduplicate if necessary before adding constraint (sqlite doesn't support easy ALTER for this)
@@ -212,6 +230,13 @@ class JobDatabase:
                 # Add batch_id and channel_id to ai_tasks if missing
                 self._ensure_column(conn, "ai_tasks", "batch_id", "TEXT")
                 self._ensure_column(conn, "ai_tasks", "channel_id", "INTEGER")
+                self._ensure_column(conn, "job_logs", "channel_id", "INTEGER")
+                self._ensure_column(conn, "job_logs", "details_json", "TEXT")
+                self._ensure_column(conn, "job_logs", "scene_id", "TEXT")
+                self._ensure_column(conn, "job_logs", "actor", "TEXT")
+                self._ensure_column(conn, "job_logs", "duration_ms", "INTEGER")
+                self._ensure_column(conn, "job_logs", "error_code", "TEXT")
+                self._ensure_column(conn, "job_logs", "error_message", "TEXT")
             except Exception as e:
                 # If column already exists or other error, ignore
                 pass
@@ -445,6 +470,51 @@ class JobDatabase:
             )
             conn.commit()
 
+    def add_job_log(self, job_id: str, event_type: str, message: str, status: str = "info", details: dict | None = None,
+                    channel_id: int | None = None, scene_id: str | None = None, actor: str = "system",
+                    duration_ms: int | None = None, error_code: str | None = None, error_message: str | None = None):
+        import json
+        with self._get_connection() as conn:
+            conn.execute(
+                """
+                INSERT INTO job_logs (
+                    job_id, channel_id, event_type, status, message, details_json,
+                    scene_id, actor, duration_ms, error_code, error_message
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    job_id,
+                    channel_id,
+                    event_type,
+                    status,
+                    message,
+                    json.dumps(details, ensure_ascii=False) if details is not None else None,
+                    scene_id,
+                    actor,
+                    duration_ms,
+                    error_code,
+                    error_message,
+                )
+            )
+            conn.commit()
+
+    def get_job_logs(self, job_id: str, limit: int = 100):
+        with self._get_connection() as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.execute(
+                """
+                SELECT * FROM job_logs
+                WHERE job_id = ?
+                ORDER BY created_at DESC, id DESC
+                LIMIT ?
+                """,
+                (job_id, limit),
+            )
+            rows = [dict(row) for row in cursor.fetchall()]
+            for row in rows:
+                row["details"] = self._safe_json_loads(row.get("details_json"), default={}) or {}
+            return rows
+
     def get_job(self, job_id: str):
         with self._get_connection() as conn:
             conn.row_factory = sqlite3.Row
@@ -642,6 +712,7 @@ class JobDatabase:
                         os.remove(video_path)
                     except Exception:
                         pass
+            conn.execute("DELETE FROM job_logs WHERE job_id = ?", (job_id,))
             result = conn.execute("DELETE FROM jobs WHERE job_id = ?", (job_id,))
             conn.commit()
             return result.rowcount > 0
