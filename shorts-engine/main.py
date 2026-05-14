@@ -1455,7 +1455,7 @@ async def api_get_job_statistics(job_id: str, channel_id: int = None, user: str 
             stats_map = youtube_manager.get_video_statistics(int(resolved_channel_id), [str(video_id)])
             stats = stats_map.get(str(video_id), {})
         except Exception as exc:
-            logger.debug(f"No se pudieron cargar estadÃ­sticas del trabajo {job_id}: {exc}")
+            logger.debug(f"No se pudieron cargar estadísticas del trabajo {job_id}: {exc}")
             stats = {}
 
     return {
@@ -1561,7 +1561,7 @@ async def api_publish_job_to_youtube(job_id: str, req: PublishVideoRequest, user
         log_job_event(
             job_id,
             "publish_success",
-            "V?deo publicado en YouTube correctamente.",
+            "Vídeo publicado en YouTube correctamente.",
             status="success",
             channel_id=int(resolved_channel_id),
             details={"youtube_video_id": youtube_video_id, "youtube_video_url": youtube_video_url, "publish_at": publish_at},

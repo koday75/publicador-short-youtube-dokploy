@@ -647,11 +647,11 @@
                     }
                 }
 
-                document.getElementById('publish-modal-title').textContent = isAlreadyPublished ? 'V?deo actualizado' : 'V??deo publicado';
-                document.getElementById('publish-modal-message').textContent = data.youtube_video_url || (isAlreadyPublished ? 'Cambios guardados con ??xito.' : 'Publicaci??n completada con ??xito.');
+                document.getElementById('publish-modal-title').textContent = isAlreadyPublished ? 'Vídeo actualizado' : 'Vídeo publicado';
+                document.getElementById('publish-modal-message').textContent = data.youtube_video_url || (isAlreadyPublished ? 'Cambios guardados con éxito.' : 'Publicación completada con éxito.');
                 document.getElementById('publishModal').classList.add('open');
             } catch (error) {
-                alert(error.message || (isAlreadyPublished ? 'No se pudieron guardar los cambios.' : 'No se pudo publicar el v??deo.'));
+                alert(error.message || (isAlreadyPublished ? 'No se pudieron guardar los cambios.' : 'No se pudo publicar el vídeo.'));
             } finally {
                 if (btn) {
                     btn.disabled = false;
@@ -691,26 +691,26 @@
                 alert(data.detail || 'No se pudieron guardar los cambios.');
                 return;
             }
-            document.getElementById('publish-modal-title').textContent = 'V?deo actualizado';
+            document.getElementById('publish-modal-title').textContent = 'Vídeo actualizado';
             document.getElementById('publish-modal-message').textContent = 'Los cambios de YouTube se guardaron correctamente.';
             document.getElementById('publishModal').classList.add('open');
         }
 
         async function deleteYoutubeVideo() {
             const jobId = getJobId();
-            if (!confirm('?Seguro que quieres eliminar este v?deo de YouTube? Esta acci?n no se puede deshacer.')) return;
+            if (!confirm('¿Seguro que quieres eliminar este vídeo de YouTube? Esta acción no se puede deshacer.')) return;
             const res = await fetch(`/api/jobs/${jobId}/youtube`, { method: 'DELETE' });
             const data = await res.json().catch(() => ({}));
             if (!res.ok) {
-                alert(data.detail || 'No se pudo eliminar el v?deo de YouTube.');
+                alert(data.detail || 'No se pudo eliminar el vídeo de YouTube.');
                 return;
             }
             currentJob.youtube_video_id = null;
             currentJob.youtube_video_url = null;
             document.getElementById('youtube-tools').style.display = 'none';
             document.querySelector('.actions .btn-success').textContent = 'Publicar ahora';
-            document.getElementById('publish-modal-title').textContent = 'V?deo eliminado';
-            document.getElementById('publish-modal-message').textContent = 'El v?deo se elimin? de YouTube y ya no est? asociado al trabajo.';
+            document.getElementById('publish-modal-title').textContent = 'Vídeo eliminado';
+            document.getElementById('publish-modal-message').textContent = 'El vídeo se eliminó de YouTube y ya no está asociado al trabajo.';
             document.getElementById('publishModal').classList.add('open');
         }
 

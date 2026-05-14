@@ -503,7 +503,7 @@
 
         function renderLogBadge(status) {
             const map = {
-                success: { label: '?xito', color: '#3fb950', bg: 'rgba(46,160,67,0.18)', border: 'rgba(46,160,67,0.28)' },
+                success: { label: 'Éxito', color: '#3fb950', bg: 'rgba(46,160,67,0.18)', border: 'rgba(46,160,67,0.28)' },
                 error: { label: 'Error', color: '#f85149', bg: 'rgba(248,81,73,0.15)', border: 'rgba(248,81,73,0.28)' },
                 warning: { label: 'Aviso', color: '#d29922', bg: 'rgba(210,153,34,0.16)', border: 'rgba(210,153,34,0.28)' },
                 info: { label: 'Info', color: '#58a6ff', bg: 'rgba(88,166,255,0.15)', border: 'rgba(88,166,255,0.28)' },
@@ -531,7 +531,7 @@
                 title.textContent = job.title || job.job_id || jobId;
 
                 if (!logs.length) {
-                    timeline.innerHTML = '<div class="empty-state">Todav?a no hay eventos registrados para este trabajo.</div>';
+                    timeline.innerHTML = '<div class="empty-state">Todavía no hay eventos registrados para este trabajo.</div>';
                     return;
                 }
 
