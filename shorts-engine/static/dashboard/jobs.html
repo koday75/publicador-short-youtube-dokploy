@@ -453,6 +453,18 @@
             return Number.isFinite(value) ? value : null;
         }
 
+        function shortDate(value) {
+            if (!value) return '—';
+            const d = new Date(value);
+            if (Number.isNaN(d.getTime())) return value;
+            return d.toLocaleDateString('es-ES', {
+                day: '2-digit',
+                month: 'short',
+                hour: '2-digit',
+                minute: '2-digit',
+            });
+        }
+
         async function loadChannelContext() {
             const channelId = getChannelIdFromQuery();
             if (!channelId) return;
