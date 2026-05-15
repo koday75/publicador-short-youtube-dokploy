@@ -58,6 +58,28 @@
             background: rgba(88,166,255,0.14);
             border-color: rgba(88,166,255,0.45);
         }
+        .comments-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.35rem 0.65rem;
+            border-radius: 999px;
+            border: 1px solid rgba(88,166,255,0.25);
+            background: rgba(88,166,255,0.08);
+            color: #58a6ff;
+            font-weight: 700;
+            font-size: 0.8rem;
+            white-space: nowrap;
+        }
+        .comments-pill.buttonish {
+            cursor: pointer;
+            appearance: none;
+            font: inherit;
+        }
+        .comments-pill.buttonish:hover {
+            background: rgba(88,166,255,0.14);
+            border-color: rgba(88,166,255,0.45);
+        }
         .status-pill {
             display: inline-flex;
             align-items: center;
@@ -211,6 +233,80 @@
             line-height: 1.35;
             overflow-wrap: anywhere;
         }
+        .comments-layout {
+            display: grid;
+            grid-template-columns: minmax(0, 1.25fr) minmax(320px, 0.95fr);
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        .comments-list {
+            max-height: 60vh;
+            overflow: auto;
+            display: grid;
+            gap: 0.75rem;
+            padding-right: 0.2rem;
+        }
+        .comment-item,
+        .comment-panel {
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            background: rgba(255,255,255,0.03);
+            padding: 0.9rem;
+        }
+        .comment-item.selected {
+            border-color: rgba(88,166,255,0.45);
+            box-shadow: 0 0 0 1px rgba(88,166,255,0.12) inset;
+        }
+        .comment-item-header {
+            display: flex;
+            justify-content: space-between;
+            gap: 0.75rem;
+            align-items: flex-start;
+            flex-wrap: wrap;
+        }
+        .comment-item-header strong {
+            display: block;
+            margin-bottom: 0.2rem;
+        }
+        .comment-item-text {
+            white-space: pre-wrap;
+            line-height: 1.5;
+            margin-top: 0.7rem;
+            color: var(--text-muted);
+        }
+        .comment-item-actions {
+            display: flex;
+            gap: 0.55rem;
+            margin-top: 0.8rem;
+            flex-wrap: wrap;
+        }
+        .comment-panel {
+            display: grid;
+            gap: 1rem;
+            align-content: start;
+        }
+        .comment-panel textarea {
+            width: 100%;
+            min-height: 180px;
+            resize: vertical;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            background: rgba(0,0,0,0.25);
+            color: #fff;
+            padding: 0.85rem;
+            font: inherit;
+            line-height: 1.45;
+        }
+        .comment-panel textarea:focus {
+            outline: none;
+            border-color: rgba(88,166,255,0.45);
+            box-shadow: 0 0 0 1px rgba(88,166,255,0.15);
+        }
+        .comment-panel-actions {
+            display: flex;
+            gap: 0.6rem;
+            flex-wrap: wrap;
+        }
     </style>
 </head>
 <body>
@@ -311,10 +407,43 @@
         </div>
     </div>
 
+    <div id="commentsModal" class="modal" aria-hidden="true">
+        <div class="modal-content" style="width:min(1180px, 100%);">
+            <span class="close-modal" onclick="closeCommentsModal()">&times;</span>
+            <h3 id="commentsModalTitle" style="margin:0 1.5rem 0 0;">Comentarios del vídeo</h3>
+            <p id="commentsModalSubtitle" style="margin:0.45rem 0 0; color:var(--text-muted);">Selecciona un comentario para generar y aprobar una respuesta.</p>
+            <div class="comments-layout">
+                <div>
+                    <div id="commentsList" class="comments-list">
+                        <div class="empty-state">Abre un vídeo con comentarios para ver el hilo.</div>
+                    </div>
+                </div>
+                <div class="comment-panel">
+                    <div>
+                        <small style="display:block; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em;">Comentario seleccionado</small>
+                        <strong id="selectedCommentTitle" style="display:block; margin-top:0.3rem;">Ninguno</strong>
+                        <p id="selectedCommentText" style="margin:0.45rem 0 0; color:var(--text-muted); line-height:1.5;">Pulsa "Responder con IA" en un comentario para preparar una respuesta.</p>
+                    </div>
+                    <div>
+                        <small style="display:block; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:0.4rem;">Borrador de respuesta</small>
+                        <textarea id="commentReplyText" placeholder="La respuesta generada por IA aparecerá aquí..."></textarea>
+                    </div>
+                    <div class="comment-panel-actions">
+                        <button class="btn btn-primary" id="generateReplyBtn" type="button" onclick="generateCommentReply()">Generar con IA</button>
+                        <button class="btn btn-success" id="publishReplyBtn" type="button" onclick="publishCommentReply()" disabled>Aceptar y publicar</button>
+                        <button class="btn btn-secondary" type="button" onclick="clearCommentReply()">Limpiar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         let currentPage = 1;
         let currentVideoUrl = '';
         let currentStatsJob = null;
+        let currentCommentsContext = null;
+        let currentSelectedComment = null;
 
         function getChannelIdFromQuery() {
             const params = new URLSearchParams(window.location.search);
@@ -376,6 +505,8 @@
                 const displayTitle = job.title || (job.text ? `${job.text.substring(0, 50)}...` : job.job_id);
                 const canPlay = !!job.video_url;
                 const canPublish = !!job.video_url && !job.youtube_video_url;
+                const commentCount = job.youtube_comment_count;
+                const canViewComments = commentCount !== null && commentCount !== undefined;
 
                 const statusCell = job.youtube_video_url
                     ? `<span class="status-pill published">Publicado en YouTube</span>`
@@ -393,6 +524,7 @@
                         <button class="action-btn" style="background:#333; color:#fff;" onclick="window.location.href='${job.channel_id ? `/storyboard?job_id=${job.job_id}&channel_id=${job.channel_id}` : `/storyboard?job_id=${job.job_id}`}'">✏️</button>
                         ${canPlay ? `<button class="action-btn btn-view" onclick="previewVideo('${job.video_url}', ${job.channel_id ?? 'null'})">▶</button>` : ''}
                         ${canPublish ? `<button class="action-btn" style="background:rgba(88,166,255,0.15); color:#58a6ff; border:1px solid rgba(88,166,255,0.3);" onclick="window.location.href='${job.channel_id ? `/publish?job_id=${job.job_id}&channel_id=${job.channel_id}` : `/publish?job_id=${job.job_id}`}'">Publicar</button>` : ''}
+                        ${canViewComments ? `<button type="button" class="comments-pill buttonish" onclick="openCommentsModal('${job.job_id}', ${job.channel_id ?? 'null'}, ${JSON.stringify(job.title || displayTitle || job.job_id)})">💬 ${new Intl.NumberFormat('es-ES').format(commentCount || 0)}</button>` : ''}
                         <button class="action-btn" style="background:rgba(255,255,255,0.08); color:#fff; border:1px solid rgba(255,255,255,0.12);" onclick="openJobLogs('${job.job_id}', ${job.channel_id ?? 'null'})">Log</button>
                         <button class="action-btn btn-delete" onclick="deleteJob('${job.job_id}')">Eliminar</button>
                 `;
@@ -486,6 +618,188 @@
             } else {
                 await navigator.clipboard.writeText(currentVideoUrl);
                 alert('Enlace copiado al portapapeles.');
+            }
+        }
+
+        function closeCommentsModal() {
+            const modal = document.getElementById('commentsModal');
+            modal.classList.remove('open');
+            modal.setAttribute('aria-hidden', 'true');
+        }
+
+        function clearCommentReply() {
+            currentSelectedComment = null;
+            const title = document.getElementById('selectedCommentTitle');
+            const text = document.getElementById('selectedCommentText');
+            const reply = document.getElementById('commentReplyText');
+            const publishBtn = document.getElementById('publishReplyBtn');
+            title.textContent = 'Ninguno';
+            text.textContent = 'Pulsa "Responder con IA" en un comentario para preparar una respuesta.';
+            reply.value = '';
+            publishBtn.disabled = true;
+        }
+
+        function selectCommentForReply(comment) {
+            currentSelectedComment = comment;
+            document.getElementById('selectedCommentTitle').textContent = comment.author_name || 'Comentario';
+            document.getElementById('selectedCommentText').textContent = comment.text || '';
+            document.getElementById('commentReplyText').value = comment.reply_draft || '';
+            document.getElementById('publishReplyBtn').disabled = false;
+        }
+
+        function renderCommentItem(comment) {
+            const selected = currentSelectedComment && currentSelectedComment.comment_id === comment.comment_id;
+            const repliesHtml = (comment.replies || []).length
+                ? `<div style="margin-top:0.65rem; padding-left:0.8rem; border-left:2px solid rgba(255,255,255,0.08); display:grid; gap:0.5rem;">
+                    ${(comment.replies || []).map((reply) => `
+                        <div class="comment-item" style="padding:0.7rem; background:rgba(255,255,255,0.02);">
+                            <div class="comment-item-header">
+                                <div>
+                                    <strong>${escapeHtml(reply.author_name || 'Respuesta')}</strong>
+                                    <small>${reply.published_at ? shortDate(reply.published_at) : 'Sin fecha'}</small>
+                                </div>
+                                <small>${reply.like_count || 0} likes</small>
+                            </div>
+                            <div class="comment-item-text">${escapeHtml(reply.text || '')}</div>
+                        </div>
+                    `).join('')}
+                </div>`
+                : '';
+            return `
+                <article class="comment-item ${selected ? 'selected' : ''}" data-comment-id="${comment.comment_id}">
+                    <div class="comment-item-header">
+                        <div>
+                            <strong>${escapeHtml(comment.author_name || 'Autor anónimo')}</strong>
+                            <small>${comment.published_at ? shortDate(comment.published_at) : 'Sin fecha'} · ${comment.reply_count || 0} respuestas</small>
+                        </div>
+                        <small>${comment.like_count || 0} likes</small>
+                    </div>
+                    <div class="comment-item-text">${escapeHtml(comment.text || '')}</div>
+                    <div class="comment-item-actions">
+                        <button type="button" class="badge" style="background:rgba(88,166,255,0.15); color:#58a6ff; border:1px solid rgba(88,166,255,0.25);" onclick="generateCommentReplyFromId('${comment.comment_id}')">Responder con IA</button>
+                    </div>
+                    ${repliesHtml}
+                </article>
+            `;
+        }
+
+        async function openCommentsModal(jobId, channelId = null, videoTitle = '') {
+            const modal = document.getElementById('commentsModal');
+            const list = document.getElementById('commentsList');
+            document.getElementById('commentsModalTitle').textContent = videoTitle || 'Comentarios del vídeo';
+            document.getElementById('commentsModalSubtitle').textContent = 'Selecciona un comentario para generar y aprobar una respuesta.';
+            list.innerHTML = '<div class="empty-state">Cargando comentarios...</div>';
+            modal.classList.add('open');
+            modal.setAttribute('aria-hidden', 'false');
+            clearCommentReply();
+
+            try {
+                const url = channelId
+                    ? `/api/jobs/${encodeURIComponent(jobId)}/youtube-comments?channel_id=${encodeURIComponent(channelId)}`
+                    : `/api/jobs/${encodeURIComponent(jobId)}/youtube-comments`;
+                const res = await fetch(url);
+                const contentType = res.headers.get('content-type') || '';
+                const data = contentType.includes('application/json')
+                    ? await res.json()
+                    : { detail: await res.text() };
+                if (!res.ok) throw new Error(data.detail || 'No se pudieron cargar los comentarios.');
+                currentCommentsContext = {
+                    jobId,
+                    channelId,
+                    videoTitle,
+                    comments: data.comments || [],
+                };
+                if (!currentCommentsContext.comments.length) {
+                    list.innerHTML = '<div class="empty-state">Este vídeo todavía no tiene comentarios.</div>';
+                    return;
+                }
+                list.innerHTML = currentCommentsContext.comments.map(renderCommentItem).join('');
+            } catch (error) {
+                const message = String(error.message || 'No se pudieron cargar los comentarios.');
+                const reconnectHint = message.toLowerCase().includes('youtube.force-ssl')
+                    ? 'Este canal necesita reconectarse para conceder permisos de comentarios. Pulsa "Reconectar cuenta" en Ajustes del canal.'
+                    : message;
+                list.innerHTML = `<div class="empty-state">${escapeHtml(reconnectHint)}</div>`;
+            }
+        }
+
+        async function generateCommentReplyFromId(commentId) {
+            if (!currentCommentsContext) return;
+            const comment = (currentCommentsContext.comments || []).find((item) => String(item.comment_id) === String(commentId));
+            if (!comment) {
+                alert('No se encontró el comentario seleccionado.');
+                return;
+            }
+            return generateCommentReply(comment);
+        }
+
+        async function generateCommentReply(commentPayload = null) {
+            const ctx = currentCommentsContext;
+            if (!ctx) {
+                alert('Abre primero un vídeo con comentarios.');
+                return;
+            }
+            const comment = commentPayload || currentSelectedComment;
+            if (!comment) {
+                alert('Selecciona un comentario primero.');
+                return;
+            }
+            selectCommentForReply(comment);
+            const btn = document.getElementById('generateReplyBtn');
+            btn.disabled = true;
+            btn.textContent = 'Generando...';
+            try {
+                const res = await fetch(`/api/jobs/${encodeURIComponent(ctx.jobId)}/youtube-comments/${encodeURIComponent(comment.comment_id)}/draft`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        comment_text: comment.text || '',
+                        author_name: comment.author_name || '',
+                        video_title: ctx.videoTitle || '',
+                    }),
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || 'No se pudo generar la respuesta.');
+                document.getElementById('commentReplyText').value = data.reply_text || '';
+                comment.reply_draft = data.reply_text || '';
+                selectCommentForReply(comment);
+                document.getElementById('commentsList').innerHTML = ctx.comments.map(renderCommentItem).join('');
+            } catch (error) {
+                alert(error.message || 'No se pudo generar la respuesta.');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Generar con IA';
+            }
+        }
+
+        async function publishCommentReply() {
+            if (!currentCommentsContext || !currentSelectedComment) {
+                alert('Selecciona un comentario primero.');
+                return;
+            }
+            const replyText = document.getElementById('commentReplyText').value.trim();
+            if (!replyText) {
+                alert('La respuesta no puede estar vacía.');
+                return;
+            }
+            const btn = document.getElementById('publishReplyBtn');
+            btn.disabled = true;
+            btn.textContent = 'Publicando...';
+            try {
+                const res = await fetch(`/api/jobs/${encodeURIComponent(currentCommentsContext.jobId)}/youtube-comments/${encodeURIComponent(currentSelectedComment.comment_id)}/publish`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ reply_text: replyText }),
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || 'No se pudo publicar la respuesta.');
+                alert('Respuesta publicada correctamente.');
+                await openCommentsModal(currentCommentsContext.jobId, currentCommentsContext.channelId, currentCommentsContext.videoTitle);
+            } catch (error) {
+                alert(error.message || 'No se pudo publicar la respuesta.');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Aceptar y publicar';
             }
         }
 
@@ -646,11 +960,16 @@
             if (event.target.id === 'logsModal') closeLogsModal();
         });
 
+        document.getElementById('commentsModal').addEventListener('click', (event) => {
+            if (event.target.id === 'commentsModal') closeCommentsModal();
+        });
+
         document.addEventListener('keydown', (event) => {
             if (event.key === 'Escape') {
                 closeVideoModal();
                 closeStatsModal();
                 closeLogsModal();
+                closeCommentsModal();
             }
         });
 

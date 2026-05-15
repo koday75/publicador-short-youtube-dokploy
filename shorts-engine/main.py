@@ -796,6 +796,7 @@ async def api_get_jobs(page: int = 1, limit: int = 25, search: str = None, chann
             video_id = job.get("youtube_video_id")
             if video_id and video_id in stats_map:
                 job["youtube_view_count"] = stats_map[video_id].get("view_count")
+                job["youtube_comment_count"] = stats_map[video_id].get("comment_count")
 
     return {
         "jobs": jobs,
