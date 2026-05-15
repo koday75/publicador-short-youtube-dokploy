@@ -188,6 +188,69 @@
             border-color: rgba(88, 166, 255, 0.3);
             font-weight: 700;
         }
+        .render-progress-wrap {
+            display: grid;
+            gap: 1rem;
+            margin-top: 0.75rem;
+        }
+        .render-progress-bar {
+            width: 100%;
+            height: 16px;
+            border-radius: 999px;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+        }
+        .render-progress-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #58a6ff, #bc8cff);
+            transition: width 0.35s ease;
+        }
+        .render-progress-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+        }
+        .render-progress-head strong {
+            font-size: 1rem;
+        }
+        .render-progress-percent {
+            color: #58a6ff;
+            font-weight: 800;
+            font-size: 1rem;
+        }
+        .render-progress-note {
+            color: var(--text-muted);
+            line-height: 1.55;
+            font-size: 0.9rem;
+            min-height: 2.8rem;
+        }
+        .render-progress-meta {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.75rem;
+        }
+        .render-progress-card {
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            background: rgba(255,255,255,0.03);
+            padding: 0.85rem;
+        }
+        .render-progress-card small {
+            display: block;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-size: 0.68rem;
+            margin-bottom: 0.25rem;
+        }
+        .render-progress-card strong {
+            display: block;
+            font-size: 0.95rem;
+            overflow-wrap: anywhere;
+        }
     </style>
 </head>
 <body>
@@ -348,6 +411,35 @@
             </div>
         </div>
 
+        <div id="renderProgressModal" class="modal">
+            <div class="modal-content" style="max-width: 520px;">
+                <span class="close-modal" id="renderProgressClose" onclick="closeRenderProgressModal()" style="display:none;">&times;</span>
+                <h3>Renderizando vídeo</h3>
+                <p style="color:var(--text-muted); margin:0.45rem 0 0;">
+                    El vídeo se está creando. Aquí puedes ver el avance estimado del render.
+                </p>
+                <div class="render-progress-wrap">
+                    <div class="render-progress-head">
+                        <strong id="renderProgressTitle">Preparando render...</strong>
+                        <span id="renderProgressPercent" class="render-progress-percent">0%</span>
+                    </div>
+                    <div class="render-progress-bar">
+                        <div id="renderProgressFill" class="render-progress-fill"></div>
+                    </div>
+                    <div id="renderProgressNote" class="render-progress-note">Estamos preparando las escenas y la cola de render.</div>
+                    <div class="render-progress-meta">
+                        <div class="render-progress-card">
+                            <small>Trabajo</small>
+                            <strong id="renderProgressJob">Sin asignar</strong>
+                        </div>
+                        <div class="render-progress-card">
+                            <small>Estado</small>
+                            <strong id="renderProgressStatus">Inicializando</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <div id="timeline" class="timeline">
             <!-- Escenas aquí -->
@@ -388,6 +480,9 @@
         let galleryData = [];
         let currentJobId = null;
         let currentJobTitle = null;
+        let renderProgressValue = 0;
+        let renderProgressTimer = null;
+        let renderProgressClosable = false;
 
         const GTTS_VOICES = [
             { value: 'es', label: '🇪🇸 Español (España)' },
@@ -960,9 +1055,21 @@
 
             const data = await res.json();
             if(res.ok) {
-                alert("Renderizado iniciado con éxito. Redirigiendo al historial de trabajos...");
                 const channelId = getChannelIdFromQuery();
-                window.location.href = channelId ? `/jobs?channel_id=${channelId}` : '/jobs';
+                const jobId = data.job_id || requestData.job_id || currentJobId;
+                if (jobId) {
+                    currentJobId = jobId;
+                    const newUrl = new URL(window.location.href);
+                    if (channelId) newUrl.searchParams.set('channel_id', String(channelId));
+                    newUrl.searchParams.set('job_id', jobId);
+                    window.history.replaceState({}, '', newUrl.toString());
+                }
+                if (requestData.title) {
+                    currentJobTitle = requestData.title;
+                }
+                openRenderProgressModal(jobId, requestData.title || currentJobTitle || 'Trabajo en render');
+                setRenderProgress(7, 'Render iniciado', 'La cola de render ya esta en marcha. Empezamos a preparar el video.', 'En cola');
+                pollRenderProgress(jobId, channelId, btn, originalText);
             } else {
                 let errorMsg = "Error desconocido";
                 if (data.detail) {
@@ -1017,6 +1124,106 @@
             }
         }
 
+        function resetRenderButton(btn, originalText) {
+            if (!btn) return;
+            btn.innerText = originalText || "RENDER FINAL";
+            btn.disabled = false;
+        }
+
+        function setRenderProgress(value, title = null, note = null, status = null) {
+            renderProgressValue = Math.max(0, Math.min(100, Math.round(value)));
+            const fill = document.getElementById('renderProgressFill');
+            const percent = document.getElementById('renderProgressPercent');
+            if (fill) fill.style.width = `${renderProgressValue}%`;
+            if (percent) percent.textContent = `${renderProgressValue}%`;
+            if (title !== null) document.getElementById('renderProgressTitle').textContent = title;
+            if (note !== null) document.getElementById('renderProgressNote').textContent = note;
+            if (status !== null) document.getElementById('renderProgressStatus').textContent = status;
+        }
+
+        function openRenderProgressModal(jobId, titleText) {
+            renderProgressClosable = false;
+            const closeBtn = document.getElementById('renderProgressClose');
+            if (closeBtn) closeBtn.style.display = 'none';
+            document.getElementById('renderProgressJob').textContent = titleText || jobId || 'Trabajo en render';
+            document.getElementById('renderProgressModal').classList.add('active');
+            setRenderProgress(0, 'Preparando render...', 'Estamos preparando las escenas y la cola de render.', 'Inicializando');
+        }
+
+        function closeRenderProgressModal(force = false) {
+            if (!force && !renderProgressClosable) return;
+            document.getElementById('renderProgressModal').classList.remove('active');
+        }
+
+        function finishRenderProgressAsError(message) {
+            renderProgressClosable = true;
+            const closeBtn = document.getElementById('renderProgressClose');
+            if (closeBtn) closeBtn.style.display = 'block';
+            setRenderProgress(renderProgressValue || 0, 'No se pudo completar el render', message, 'Error');
+        }
+
+        async function pollRenderProgress(jobId, channelId, btn, originalText) {
+            if (renderProgressTimer) {
+                clearTimeout(renderProgressTimer);
+                renderProgressTimer = null;
+            }
+
+            if (!jobId) {
+                resetRenderButton(btn, originalText);
+                finishRenderProgressAsError('No se pudo identificar el trabajo de render. Intentalo de nuevo.');
+                return;
+            }
+
+            try {
+                const url = channelId
+                    ? `/api/jobs/${encodeURIComponent(jobId)}?channel_id=${encodeURIComponent(channelId)}`
+                    : `/api/jobs/${encodeURIComponent(jobId)}`;
+                const res = await fetch(url);
+                const data = await res.json();
+                if (!res.ok) {
+                    throw new Error(data.detail || 'No se pudo consultar el avance del render.');
+                }
+
+                const status = String(data.status || '').toLowerCase();
+                const scenesCount = Array.isArray(data.scenes) ? data.scenes.length : 0;
+                const titleText = data.title || currentJobTitle || jobId;
+                document.getElementById('renderProgressJob').textContent = titleText;
+
+                if (status === 'rendered' || status === 'completed') {
+                    setRenderProgress(100, 'Vídeo listo', 'El render ha terminado correctamente. Abriendo los trabajos del canal...', 'Completado');
+                    renderProgressClosable = true;
+                    resetRenderButton(btn, originalText);
+                    setTimeout(() => {
+                        const redirectUrl = channelId ? `/jobs?channel_id=${channelId}` : '/jobs';
+                        window.location.href = redirectUrl;
+                    }, 900);
+                    return;
+                }
+
+                if (status === 'failed') {
+                    resetRenderButton(btn, originalText);
+                    finishRenderProgressAsError(data.error_message || 'El render terminó con error. Revisa el trabajo e inténtalo de nuevo.');
+                    return;
+                }
+
+                const nextValue = Math.min(94, Math.max(renderProgressValue + 8, scenesCount > 0 ? 12 : 8));
+                const humanStatus = status === 'processing' ? 'Procesando' : (status === 'draft' ? 'Preparado' : 'En cola');
+                setRenderProgress(
+                    nextValue,
+                    'Creando vídeo...',
+                    'Estamos generando la voz, montando las escenas y ensamblando el vídeo final.',
+                    humanStatus
+                );
+
+                renderProgressTimer = setTimeout(() => {
+                    pollRenderProgress(jobId, channelId, btn, originalText);
+                }, 1400);
+            } catch (error) {
+                resetRenderButton(btn, originalText);
+                finishRenderProgressAsError(error.message || 'No se pudo seguir el avance del render.');
+            }
+        }
+
         function closeSaveSuccessModal() {
             document.getElementById('saveSuccessModal').classList.remove('active');
         }
@@ -1064,6 +1271,18 @@
                 btn.innerText = "GENERAR";
             }
         }
+
+        document.getElementById('renderProgressModal').addEventListener('click', (event) => {
+            if (event.target && event.target.id === 'renderProgressModal' && renderProgressClosable) {
+                closeRenderProgressModal(true);
+            }
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && renderProgressClosable) {
+                closeRenderProgressModal(true);
+            }
+        });
 
         loadChannelContext();
         init();
