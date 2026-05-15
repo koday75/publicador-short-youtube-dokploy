@@ -1047,6 +1047,9 @@
                 btn.disabled = true;
             }
 
+            openRenderProgressModal(requestData.job_id || currentJobId, requestData.title || currentJobTitle || 'Trabajo en render');
+            setRenderProgress(3, 'Iniciando render...', 'Estamos enviando el trabajo al motor de render para empezar a crear el video.', 'Preparando');
+
             const res = await fetch('/api/storyboard/render', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
@@ -1067,7 +1070,6 @@
                 if (requestData.title) {
                     currentJobTitle = requestData.title;
                 }
-                openRenderProgressModal(jobId, requestData.title || currentJobTitle || 'Trabajo en render');
                 setRenderProgress(7, 'Render iniciado', 'La cola de render ya esta en marcha. Empezamos a preparar el video.', 'En cola');
                 pollRenderProgress(jobId, channelId, btn, originalText);
             } else {
@@ -1080,6 +1082,7 @@
                 } else {
                     alert("Error: " + errorMsg);
                 }
+                closeRenderProgressModal(true);
                 if (btn) {
                     btn.innerText = originalText || "🚀 RENDER FINAL";
                     btn.disabled = false;
