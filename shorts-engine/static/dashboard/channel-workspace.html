@@ -831,7 +831,6 @@
         }
 
         function renderCommentVideoCard(item) {
-            const editHref = item.job_id ? `/storyboard?job_id=${item.job_id}&channel_id=${item.channel_id}` : '#';
             return `
                 <article class="comment-video-card">
                     <div>
@@ -840,8 +839,14 @@
                     </div>
                     <small>${item.created_at ? shortDate(item.created_at) : 'Sin fecha'}</small>
                     <div class="comment-item-actions">
-                        <button type="button" class="badge" style="background:rgba(88,166,255,0.15); color:#58a6ff; border:1px solid rgba(88,166,255,0.25);" onclick='openCommentsModal(${JSON.stringify(item.job_id)}, ${item.channel_id ?? "null"}, ${JSON.stringify(item.title || item.video_id)})'>Ver comentarios</button>
-                        <a class="badge" style="text-decoration:none; background:rgba(255,255,255,0.05); color:#fff;" href="${editHref}">Editar</a>
+                        <button
+                            type="button"
+                            class="badge comment-open-btn"
+                            style="background:rgba(88,166,255,0.15); color:#58a6ff; border:1px solid rgba(88,166,255,0.25);"
+                            data-job-id="${escapeHtml(item.job_id || '')}"
+                            data-channel-id="${item.channel_id ?? ''}"
+                            data-video-title="${escapeHtml(item.title || item.video_id || '')}"
+                        >Ver comentarios</button>
                     </div>
                 </article>
             `;
@@ -1024,6 +1029,19 @@
             if (event.target && event.target.id === 'commentsModal') {
                 closeCommentsModal();
             }
+        });
+
+        document.getElementById('comment-videos-grid').addEventListener('click', (event) => {
+            const btn = event.target.closest('.comment-open-btn');
+            if (!btn) return;
+            const jobId = btn.dataset.jobId;
+            const channelId = btn.dataset.channelId ? parseInt(btn.dataset.channelId, 10) : null;
+            const videoTitle = btn.dataset.videoTitle || '';
+            if (!jobId) {
+                alert('No se pudo identificar el trabajo.');
+                return;
+            }
+            openCommentsModal(jobId, Number.isFinite(channelId) ? channelId : null, videoTitle);
         });
 
         document.addEventListener('keydown', (event) => {
