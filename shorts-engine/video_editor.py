@@ -333,7 +333,9 @@ class VideoEditor:
                     f"[0:v]format=yuv420p,settb=AVTB,setpts=PTS-STARTPTS,fps=25[v0];"
                     f"[1:v]format=yuv420p,settb=AVTB,setpts=PTS-STARTPTS,fps=25[v1];"
                     f"[v0][v1]xfade=transition=fade:duration={FADE_DURATION}:offset={offset:.3f}[vout];"
-                    f"[0:a][1:a]acrossfade=d={FADE_DURATION}[aout]",
+                    # Keep audio continuous between scenes. Using concat avoids the per-scene
+                    # fade-in/fade-out pumping that acrossfade introduces on every transition.
+                    f"[0:a][1:a]concat=n=2:v=0:a=1[aout]",
                     '-map', '[vout]', '-map', '[aout]',
                     '-c:v', 'libx264', '-preset', 'veryfast', '-pix_fmt', 'yuv420p',
                     '-c:a', 'aac', '-ar', '44100',
