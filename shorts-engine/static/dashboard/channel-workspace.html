@@ -854,7 +854,7 @@
 
         function closeCommentsModal() {
             const modal = document.getElementById('commentsModal');
-            modal.classList.remove('open');
+            modal.classList.remove('active');
             modal.setAttribute('aria-hidden', 'true');
         }
 
@@ -920,7 +920,7 @@
             document.getElementById('commentsModalTitle').textContent = videoTitle || 'Comentarios del vídeo';
             document.getElementById('commentsModalSubtitle').textContent = 'Selecciona un comentario para generar y aprobar una respuesta.';
             list.innerHTML = '<div class="empty-state">Cargando comentarios...</div>';
-            modal.classList.add('open');
+            modal.classList.add('active');
             modal.setAttribute('aria-hidden', 'false');
             clearCommentReply();
 
@@ -1047,7 +1047,7 @@
         document.addEventListener('keydown', (event) => {
             if (event.key !== 'Escape') return;
             const modal = document.getElementById('commentsModal');
-            if (modal && modal.classList.contains('open')) {
+            if (modal && modal.classList.contains('active')) {
                 closeCommentsModal();
             }
         });
