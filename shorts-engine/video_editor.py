@@ -99,7 +99,7 @@ class VideoEditor:
             return 0.0
 
     def _apply_global_fades(self, input_path: str, output_path: str, fade_duration: float = 0.8):
-        """Apply a fade in from black and fade out to black to the full video."""
+        """Apply a visual fade in/out and only an audio fade in to the full video."""
         total_duration = self._get_media_duration(input_path)
         if total_duration <= 0:
             import shutil
@@ -114,8 +114,7 @@ class VideoEditor:
             (
                 f"[0:v]fade=t=in:st=0:d={fade_duration:.3f},"
                 f"fade=t=out:st={fade_out_start:.3f}:d={fade_duration:.3f}[v];"
-                f"[0:a]afade=t=in:st=0:d={fade_duration:.3f},"
-                f"afade=t=out:st={fade_out_start:.3f}:d={fade_duration:.3f}[a]"
+                f"[0:a]afade=t=in:st=0:d={fade_duration:.3f}[a]"
             ),
             '-map', '[v]', '-map', '[a]',
             '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '22',
@@ -125,11 +124,35 @@ class VideoEditor:
         subprocess.run(cmd, check=True, capture_output=True)
         return output_path
 
+    def _extend_tail_with_silence(self, input_path: str, output_path: str, extra_seconds: float = 2.0):
+        """Freeze the last frame and append silence so music can fade after the voice ends."""
+        extra_seconds = max(0.0, float(extra_seconds))
+        if extra_seconds <= 0:
+            import shutil
+            shutil.copy(input_path, output_path)
+            return output_path
+
+        cmd = [
+            'ffmpeg', '-y', '-i', input_path,
+            '-filter_complex',
+            (
+                f"[0:v]tpad=stop_mode=clone:stop_duration={extra_seconds:.3f}[v];"
+                f"[0:a]apad=pad_dur={extra_seconds:.3f}[a]"
+            ),
+            '-map', '[v]', '-map', '[a]',
+            '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '22',
+            '-c:a', 'aac', '-ar', '44100',
+            output_path
+        ]
+        subprocess.run(cmd, check=True, capture_output=True)
+        return output_path
+
     def create_short(self, background_video: str, audio_path: str, output_path: str,
                      music_path: str = None, music_volume: float = 0.2, voice_volume: float = 1.0,
                      logo_path: str = None, logo_position: str = "top-right"):
         srt_path = f"temp_subs_{uuid.uuid4().hex[:8]}.srt"
         temp_render_path = f"{output_path}.render_{uuid.uuid4().hex[:8]}.mp4"
+        temp_extended_path = f"{output_path}.extended_{uuid.uuid4().hex[:8]}.mp4"
         temp_audio_mix_path = f"{output_path}.mix_{uuid.uuid4().hex[:8]}.mp4"
         segments = self.transcribe_audio(audio_path)
         self.generate_srt(segments, srt_path)
@@ -185,7 +208,8 @@ class VideoEditor:
             cmd[-1] = temp_render_path
             subprocess.run(cmd, check=True, capture_output=True)
             if music_path:
-                self._add_global_music(temp_render_path, music_path, music_volume, temp_audio_mix_path)
+                self._extend_tail_with_silence(temp_render_path, temp_extended_path, extra_seconds=2.0)
+                self._add_global_music(temp_extended_path, music_path, music_volume, temp_audio_mix_path)
                 self._apply_global_fades(temp_audio_mix_path, output_path)
             else:
                 self._apply_global_fades(temp_render_path, output_path)
@@ -196,7 +220,7 @@ class VideoEditor:
         finally:
             if os.path.exists(srt_path):
                 os.remove(srt_path)
-            for tmp_path in [temp_render_path, temp_audio_mix_path]:
+            for tmp_path in [temp_render_path, temp_extended_path, temp_audio_mix_path]:
                 if os.path.exists(tmp_path):
                     try:
                         os.remove(tmp_path)
@@ -213,6 +237,7 @@ class VideoEditor:
         FADE_DURATION = 0.5  # seconds for crossfade
         import time
         render_id = str(int(time.time()))
+        temp_extended_path = f"{output_path}.extended_{uuid.uuid4().hex[:8]}.mp4"
         temp_music_path = f"{output_path}.music_{uuid.uuid4().hex[:8]}.mp4"
 
         try:
@@ -306,10 +331,11 @@ class VideoEditor:
             # --- Assemble with crossfade transitions ---
             if len(temp_clips) == 1:
                 if music_path:
-                    self._add_global_music(temp_clips[0], music_path, music_volume, output_path)
+                    self._extend_tail_with_silence(temp_clips[0], temp_extended_path, extra_seconds=2.0)
+                    self._add_global_music(temp_extended_path, music_path, music_volume, temp_music_path)
+                    self._apply_global_fades(temp_music_path, output_path)
                 else:
-                    import shutil
-                    shutil.copy(temp_clips[0], output_path)
+                    self._apply_global_fades(temp_clips[0], output_path)
                 return output_path
 
             # Build xfade chain for smooth dissolve between clips
@@ -351,7 +377,8 @@ class VideoEditor:
 
             # Add global music if provided
             if music_path:
-                self._add_global_music(assembled, music_path, music_volume, temp_music_path)
+                self._extend_tail_with_silence(assembled, temp_extended_path, extra_seconds=2.0)
+                self._add_global_music(temp_extended_path, music_path, music_volume, temp_music_path)
                 self._apply_global_fades(temp_music_path, output_path)
             else:
                 self._apply_global_fades(assembled, output_path)
@@ -367,7 +394,7 @@ class VideoEditor:
             raise Exception(f"FFmpeg error: {stderr}")
         finally:
             # Clean original temp clips and text files
-            for c in temp_clips + temp_text_files + [temp_music_path]:
+            for c in temp_clips + temp_text_files + [temp_extended_path, temp_music_path]:
                 if os.path.exists(c) and c != output_path:
                     try:
                         os.remove(c)
