@@ -795,7 +795,6 @@ class YouTubeChannelService:
     def list_video_comments(self, channel_id: int, video_id: str, max_results: int = 20, page_token: Optional[str] = None):
         self.reload_oauth_config()
         self._resolve_channel_oauth_config(channel_id)
-        self._ensure_required_scopes(channel_id, ["https://www.googleapis.com/auth/youtube.force-ssl"])
         auth = self.get_authorized_client(channel_id)
         access_token = auth["access_token"]
 
