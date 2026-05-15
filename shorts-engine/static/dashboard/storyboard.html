@@ -386,6 +386,7 @@
             } catch (e) {}
         }
         let galleryData = [];
+        let currentJobId = null;
         let currentJobTitle = null;
 
         const GTTS_VOICES = [
@@ -486,6 +487,7 @@
             const jobId = urlParams.get('job_id');
             
             if(jobId) {
+                currentJobId = jobId;
                 try {
                     const jobRes = await fetch(`/api/jobs/${jobId}`);
                     if(jobRes.ok) {
@@ -806,6 +808,12 @@
                 body: formData
             });
             if(res.ok) {
+                if (data.job_id) {
+                    currentJobId = data.job_id;
+                }
+                if (requestData.title) {
+                    currentJobTitle = requestData.title;
+                }
                 const data = await res.json();
                 await reloadGalleryData();
                 if(currentMediaSceneId) {
@@ -855,7 +863,7 @@
             });
 
             const urlParams = new URLSearchParams(window.location.search);
-            const overrideJobId = urlParams.get('job_id');
+            const overrideJobId = currentJobId || urlParams.get('job_id');
             const manualTitle = document.getElementById('manual-job-title').value.trim();
             const title = manualTitle || currentJobTitle || "Borrador Manual";
 
@@ -903,10 +911,14 @@
                     const channelId = getChannelIdFromQuery();
                     const savedJobId = data.job_id || requestData.job_id || null;
                     if (savedJobId) {
+                        currentJobId = savedJobId;
                         const newUrl = new URL(window.location.href);
                         if (channelId) newUrl.searchParams.set('channel_id', String(channelId));
                         newUrl.searchParams.set('job_id', savedJobId);
                         window.history.replaceState({}, '', newUrl.toString());
+                    }
+                    if (requestData.title) {
+                        currentJobTitle = requestData.title;
                     }
                     openSaveSuccessModal();
                 } else {
