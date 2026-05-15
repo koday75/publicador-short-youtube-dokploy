@@ -213,6 +213,15 @@ class UpdateYoutubeVideoRequest(BaseModel):
     contains_synthetic_media: Optional[bool] = None
     default_language: Optional[str] = None
 
+class CommentReplyDraftRequest(BaseModel):
+    comment_text: str
+    video_title: Optional[str] = None
+    author_name: Optional[str] = None
+    provider: Optional[str] = None
+
+class CommentReplyPublishRequest(BaseModel):
+    reply_text: str
+
 def resolve_job_video_path(job: dict) -> str | None:
     video_url = (job or {}).get("video_url") or ""
     if not video_url:
@@ -413,6 +422,34 @@ async def api_get_youtube_channel_overview(channel_id: int, user: str = Depends(
     overview = db.get_channel_overview(channel_id)
     if not overview:
         raise HTTPException(status_code=404, detail="Canal no encontrado")
+
+    comment_videos = []
+    try:
+        recent_published_jobs = [
+            job for job in db.get_recent_jobs(limit=10, channel_id=channel_id)
+            if job.get("youtube_video_id")
+        ]
+        video_ids = [str(job["youtube_video_id"]).strip() for job in recent_published_jobs if str(job.get("youtube_video_id") or "").strip()]
+        stats_map = youtube_manager.get_video_statistics(channel_id, video_ids) if video_ids else {}
+        for job in recent_published_jobs:
+            video_id = str(job.get("youtube_video_id") or "").strip()
+            if not video_id:
+                continue
+            stats = stats_map.get(video_id, {})
+            comment_count = int(stats.get("comment_count") or 0)
+            if comment_count <= 0:
+                continue
+            comment_videos.append({
+                "job_id": job.get("job_id"),
+                "title": job.get("title") or job.get("text") or job.get("job_id"),
+                "video_id": video_id,
+                "video_url": job.get("youtube_video_url") or f"https://www.youtube.com/watch?v={video_id}",
+                "comment_count": comment_count,
+                "created_at": job.get("created_at"),
+            })
+    except Exception as exc:
+        logger.debug(f"No se pudieron cargar vídeos con comentarios para canal {channel_id}: {exc}")
+
     return {
         "channel": serialize_youtube_channel(overview["channel"]),
         "stats": overview["stats"],
@@ -422,6 +459,7 @@ async def api_get_youtube_channel_overview(channel_id: int, user: str = Depends(
         "recent_media": overview["recent_media"],
         "latest_job": overview["latest_job"],
         "latest_successful_job": overview["latest_successful_job"],
+        "comment_videos": comment_videos,
     }
 
 @app.put("/api/youtube/channels/{channel_id}")
@@ -1502,6 +1540,114 @@ async def api_get_job_publish_context(job_id: str, channel_id: int = None, user:
             "notify_subscribers": bool(channel.get("notify_subscribers")),
         },
     }
+
+@app.get("/api/jobs/{job_id}/youtube-comments")
+async def api_get_job_youtube_comments(job_id: str, channel_id: int = None, user: str = Depends(get_current_user)):
+    job = db.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Trabajo no encontrado")
+    if channel_id is not None and job.get("channel_id") != channel_id:
+        raise HTTPException(status_code=404, detail="Trabajo no encontrado para este canal")
+
+    resolved_channel_id = channel_id or job.get("channel_id")
+    if not resolved_channel_id:
+        raise HTTPException(status_code=400, detail="El trabajo no tiene canal asociado")
+    if not job.get("youtube_video_id"):
+        raise HTTPException(status_code=400, detail="El trabajo no tiene un vídeo de YouTube asociado")
+
+    comments = youtube_manager.list_video_comments(int(resolved_channel_id), str(job["youtube_video_id"]), max_results=25)
+    return {
+        "job": job,
+        "comments": comments.get("items") or [],
+        "next_page_token": comments.get("next_page_token"),
+        "page_info": comments.get("page_info") or {},
+    }
+
+@app.post("/api/jobs/{job_id}/youtube-comments/{comment_id}/draft")
+async def api_generate_comment_reply_draft(
+    job_id: str,
+    comment_id: str,
+    req: CommentReplyDraftRequest,
+    user: str = Depends(get_current_user),
+):
+    job = db.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Trabajo no encontrado")
+    if not job.get("youtube_video_id"):
+        raise HTTPException(status_code=400, detail="El trabajo no tiene un vídeo de YouTube asociado")
+
+    resolved_channel_id = job.get("channel_id")
+    if not resolved_channel_id:
+        raise HTTPException(status_code=400, detail="El trabajo no tiene canal asociado")
+
+    channel = db.get_youtube_channel(int(resolved_channel_id))
+    if not channel:
+        raise HTTPException(status_code=404, detail="Canal no encontrado")
+
+    reply = ai_manager.generate_comment_reply(
+        req.comment_text,
+        provider=req.provider,
+        video_title=req.video_title or job.get("title") or job.get("text") or job_id,
+        channel_name=channel.get("internal_name"),
+    )
+    log_job_event(
+        job_id,
+        "comment_reply_generated",
+        "Respuesta de IA preparada para un comentario.",
+        status="info",
+        channel_id=int(resolved_channel_id),
+        details={"comment_id": comment_id, "reply_preview": reply[:500], "author_name": req.author_name},
+    )
+    return {"job_id": job_id, "comment_id": comment_id, "reply_text": reply}
+
+@app.post("/api/jobs/{job_id}/youtube-comments/{comment_id}/publish")
+async def api_publish_comment_reply(
+    job_id: str,
+    comment_id: str,
+    req: CommentReplyPublishRequest,
+    user: str = Depends(get_current_user),
+):
+    job = db.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Trabajo no encontrado")
+    if not job.get("youtube_video_id"):
+        raise HTTPException(status_code=400, detail="El trabajo no tiene un vídeo de YouTube asociado")
+
+    resolved_channel_id = job.get("channel_id")
+    if not resolved_channel_id:
+        raise HTTPException(status_code=400, detail="El trabajo no tiene canal asociado")
+
+    try:
+        result = youtube_manager.reply_to_comment(int(resolved_channel_id), comment_id, req.reply_text)
+        log_job_event(
+            job_id,
+            "comment_reply_published",
+            "Respuesta publicada en YouTube.",
+            status="success",
+            channel_id=int(resolved_channel_id),
+            details={"comment_id": comment_id, "reply_id": result.get("id"), "reply_text": req.reply_text},
+        )
+        return {"status": "success", "result": result}
+    except YouTubeAuthError as exc:
+        log_job_event(
+            job_id,
+            "comment_reply_failed",
+            "No se pudo publicar la respuesta al comentario.",
+            status="error",
+            channel_id=int(resolved_channel_id),
+            error_message=str(exc),
+        )
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        log_job_event(
+            job_id,
+            "comment_reply_failed",
+            "No se pudo publicar la respuesta al comentario.",
+            status="error",
+            channel_id=int(resolved_channel_id),
+            error_message=str(exc),
+        )
+        raise HTTPException(status_code=500, detail=str(exc))
 
 @app.post("/api/jobs/{job_id}/publish")
 async def api_publish_job_to_youtube(job_id: str, req: PublishVideoRequest, user: str = Depends(get_current_user)):

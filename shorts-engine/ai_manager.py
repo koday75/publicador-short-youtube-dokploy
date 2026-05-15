@@ -162,3 +162,64 @@ class AIManager:
                 
         logger.error(f"Todos los proveedores fallaron. Último error: {last_error}")
         raise Exception(f"Generación IA fallida tras intentar con múltiples proveedores. Detalles: {last_error}")
+
+    def generate_comment_reply(self, comment_text, provider=None, video_title=None, channel_name=None):
+        """
+        Genera un borrador de respuesta para un comentario de YouTube.
+        """
+        configured_providers = []
+        if provider and self._get_api_key(provider):
+            configured_providers.append(provider)
+        else:
+            for p in ["GROQ", "DEEPSEEK", "OPENROUTER", "OPENAI"]:
+                if self._get_api_key(p):
+                    configured_providers.append(p)
+
+        if not configured_providers:
+            raise Exception("No se ha configurado ninguna API de IA.")
+
+        sys_msg = (
+            "Eres el community manager de un canal de YouTube. "
+            "Redacta una respuesta breve, natural y educada en español castellano. "
+            "No menciones que eres una IA. "
+            "Devuelve solo JSON válido con esta estructura exacta: {\"reply\":\"texto\"}."
+        )
+        user_content = "\n".join([
+            f"Canal: {channel_name or 'Canal de YouTube'}",
+            f"Vídeo: {video_title or 'Vídeo del canal'}",
+            f"Comentario: {comment_text}",
+            "Escribe una respuesta pública útil y concisa para ese comentario.",
+        ])
+
+        import json
+        last_error = None
+
+        for current_provider in configured_providers:
+            api_key = self._get_api_key(current_provider)
+            logger.info(f"Intentando generar respuesta de comentario con {current_provider}...")
+            try:
+                p_lower = current_provider.lower()
+                if p_lower == "groq":
+                    res_text = self._call_groq(user_content, api_key, system_prompt=sys_msg)
+                elif p_lower == "openai":
+                    res_text = self._call_openai(user_content, api_key, system_prompt=sys_msg)
+                else:
+                    res_text = self._call_openai_compatible(p_lower, user_content, api_key, system_prompt=sys_msg)
+
+                clean_text = res_text.replace("```json", "").replace("```", "").strip()
+                try:
+                    data = json.loads(clean_text)
+                    reply = str((data or {}).get("reply") or "").strip()
+                    if reply:
+                        return reply
+                except Exception:
+                    pass
+
+                return clean_text.strip()
+            except Exception as e:
+                logger.error(f"Fallo en {current_provider} al generar respuesta de comentario: {e}")
+                last_error = e
+                continue
+
+        logger.error(f"Todos los proveedores fallaron al generar respuesta de comentario. Último error: {last_error}")
+        raise Exception(f"Generación IA de respuesta fallida. Detalles: {last_error}")

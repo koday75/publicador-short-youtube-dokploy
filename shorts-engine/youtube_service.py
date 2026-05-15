@@ -791,3 +791,99 @@ class YouTubeChannelService:
                     "comment_count": self._parse_int(stats.get("commentCount")),
                 }
         return stats_map
+
+    def list_video_comments(self, channel_id: int, video_id: str, max_results: int = 20, page_token: Optional[str] = None):
+        self.reload_oauth_config()
+        self._resolve_channel_oauth_config(channel_id)
+        self._ensure_required_scopes(channel_id, ["https://www.googleapis.com/auth/youtube.force-ssl"])
+        auth = self.get_authorized_client(channel_id)
+        access_token = auth["access_token"]
+
+        params = {
+            "part": "snippet,replies",
+            "videoId": video_id,
+            "maxResults": max(1, min(int(max_results or 20), 100)),
+            "textFormat": "plainText",
+            "order": "time",
+        }
+        if page_token:
+            params["pageToken"] = page_token
+
+        res = requests.get(
+            f"{self.YOUTUBE_API_BASE}/commentThreads",
+            params=params,
+            headers={"Authorization": f"Bearer {access_token}"},
+            timeout=60,
+        )
+        if not res.ok:
+            raise YouTubeAuthError(f"No se pudieron leer los comentarios del vídeo: {res.text}")
+
+        payload = res.json()
+        items: list[dict[str, Any]] = []
+        for item in payload.get("items") or []:
+            snippet = item.get("snippet") or {}
+            top_comment = (snippet.get("topLevelComment") or {}).get("snippet") or {}
+            replies = []
+            for reply in ((item.get("replies") or {}).get("comments") or []):
+                reply_snippet = reply.get("snippet") or {}
+                replies.append({
+                    "comment_id": reply.get("id"),
+                    "text": reply_snippet.get("textDisplay") or reply_snippet.get("textOriginal") or "",
+                    "author_name": (reply_snippet.get("authorDisplayName") or "").strip(),
+                    "author_channel_id": reply_snippet.get("authorChannelId", {}).get("value"),
+                    "published_at": reply_snippet.get("publishedAt"),
+                    "updated_at": reply_snippet.get("updatedAt"),
+                    "like_count": self._parse_int(reply_snippet.get("likeCount")),
+                    "is_reply": True,
+                })
+            items.append({
+                "thread_id": item.get("id"),
+                "comment_id": (snippet.get("topLevelComment") or {}).get("id"),
+                "video_id": snippet.get("videoId") or video_id,
+                "channel_id": snippet.get("channelId"),
+                "author_name": (top_comment.get("authorDisplayName") or "").strip(),
+                "author_channel_id": top_comment.get("authorChannelId", {}).get("value"),
+                "text": top_comment.get("textDisplay") or top_comment.get("textOriginal") or "",
+                "published_at": top_comment.get("publishedAt"),
+                "updated_at": top_comment.get("updatedAt"),
+                "like_count": self._parse_int(top_comment.get("likeCount")),
+                "reply_count": self._parse_int(snippet.get("totalReplyCount")),
+                "can_reply": bool(snippet.get("canReply", True)),
+                "replies": replies,
+                "raw": item,
+            })
+
+        return {
+            "items": items,
+            "next_page_token": payload.get("nextPageToken"),
+            "page_info": payload.get("pageInfo") or {},
+        }
+
+    def reply_to_comment(self, channel_id: int, parent_comment_id: str, text: str):
+        self.reload_oauth_config()
+        self._resolve_channel_oauth_config(channel_id)
+        self._ensure_required_scopes(channel_id, ["https://www.googleapis.com/auth/youtube.force-ssl"])
+        auth = self.get_authorized_client(channel_id)
+        access_token = auth["access_token"]
+        reply_text = (text or "").strip()
+        if not reply_text:
+            raise YouTubeAuthError("La respuesta no puede estar vacía.")
+
+        res = requests.post(
+            f"{self.YOUTUBE_API_BASE}/comments",
+            params={"part": "snippet"},
+            headers={
+                "Authorization": f"Bearer {access_token}",
+                "Content-Type": "application/json; charset=UTF-8",
+            },
+            data=json.dumps({
+                "snippet": {
+                    "parentId": parent_comment_id,
+                    "textOriginal": reply_text,
+                }
+            }),
+            timeout=60,
+        )
+        if not res.ok:
+            raise YouTubeAuthError(f"No se pudo publicar la respuesta: {res.text}")
+        return res.json()
