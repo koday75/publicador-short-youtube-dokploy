@@ -524,7 +524,7 @@
                         <button class="action-btn" style="background:#333; color:#fff;" onclick="window.location.href='${job.channel_id ? `/storyboard?job_id=${job.job_id}&channel_id=${job.channel_id}` : `/storyboard?job_id=${job.job_id}`}'">✏️</button>
                         ${canPlay ? `<button class="action-btn btn-view" onclick="previewVideo('${job.video_url}', ${job.channel_id ?? 'null'})">▶</button>` : ''}
                         ${canPublish ? `<button class="action-btn" style="background:rgba(88,166,255,0.15); color:#58a6ff; border:1px solid rgba(88,166,255,0.3);" onclick="window.location.href='${job.channel_id ? `/publish?job_id=${job.job_id}&channel_id=${job.channel_id}` : `/publish?job_id=${job.job_id}`}'">Publicar</button>` : ''}
-                        ${canViewComments ? `<button type="button" class="comments-pill buttonish" onclick="openCommentsModal('${job.job_id}', ${job.channel_id ?? 'null'}, ${JSON.stringify(job.title || displayTitle || job.job_id)})">💬 ${new Intl.NumberFormat('es-ES').format(commentCount || 0)}</button>` : ''}
+                        ${canViewComments ? `<button type="button" class="comments-pill buttonish comment-open-btn" data-job-id="${job.job_id}" data-channel-id="${job.channel_id ?? ''}" data-video-title="${(job.title || displayTitle || job.job_id).replace(/"/g, '&quot;')}">💬 ${new Intl.NumberFormat('es-ES').format(commentCount || 0)}</button>` : ''}
                         <button class="action-btn" style="background:rgba(255,255,255,0.08); color:#fff; border:1px solid rgba(255,255,255,0.12);" onclick="openJobLogs('${job.job_id}', ${job.channel_id ?? 'null'})">Log</button>
                         <button class="action-btn btn-delete" onclick="deleteJob('${job.job_id}')">Eliminar</button>
                 `;
@@ -619,6 +619,15 @@
                 await navigator.clipboard.writeText(currentVideoUrl);
                 alert('Enlace copiado al portapapeles.');
             }
+        }
+
+        function escapeHtml(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
         }
 
         function closeCommentsModal() {
@@ -962,6 +971,16 @@
 
         document.getElementById('commentsModal').addEventListener('click', (event) => {
             if (event.target.id === 'commentsModal') closeCommentsModal();
+        });
+
+        document.getElementById('jobs-table').addEventListener('click', (event) => {
+            const btn = event.target.closest('.comment-open-btn');
+            if (!btn) return;
+            const jobId = btn.dataset.jobId;
+            const channelId = btn.dataset.channelId ? parseInt(btn.dataset.channelId, 10) : null;
+            const videoTitle = btn.dataset.videoTitle || '';
+            if (!jobId) return;
+            openCommentsModal(jobId, Number.isFinite(channelId) ? channelId : null, videoTitle);
         });
 
         document.addEventListener('keydown', (event) => {
