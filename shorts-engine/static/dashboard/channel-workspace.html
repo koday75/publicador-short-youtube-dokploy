@@ -927,7 +927,10 @@
             try {
                 const url = channelId ? `/api/jobs/${encodeURIComponent(jobId)}/youtube-comments?channel_id=${encodeURIComponent(channelId)}` : `/api/jobs/${encodeURIComponent(jobId)}/youtube-comments`;
                 const res = await fetch(url);
-                const data = await res.json();
+                const contentType = res.headers.get('content-type') || '';
+                const data = contentType.includes('application/json')
+                    ? await res.json()
+                    : { detail: await res.text() };
                 if (!res.ok) throw new Error(data.detail || 'No se pudieron cargar los comentarios.');
                 currentCommentsContext = {
                     jobId,
@@ -941,7 +944,11 @@
                 }
                 list.innerHTML = currentCommentsContext.comments.map(renderCommentItem).join('');
             } catch (error) {
-                list.innerHTML = `<div class="empty-state">${error.message || 'No se pudieron cargar los comentarios.'}</div>`;
+                const message = String(error.message || 'No se pudieron cargar los comentarios.');
+                const reconnectHint = message.toLowerCase().includes('youtube.force-ssl')
+                    ? 'Este canal necesita reconectarse para conceder permisos de comentarios. Pulsa "Reconectar cuenta" en Ajustes del canal.'
+                    : message;
+                list.innerHTML = `<div class="empty-state">${escapeHtml(reconnectHint)}</div>`;
             }
         }
 

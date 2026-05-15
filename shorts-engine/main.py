@@ -1555,13 +1555,16 @@ async def api_get_job_youtube_comments(job_id: str, channel_id: int = None, user
     if not job.get("youtube_video_id"):
         raise HTTPException(status_code=400, detail="El trabajo no tiene un vídeo de YouTube asociado")
 
-    comments = youtube_manager.list_video_comments(int(resolved_channel_id), str(job["youtube_video_id"]), max_results=25)
-    return {
-        "job": job,
-        "comments": comments.get("items") or [],
-        "next_page_token": comments.get("next_page_token"),
-        "page_info": comments.get("page_info") or {},
-    }
+    try:
+        comments = youtube_manager.list_video_comments(int(resolved_channel_id), str(job["youtube_video_id"]), max_results=25)
+        return {
+            "job": job,
+            "comments": comments.get("items") or [],
+            "next_page_token": comments.get("next_page_token"),
+            "page_info": comments.get("page_info") or {},
+        }
+    except YouTubeAuthError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
 @app.post("/api/jobs/{job_id}/youtube-comments/{comment_id}/draft")
 async def api_generate_comment_reply_draft(
