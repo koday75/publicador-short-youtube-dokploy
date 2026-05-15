@@ -482,6 +482,9 @@
         let currentJobTitle = null;
         let renderProgressValue = 0;
         let renderProgressTimer = null;
+        let renderEstimateTimer = null;
+        let renderEstimateStartedAt = 0;
+        let renderEstimateDurationMs = 0;
         let renderProgressClosable = false;
 
         const GTTS_VOICES = [
@@ -1049,6 +1052,7 @@
 
             openRenderProgressModal(requestData.job_id || currentJobId, requestData.title || currentJobTitle || 'Trabajo en render');
             setRenderProgress(3, 'Iniciando render...', 'Estamos enviando el trabajo al motor de render para empezar a crear el video.', 'Preparando');
+            startEstimatedRenderProgress(scenes.length);
 
             const res = await fetch('/api/storyboard/render', {
                 method: 'POST',
@@ -1082,6 +1086,7 @@
                 } else {
                     alert("Error: " + errorMsg);
                 }
+                stopEstimatedRenderProgress();
                 closeRenderProgressModal(true);
                 if (btn) {
                     btn.innerText = originalText || "🚀 RENDER FINAL";
@@ -1158,7 +1163,41 @@
             document.getElementById('renderProgressModal').classList.remove('active');
         }
 
+        function estimateRenderDurationLabel(sceneCount) {
+            const totalSeconds = Math.max(20, Math.max(1, sceneCount || 1) * 20);
+            if (totalSeconds < 60) {
+                return `~${totalSeconds} segundos`;
+            }
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+            return seconds ? `~${minutes} min ${seconds} s` : `~${minutes} min`;
+        }
+
+        function stopEstimatedRenderProgress() {
+            if (renderEstimateTimer) {
+                clearInterval(renderEstimateTimer);
+                renderEstimateTimer = null;
+            }
+        }
+
+        function startEstimatedRenderProgress(sceneCount) {
+            stopEstimatedRenderProgress();
+            renderEstimateStartedAt = Date.now();
+            renderEstimateDurationMs = Math.max(20000, Math.max(1, sceneCount || 1) * 20000);
+            renderEstimateTimer = setInterval(() => {
+                const elapsed = Date.now() - renderEstimateStartedAt;
+                const estimate = Math.min(95, 3 + Math.round((elapsed / renderEstimateDurationMs) * 92));
+                if (estimate > renderProgressValue) {
+                    setRenderProgress(estimate);
+                }
+                if (estimate >= 95) {
+                    stopEstimatedRenderProgress();
+                }
+            }, 500);
+        }
+
         function finishRenderProgressAsError(message) {
+            stopEstimatedRenderProgress();
             renderProgressClosable = true;
             const closeBtn = document.getElementById('renderProgressClose');
             if (closeBtn) closeBtn.style.display = 'block';
@@ -1209,12 +1248,11 @@
                     return;
                 }
 
-                const nextValue = Math.min(94, Math.max(renderProgressValue + 8, scenesCount > 0 ? 12 : 8));
                 const humanStatus = status === 'processing' ? 'Procesando' : (status === 'draft' ? 'Preparado' : 'En cola');
                 setRenderProgress(
-                    nextValue,
+                    renderProgressValue,
                     'Creando vídeo...',
-                    'Estamos generando la voz, montando las escenas y ensamblando el vídeo final.',
+                    `Estamos generando la voz, montando las escenas y ensamblando el vídeo final. Tiempo estimado: ${estimateRenderDurationLabel(scenesCount)}.`,
                     humanStatus
                 );
 
