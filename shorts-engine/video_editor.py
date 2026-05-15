@@ -18,6 +18,13 @@ class VideoEditor:
         self.whisper_model_size = whisper_model_size
         self.model = None
 
+    def _safe_volume(self, value, default: float = 1.0, min_value: float = 0.0, max_value: float = 1.5) -> float:
+        try:
+            parsed = float(value)
+        except Exception:
+            return default
+        return max(min_value, min(max_value, parsed))
+
     def _get_model(self):
         if self.model is None:
             if WhisperModel is None:
@@ -132,12 +139,22 @@ class VideoEditor:
 
         inputs = ['-stream_loop', '-1', '-i', background_video, '-i', audio_path]
         filter_complex = f"[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,setsar=1,{sub_filter}[v]"
-        voice_volume = max(0.0, float(voice_volume))
-        audio_mix = f"[1:a]volume={voice_volume:.3f}[voice]"
+        voice_volume = self._safe_volume(voice_volume, default=1.0, max_value=1.35)
+        music_volume = self._safe_volume(music_volume, default=0.2, max_value=1.0)
+        audio_mix = (
+            f"[1:a]aformat=sample_fmts=fltp:sample_rates=44100:channel_layouts=stereo,"
+            f"volume={voice_volume:.3f},alimiter=limit=0.95[levelvoice];"
+            f"[levelvoice]dynaudnorm=f=150:g=9[voice]"
+        )
 
         if music_path:
             inputs.extend(['-stream_loop', '-1', '-i', music_path])
-            audio_mix += f";[2:a]volume={music_volume}[bgmusic];[voice][bgmusic]amix=inputs=2:duration=first[a]"
+            audio_mix += (
+                f";[2:a]aformat=sample_fmts=fltp:sample_rates=44100:channel_layouts=stereo,"
+                f"volume={music_volume:.3f}[bgmusic];"
+                f"[voice][bgmusic]amix=inputs=2:duration=first:weights='1 0.45':normalize=1,"
+                f"alimiter=limit=0.95[a]"
+            )
         else:
             audio_mix += ";[voice]anull[a]"
 
@@ -265,11 +282,16 @@ class VideoEditor:
                     inputs = ['-stream_loop', '-1', '-i', scene["video"]]
                     video_filter = "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,setsar=1"
 
-                voice_volume = max(0.0, float(voice_volume))
+                voice_volume = self._safe_volume(voice_volume, default=1.0, max_value=1.35)
                 cmd = ['ffmpeg', '-y'] + inputs + [
                     '-i', scene["audio"],
                     '-filter_complex',
-                    f"[0:v]{video_filter}{drawtext},format=yuv420p,fps={fps}[v];[1:a]volume={voice_volume:.3f}[a]",
+                    (
+                        f"[0:v]{video_filter}{drawtext},format=yuv420p,fps={fps}[v];"
+                        f"[1:a]aformat=sample_fmts=fltp:sample_rates=44100:channel_layouts=stereo,"
+                        f"volume={voice_volume:.3f},alimiter=limit=0.95,"
+                        f"dynaudnorm=f=150:g=9[a]"
+                    ),
                     '-map', '[v]', '-map', '[a]',
                     '-c:v', 'libx264', '-preset', 'ultrafast', '-pix_fmt', 'yuv420p'
                 ] + tune_settings + [
@@ -354,14 +376,17 @@ class VideoEditor:
         video_duration = self._get_media_duration(video_path)
         music_fade_out = 2.0 if video_duration >= 2.0 else max(0.2, video_duration / 4)
         music_fade_out_start = max(0.0, video_duration - music_fade_out)
+        volume = self._safe_volume(volume, default=0.2, max_value=1.0)
         cmd = [
             'ffmpeg', '-y', '-i', video_path, '-stream_loop', '-1', '-i', music_path,
             '-filter_complex',
             (
-                f"[1:a]volume={volume},"
+                f"[1:a]aformat=sample_fmts=fltp:sample_rates=44100:channel_layouts=stereo,"
+                f"volume={volume:.3f},"
                 f"afade=t=in:st=0:d=1.0,"
                 f"afade=t=out:st={music_fade_out_start:.3f}:d={music_fade_out:.3f}[bg];"
-                f"[0:a][bg]amix=inputs=2:duration=first[aout]"
+                f"[0:a][bg]amix=inputs=2:duration=first:weights='1 0.45':normalize=1,"
+                f"alimiter=limit=0.95[aout]"
             ),
             '-map', '0:v', '-map', '[aout]',
             '-c:v', 'copy', '-c:a', 'aac', '-shortest', output_path
