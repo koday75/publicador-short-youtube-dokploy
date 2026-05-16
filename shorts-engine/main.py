@@ -1329,19 +1329,19 @@ async def api_render_storyboard(req: StoryboardRequest, background_tasks: Backgr
     if req.job_id:
         existing = db.get_job(req.job_id)
         if existing:
-            db.delete_job(req.job_id) # remove old to create new or just modify? simpler to recreate
             job_to_overwrite = req.job_id
-            
+
     job_id = job_to_overwrite if job_to_overwrite else f"cinema_{str(uuid.uuid4())[:8]}"
     
     import json
     scenes_json = json.dumps([s.dict() for s in req.scenes])
     
-    db.add_job(
+    db.save_or_update_job(
         job_id, 
         f"Storyboard: {len(req.scenes)} escenas", 
         req.niche, 
         req.voice_id, 
+        status="processing",
         scenes_json=scenes_json, 
         music_filename=req.music_filename,
         music_volume=req.music_volume,
@@ -1378,9 +1378,8 @@ async def api_draft_storyboard(req: StoryboardRequest, background_tasks: Backgro
     if req.job_id:
         existing = db.get_job(req.job_id)
         if existing:
-            db.delete_job(req.job_id)
             job_to_overwrite = req.job_id
-            
+
     job_id = job_to_overwrite if job_to_overwrite else f"cinema_{str(uuid.uuid4())[:8]}"
     
     import json
@@ -1402,7 +1401,7 @@ async def api_draft_storyboard(req: StoryboardRequest, background_tasks: Backgro
         except ValueError:
             req.voice_volume = 1.0
     
-    db.add_job(
+    db.save_or_update_job(
         job_id, 
         f"Storyboard: {len(req.scenes)} escenas", 
         req.niche, 

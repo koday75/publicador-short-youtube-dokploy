@@ -470,6 +470,38 @@ class JobDatabase:
             )
             conn.commit()
 
+    def save_or_update_job(self, job_id, text, niche, voice_id, status="processing", scenes_json=None, music_filename=None, music_volume=None, voice_volume=None, tts_engine=None, tts_speed=None, title=None, channel_id=None):
+        with self._get_connection() as conn:
+            existing = conn.execute("SELECT id FROM jobs WHERE job_id = ?", (job_id,)).fetchone()
+            if existing:
+                conn.execute(
+                    """
+                    UPDATE jobs
+                    SET channel_id = ?,
+                        title = ?,
+                        text = ?,
+                        niche = ?,
+                        voice_id = ?,
+                        status = ?,
+                        scenes_json = ?,
+                        music_filename = ?,
+                        music_volume = ?,
+                        voice_volume = ?,
+                        tts_engine = ?,
+                        tts_speed = ?,
+                        error_message = NULL,
+                        finished_at = NULL
+                    WHERE job_id = ?
+                    """,
+                    (channel_id, title, text, niche, voice_id, status, scenes_json, music_filename, music_volume, voice_volume, tts_engine, tts_speed, job_id)
+                )
+            else:
+                conn.execute(
+                    "INSERT INTO jobs (job_id, channel_id, title, text, niche, voice_id, status, scenes_json, music_filename, music_volume, voice_volume, tts_engine, tts_speed) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    (job_id, channel_id, title, text, niche, voice_id, status, scenes_json, music_filename, music_volume, voice_volume, tts_engine, tts_speed)
+                )
+            conn.commit()
+
     def add_job_log(self, job_id: str, event_type: str, message: str, status: str = "info", details: dict | None = None,
                     channel_id: int | None = None, scene_id: str | None = None, actor: str = "system",
                     duration_ms: int | None = None, error_code: str | None = None, error_message: str | None = None):
