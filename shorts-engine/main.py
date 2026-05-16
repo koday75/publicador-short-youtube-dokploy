@@ -12,7 +12,7 @@ import asyncio
 import json
 import pyotp
 from fastapi import FastAPI, HTTPException, BackgroundTasks, Request, Response, Depends, File, UploadFile, Query
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import Any, List, Optional, Union
@@ -78,6 +78,10 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 # Mounting static files
 app.mount("/static", StaticFiles(directory=BASE_DIR), name="static")
 app.mount("/assets", StaticFiles(directory="static/dashboard"), name="assets")
+
+@app.get("/icono.ico", include_in_schema=False)
+async def site_favicon():
+    return FileResponse("icono.ico", media_type="image/x-icon")
 
 # Authentication Helper
 async def get_current_user(request: Request):
