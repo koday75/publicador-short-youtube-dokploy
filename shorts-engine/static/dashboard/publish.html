@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -252,21 +252,21 @@
 <body>
     <div class="container">
         <header>
-            <h1>📤 Publicar en YouTube</h1>
+            <h1>ðŸ“¤ Publicar en YouTube</h1>
         </header>
 
         <section id="channel-shell" class="channel-shell" style="display:none;">
             <div class="channel-breadcrumb">
                 <a href="/channels">Canales</a>
-                <span>›</span>
+                <span>â€º</span>
                 <span id="channel-breadcrumb-name">Canal</span>
-                <span>›</span>
+                <span>â€º</span>
                 <strong>Publicar en YouTube</strong>
             </div>
             <div class="channel-tabs">
                 <a id="tab-overview" class="channel-tab" href="#">Resumen</a>
-                <a id="tab-storyboard" class="channel-tab" href="#">Crear vídeos</a>
-                <a id="tab-gallery" class="channel-tab" href="#">Galería</a>
+                <a id="tab-storyboard" class="channel-tab" href="#">Crear vÃ­deos</a>
+                <a id="tab-gallery" class="channel-tab" href="#">GalerÃ­a</a>
                 <a id="tab-jobs" class="channel-tab active" href="#">Trabajos</a>
                 <a id="tab-ai-tasks" class="channel-tab" href="#">Registros IA</a>
                 <a id="tab-history" class="channel-tab" href="#">Historial</a>
@@ -278,39 +278,38 @@
             <section class="publish-card">
                 <h2 id="job-title" style="margin-top:0;">Cargando trabajo...</h2>
                 <div id="job-status" style="margin:0.25rem 0 1rem;"></div>
-                <div class="helper-box" id="job-summary" style="margin-bottom:1rem;">Cargando datos de publicación...</div>
+                <div class="helper-box" id="job-summary" style="margin-bottom:1rem;">Cargando datos de publicaciÃ³n...</div>
 
                 <div class="helper-box" style="margin-bottom:1rem;">
-                    <h3 style="margin-top:0;">Re-vincular vÃ­deo existente</h3>
+                    <h3 style="margin-top:0;">Re-vincular v&iacute;deo existente</h3>
                     <p style="margin-top:0; color:var(--text-muted);">
-                        Si este trabajo ya fue publicado antes y perdiÃ³ el vÃ­nculo con YouTube, pega aquÃ­ la URL del vÃ­deo o su <code>video_id</code> para volver a asociarlo.
+                        Si este trabajo ya fue publicado antes y perdi&oacute; el v&iacute;nculo con YouTube, pega aqu&iacute; la URL del v&iacute;deo o su <code>video_id</code> para volver a asociarlo.
                     </p>
                     <div class="field-grid" style="margin-top:0.75rem;">
                         <div class="field" style="grid-column:1 / -1;">
-                            <label for="relink-video-reference">URL o ID del vÃ­deo</label>
+                            <label for="relink-video-reference">URL o ID del v&iacute;deo</label>
                             <input id="relink-video-reference" type="text" placeholder="https://www.youtube.com/watch?v=... o abc123XYZ89">
                         </div>
                     </div>
                     <div class="actions" style="margin-top:0.75rem;">
-                        <button class="btn btn-secondary" type="button" onclick="relinkYoutubeVideo()">Vincular vÃ­deo existente</button>
+                        <button class="btn btn-secondary" type="button" onclick="relinkYoutubeVideo()">Vincular v&iacute;deo existente</button>
                     </div>
                 </div>
-
                 <div class="field-grid">
                     <div class="field">
-                        <label for="publish-title">Título de YouTube</label>
-                        <input id="publish-title" type="text" placeholder="Título del vídeo">
+                        <label for="publish-title">TÃ­tulo de YouTube</label>
+                        <input id="publish-title" type="text" placeholder="TÃ­tulo del vÃ­deo">
                     </div>
                     <div class="field">
                         <label for="publish-privacy">Privacidad</label>
                         <select id="publish-privacy">
                             <option value="private">Privado</option>
                             <option value="unlisted">No listado</option>
-                            <option value="public">Público</option>
+                            <option value="public">PÃºblico</option>
                         </select>
                     </div>
                     <div class="field">
-                        <label for="publish-category">Categoría</label>
+                        <label for="publish-category">CategorÃ­a</label>
                         <input id="publish-category" type="text" value="22" placeholder="22">
                     </div>
                     <div class="field">
@@ -320,19 +319,19 @@
                 </div>
 
                 <div class="field" style="margin-top:0.9rem;">
-                    <label for="publish-description">Descripción</label>
-                    <textarea id="publish-description" placeholder="Escribe la descripción del vídeo..."></textarea>
+                    <label for="publish-description">DescripciÃ³n</label>
+                    <textarea id="publish-description" placeholder="Escribe la descripciÃ³n del vÃ­deo..."></textarea>
                 </div>
 
                 <div class="advanced-toggle" onclick="toggleAdvanced()">
-                    <span id="advanced-arrow">▸</span>
+                    <span id="advanced-arrow">â–¸</span>
                     <span>Opciones avanzadas</span>
                 </div>
 
                 <div id="advanced-panel" class="advanced-panel">
                     <div class="field-grid">
                         <div class="field">
-                            <label for="publish-at">Programar publicación</label>
+                            <label for="publish-at">Programar publicaciÃ³n</label>
                             <input id="publish-at" type="datetime-local">
                         </div>
                         <div class="field">
@@ -347,7 +346,7 @@
                             <div id="thumb-preview" class="thumb-preview">Sin miniatura</div>
                             <div>
                                 <p style="margin-top:0; color:var(--text-muted);">
-                                    Shorts no permite miniatura personalizada como los vídeos largos. Si la subida falla, usa un fotograma del vídeo y la API de YouTube elegirá la portada disponible.
+                                    Shorts no permite miniatura personalizada como los vÃ­deos largos. Si la subida falla, usa un fotograma del vÃ­deo y la API de YouTube elegirÃ¡ la portada disponible.
                                 </p>
                                 <input id="publish-thumbnail" type="file" accept="image/jpeg,image/png" onchange="previewThumbnail(this)">
                                 <div style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-top:0.75rem;">
@@ -361,14 +360,14 @@
                         <label style="display:block; color:var(--text-muted); font-size:0.8rem; margin-bottom:0.5rem;">Opciones de YouTube</label>
                         <div class="checkbox-grid">
                             <label class="check-card"><input id="publish-notify" type="checkbox" checked><span>Notificar suscriptores</span></label>
-                            <label class="check-card"><input id="publish-embeddable" type="checkbox" checked><span>Permitir incrustación</span></label>
-                            <label class="check-card"><input id="publish-stats" type="checkbox" checked><span>Estadísticas públicas</span></label>
-                            <label class="check-card"><input id="publish-kids" type="checkbox"><span>Contenido para niños</span></label>
-                            <label class="check-card"><input id="publish-synth" type="checkbox"><span>Contenido sintético</span></label>
+                            <label class="check-card"><input id="publish-embeddable" type="checkbox" checked><span>Permitir incrustaciÃ³n</span></label>
+                            <label class="check-card"><input id="publish-stats" type="checkbox" checked><span>EstadÃ­sticas pÃºblicas</span></label>
+                            <label class="check-card"><input id="publish-kids" type="checkbox"><span>Contenido para niÃ±os</span></label>
+                            <label class="check-card"><input id="publish-synth" type="checkbox"><span>Contenido sintÃ©tico</span></label>
                             <label class="check-card" style="gap:0.8rem;">
                                 <span style="min-width:110px;">Licencia</span>
                                 <select id="publish-license" style="flex:1; background:rgba(0,0,0,0.2); color:#fff; border:1px solid var(--border-color); border-radius:8px; padding:0.45rem 0.55rem;">
-                                    <option value="youtube">Licencia estándar de YouTube</option>
+                                    <option value="youtube">Licencia estÃ¡ndar de YouTube</option>
                                     <option value="creativeCommon">Creative Commons</option>
                                 </select>
                             </label>
@@ -381,11 +380,11 @@
                             <select id="publish-privacy-advanced" onchange="syncPrivacyFields(this.value)">
                                 <option value="private">Privado</option>
                                 <option value="unlisted">No listado</option>
-                                <option value="public">Público</option>
+                                <option value="public">PÃºblico</option>
                             </select>
                         </div>
                         <div class="field">
-                            <label for="publish-category-advanced">Categoría avanzada</label>
+                            <label for="publish-category-advanced">CategorÃ­a avanzada</label>
                             <input id="publish-category-advanced" type="text" value="22">
                         </div>
                     </div>
@@ -396,26 +395,10 @@
                     <button class="btn btn-secondary" onclick="window.location.href = backJobsUrl()">Volver a trabajos</button>
                 </div>
 
-                <div class="helper-box" style="margin-top:1rem;">
-                    <h3 style="margin-top:0;">Re-vincular vídeo existente</h3>
-                    <p style="margin-top:0; color:var(--text-muted);">
-                        Si este trabajo ya fue publicado antes y perdió el vínculo con YouTube, pega aquí la URL del vídeo o su <code>video_id</code> para volver a asociarlo.
-                    </p>
-                    <div class="field-grid" style="margin-top:0.75rem;">
-                        <div class="field" style="grid-column:1 / -1;">
-                            <label for="relink-video-reference">URL o ID del vídeo</label>
-                            <input id="relink-video-reference" type="text" placeholder="https://www.youtube.com/watch?v=... o abc123XYZ89">
-                        </div>
-                    </div>
-                    <div class="actions" style="margin-top:0.75rem;">
-                        <button class="btn btn-secondary" type="button" onclick="relinkYoutubeVideo()">Vincular vídeo existente</button>
-                    </div>
-                </div>
-
                 <div id="youtube-tools" class="helper-box" style="margin-top:1rem; display:none;">
-                    <h3 style="margin-top:0;">Configuración de YouTube</h3>
+                    <h3 style="margin-top:0;">ConfiguraciÃ³n de YouTube</h3>
                     <p style="margin-top:0; color:var(--text-muted);">
-                        Gestiona el vídeo ya publicado sin salir de esta pantalla: abre en una pestaña nueva, actualiza la miniatura, modifica la privacidad o elimínalo del canal.
+                        Gestiona el vÃ­deo ya publicado sin salir de esta pantalla: abre en una pestaÃ±a nueva, actualiza la miniatura, modifica la privacidad o elimÃ­nalo del canal.
                     </p>
                     <div class="actions" style="margin-top:0.75rem;">
                         <a id="youtube-open-link" class="btn btn-secondary" href="#" target="_blank" rel="noopener noreferrer" style="text-decoration:none; display:inline-flex; align-items:center;">Abrir en YouTube</a>
@@ -427,7 +410,7 @@
             </section>
 
             <aside class="publish-card">
-                <h3 style="margin-top:0;">Vista previa del vídeo</h3>
+                <h3 style="margin-top:0;">Vista previa del vÃ­deo</h3>
                 <div class="video-frame">
                     <video id="preview-video" controls></video>
                 </div>
@@ -436,7 +419,7 @@
                     <div id="channel-name" style="font-weight:700;">-</div>
                 </div>
                 <div style="margin-top:0.75rem;">
-                    <div style="color:var(--text-muted); font-size:0.8rem; margin-bottom:0.35rem;">Vídeo local</div>
+                    <div style="color:var(--text-muted); font-size:0.8rem; margin-bottom:0.35rem;">VÃ­deo local</div>
                     <div id="video-url" style="word-break:break-all;">-</div>
                 </div>
                 <div style="margin-top:0.9rem;">
@@ -509,7 +492,7 @@
             const arrow = document.getElementById('advanced-arrow');
             const open = !panel.classList.contains('open');
             panel.classList.toggle('open', open);
-            arrow.textContent = open ? '▾' : '▸';
+            arrow.textContent = open ? 'â–¾' : 'â–¸';
         }
 
         function syncPrivacyFields(value) {
@@ -540,7 +523,7 @@
             const jobId = getJobId();
             const channelId = getChannelId();
             if (!currentJob || !currentJob.youtube_video_id) {
-                alert('Primero publica el vídeo para poder asignar la miniatura.');
+                alert('Primero publica el vÃ­deo para poder asignar la miniatura.');
                 return;
             }
             if (!selectedThumbnailFile) {
@@ -583,7 +566,7 @@
             });
             const data = await res.json().catch(() => ({}));
             if (!res.ok) {
-                alert(data.detail || 'No se pudo volver a vincular el vídeo.');
+                alert(data.detail || 'No se pudo volver a vincular el vÃ­deo.');
                 return;
             }
 
@@ -597,7 +580,7 @@
             document.getElementById('youtube-open-link').href = currentJob.youtube_video_url;
             document.querySelector('.actions .btn-success').textContent = 'Guardar cambios en YouTube';
             document.getElementById('job-status').innerHTML = '<span class="status-pill">Publicado en YouTube</span>';
-            document.getElementById('publish-modal-title').textContent = 'Vídeo vinculado';
+            document.getElementById('publish-modal-title').textContent = 'VÃ­deo vinculado';
             document.getElementById('publish-modal-message').textContent = currentJob.youtube_video_url;
             document.getElementById('publishModal').classList.add('open');
         }
@@ -628,11 +611,11 @@
             const title = currentJob.title || defaults.title || '';
             const description = currentJob.text || defaults.description || '';
 
-            document.getElementById('job-title').textContent = title || 'Publicar vídeo';
+            document.getElementById('job-title').textContent = title || 'Publicar vÃ­deo';
             document.getElementById('job-status').innerHTML = currentJob.youtube_video_url
                 ? '<span class="status-pill">Publicado en YouTube</span>'
                 : (currentJob.status === 'draft' ? '<span class="status-pill">Borrador</span>' : '');
-            document.getElementById('job-summary').textContent = currentJob.text || 'Prepara los datos de publicación para este trabajo.';
+            document.getElementById('job-summary').textContent = currentJob.text || 'Prepara los datos de publicaciÃ³n para este trabajo.';
             document.getElementById('publish-title').value = title;
             document.getElementById('publish-description').value = description;
             syncPrivacyFields(defaults.privacy_status || 'private');
@@ -695,7 +678,7 @@
 
                 const data = await res.json();
                 if (!res.ok) {
-                    alert(data.detail || (isAlreadyPublished ? 'No se pudieron guardar los cambios.' : 'No se pudo publicar el v??deo.'));
+                    alert(data.detail || (isAlreadyPublished ? 'No se pudieron guardar los cambios.' : 'No se pudo publicar el v?deo.'));
                     return;
                 }
 
@@ -713,15 +696,15 @@
                     try {
                         await uploadThumbnail(true);
                     } catch (thumbError) {
-                        alert(isAlreadyPublished ? 'Los cambios se guardaron, pero no se pudo asignar la miniatura.' : 'El v??deo se public??, pero no se pudo asignar la miniatura.');
+                        alert(isAlreadyPublished ? 'Los cambios se guardaron, pero no se pudo asignar la miniatura.' : 'El v?deo se public?, pero no se pudo asignar la miniatura.');
                     }
                 }
 
-                document.getElementById('publish-modal-title').textContent = isAlreadyPublished ? 'Vídeo actualizado' : 'Vídeo publicado';
-                document.getElementById('publish-modal-message').textContent = data.youtube_video_url || (isAlreadyPublished ? 'Cambios guardados con éxito.' : 'Publicación completada con éxito.');
+                document.getElementById('publish-modal-title').textContent = isAlreadyPublished ? 'VÃ­deo actualizado' : 'VÃ­deo publicado';
+                document.getElementById('publish-modal-message').textContent = data.youtube_video_url || (isAlreadyPublished ? 'Cambios guardados con Ã©xito.' : 'PublicaciÃ³n completada con Ã©xito.');
                 document.getElementById('publishModal').classList.add('open');
             } catch (error) {
-                alert(error.message || (isAlreadyPublished ? 'No se pudieron guardar los cambios.' : 'No se pudo publicar el vídeo.'));
+                alert(error.message || (isAlreadyPublished ? 'No se pudieron guardar los cambios.' : 'No se pudo publicar el vÃ­deo.'));
             } finally {
                 if (btn) {
                     btn.disabled = false;
@@ -761,26 +744,26 @@
                 alert(data.detail || 'No se pudieron guardar los cambios.');
                 return;
             }
-            document.getElementById('publish-modal-title').textContent = 'Vídeo actualizado';
+            document.getElementById('publish-modal-title').textContent = 'VÃ­deo actualizado';
             document.getElementById('publish-modal-message').textContent = 'Los cambios de YouTube se guardaron correctamente.';
             document.getElementById('publishModal').classList.add('open');
         }
 
         async function deleteYoutubeVideo() {
             const jobId = getJobId();
-            if (!confirm('¿Seguro que quieres eliminar este vídeo de YouTube? Esta acción no se puede deshacer.')) return;
+            if (!confirm('Â¿Seguro que quieres eliminar este vÃ­deo de YouTube? Esta acciÃ³n no se puede deshacer.')) return;
             const res = await fetch(`/api/jobs/${jobId}/youtube`, { method: 'DELETE' });
             const data = await res.json().catch(() => ({}));
             if (!res.ok) {
-                alert(data.detail || 'No se pudo eliminar el vídeo de YouTube.');
+                alert(data.detail || 'No se pudo eliminar el vÃ­deo de YouTube.');
                 return;
             }
             currentJob.youtube_video_id = null;
             currentJob.youtube_video_url = null;
             document.getElementById('youtube-tools').style.display = 'none';
             document.querySelector('.actions .btn-success').textContent = 'Publicar ahora';
-            document.getElementById('publish-modal-title').textContent = 'Vídeo eliminado';
-            document.getElementById('publish-modal-message').textContent = 'El vídeo se eliminó de YouTube y ya no está asociado al trabajo.';
+            document.getElementById('publish-modal-title').textContent = 'VÃ­deo eliminado';
+            document.getElementById('publish-modal-message').textContent = 'El vÃ­deo se eliminÃ³ de YouTube y ya no estÃ¡ asociado al trabajo.';
             document.getElementById('publishModal').classList.add('open');
         }
 
