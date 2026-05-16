@@ -380,6 +380,22 @@
                     <button class="btn btn-secondary" onclick="window.location.href = backJobsUrl()">Volver a trabajos</button>
                 </div>
 
+                <div class="helper-box" style="margin-top:1rem;">
+                    <h3 style="margin-top:0;">Re-vincular vídeo existente</h3>
+                    <p style="margin-top:0; color:var(--text-muted);">
+                        Si este trabajo ya fue publicado antes y perdió el vínculo con YouTube, pega aquí la URL del vídeo o su <code>video_id</code> para volver a asociarlo.
+                    </p>
+                    <div class="field-grid" style="margin-top:0.75rem;">
+                        <div class="field" style="grid-column:1 / -1;">
+                            <label for="relink-video-reference">URL o ID del vídeo</label>
+                            <input id="relink-video-reference" type="text" placeholder="https://www.youtube.com/watch?v=... o abc123XYZ89">
+                        </div>
+                    </div>
+                    <div class="actions" style="margin-top:0.75rem;">
+                        <button class="btn btn-secondary" type="button" onclick="relinkYoutubeVideo()">Vincular vídeo existente</button>
+                    </div>
+                </div>
+
                 <div id="youtube-tools" class="helper-box" style="margin-top:1rem; display:none;">
                     <h3 style="margin-top:0;">Configuración de YouTube</h3>
                     <p style="margin-top:0; color:var(--text-muted);">
@@ -530,6 +546,44 @@
             if (!quiet) {
                 alert('Miniatura asignada correctamente.');
             }
+        }
+
+        async function relinkYoutubeVideo() {
+            const jobId = getJobId();
+            const channelId = getChannelId();
+            const reference = document.getElementById('relink-video-reference').value.trim();
+            if (!reference) {
+                alert('Pega una URL de YouTube o un video_id para vincular el trabajo.');
+                return;
+            }
+
+            const res = await fetch(`/api/jobs/${jobId}/relink-youtube`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    channel_id: channelId,
+                    video_reference: reference,
+                })
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                alert(data.detail || 'No se pudo volver a vincular el vídeo.');
+                return;
+            }
+
+            currentJob = currentJob || {};
+            currentJob.youtube_video_id = data.youtube_video_id;
+            currentJob.youtube_video_url = data.youtube_video_url;
+            if (data.youtube_published_at) {
+                currentJob.youtube_published_at = data.youtube_published_at;
+            }
+            document.getElementById('youtube-tools').style.display = 'block';
+            document.getElementById('youtube-open-link').href = currentJob.youtube_video_url;
+            document.querySelector('.actions .btn-success').textContent = 'Guardar cambios en YouTube';
+            document.getElementById('job-status').innerHTML = '<span class="status-pill">Publicado en YouTube</span>';
+            document.getElementById('publish-modal-title').textContent = 'Vídeo vinculado';
+            document.getElementById('publish-modal-message').textContent = currentJob.youtube_video_url;
+            document.getElementById('publishModal').classList.add('open');
         }
 
         async function loadPublishContext() {

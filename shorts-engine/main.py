@@ -5,6 +5,7 @@ import hashlib
 import sqlite3
 import os
 import uuid
+import re
 import logging
 import time
 import asyncio
@@ -27,6 +28,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 from datetime import datetime, timedelta, timezone
+from urllib.parse import urlparse, parse_qs
 
 app = FastAPI(title="Shorts Generation Engine")
 
@@ -213,6 +215,10 @@ class UpdateYoutubeVideoRequest(BaseModel):
     contains_synthetic_media: Optional[bool] = None
     default_language: Optional[str] = None
 
+class RelinkYoutubeVideoRequest(BaseModel):
+    video_reference: str
+    channel_id: Optional[int] = None
+
 class CommentReplyDraftRequest(BaseModel):
     comment_text: str
     video_title: Optional[str] = None
@@ -245,6 +251,41 @@ def parse_iso_datetime(value: Optional[str]) -> Optional[str]:
         return dt.astimezone(timezone.utc).isoformat()
     except Exception:
         raise HTTPException(status_code=400, detail="publish_at inválido. Usa un ISO 8601 válido.")
+
+def extract_youtube_video_id(value: Optional[str]) -> Optional[str]:
+    raw = (value or "").strip()
+    if not raw:
+        return None
+
+    if re.fullmatch(r"[A-Za-z0-9_-]{11}", raw):
+        return raw
+
+    try:
+        parsed = urlparse(raw)
+    except Exception:
+        return None
+
+    host = (parsed.netloc or "").lower()
+    path = parsed.path or ""
+
+    if "youtu.be" in host:
+        candidate = path.strip("/").split("/")[0]
+        if candidate and re.fullmatch(r"[A-Za-z0-9_-]{11}", candidate):
+            return candidate
+
+    if "youtube.com" in host or "youtube-nocookie.com" in host:
+        query_id = parse_qs(parsed.query).get("v", [None])[0]
+        if query_id and re.fullmatch(r"[A-Za-z0-9_-]{11}", query_id):
+            return query_id
+
+        parts = [segment for segment in path.split("/") if segment]
+        for idx, segment in enumerate(parts):
+            if segment in {"shorts", "embed", "live"} and idx + 1 < len(parts):
+                candidate = parts[idx + 1]
+                if re.fullmatch(r"[A-Za-z0-9_-]{11}", candidate):
+                    return candidate
+
+    return None
 
 def log_job_event(
     job_id: str,
@@ -1789,6 +1830,44 @@ async def api_set_job_thumbnail(job_id: str, file: UploadFile = File(...), chann
                 os.remove(tmp_path)
         except Exception:
             pass
+
+@app.post("/api/jobs/{job_id}/relink-youtube")
+async def api_relink_job_youtube(job_id: str, req: RelinkYoutubeVideoRequest, user: str = Depends(get_current_user)):
+    job = db.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Trabajo no encontrado")
+
+    resolved_channel_id = req.channel_id or job.get("channel_id")
+    if not resolved_channel_id:
+        raise HTTPException(status_code=400, detail="El trabajo no tiene canal asociado")
+    if job.get("channel_id") is not None and int(job["channel_id"]) != int(resolved_channel_id):
+        raise HTTPException(status_code=404, detail="Trabajo no encontrado para este canal")
+
+    video_id = extract_youtube_video_id(req.video_reference)
+    if not video_id:
+        raise HTTPException(
+            status_code=400,
+            detail="No se pudo extraer un video_id válido. Pega la URL completa de YouTube o el ID del vídeo.",
+        )
+
+    youtube_video_url = f"https://www.youtube.com/watch?v={video_id}"
+    db.mark_job_published(job_id, video_id, youtube_video_url)
+    log_job_event(
+        job_id,
+        "youtube_relinked",
+        "Vídeo de YouTube re-vinculado manualmente.",
+        status="success",
+        channel_id=int(resolved_channel_id),
+        details={"youtube_video_id": video_id, "youtube_video_url": youtube_video_url},
+    )
+
+    updated_job = db.get_job(job_id) or {}
+    return {
+        "status": "success",
+        "youtube_video_id": video_id,
+        "youtube_video_url": youtube_video_url,
+        "youtube_published_at": updated_job.get("youtube_published_at"),
+    }
 
 @app.put("/api/jobs/{job_id}/youtube")
 async def api_update_job_youtube(job_id: str, req: UpdateYoutubeVideoRequest, user: str = Depends(get_current_user)):
