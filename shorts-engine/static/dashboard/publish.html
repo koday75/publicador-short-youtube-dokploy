@@ -280,6 +280,22 @@
                 <div id="job-status" style="margin:0.25rem 0 1rem;"></div>
                 <div class="helper-box" id="job-summary" style="margin-bottom:1rem;">Cargando datos de publicación...</div>
 
+                <div class="helper-box" style="margin-bottom:1rem;">
+                    <h3 style="margin-top:0;">Re-vincular vÃ­deo existente</h3>
+                    <p style="margin-top:0; color:var(--text-muted);">
+                        Si este trabajo ya fue publicado antes y perdiÃ³ el vÃ­nculo con YouTube, pega aquÃ­ la URL del vÃ­deo o su <code>video_id</code> para volver a asociarlo.
+                    </p>
+                    <div class="field-grid" style="margin-top:0.75rem;">
+                        <div class="field" style="grid-column:1 / -1;">
+                            <label for="relink-video-reference">URL o ID del vÃ­deo</label>
+                            <input id="relink-video-reference" type="text" placeholder="https://www.youtube.com/watch?v=... o abc123XYZ89">
+                        </div>
+                    </div>
+                    <div class="actions" style="margin-top:0.75rem;">
+                        <button class="btn btn-secondary" type="button" onclick="relinkYoutubeVideo()">Vincular vÃ­deo existente</button>
+                    </div>
+                </div>
+
                 <div class="field-grid">
                     <div class="field">
                         <label for="publish-title">Título de YouTube</label>
