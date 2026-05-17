@@ -23,7 +23,10 @@
             font-size: 0.84rem;
             margin-bottom: 0.8rem;
         }
-        .channel-breadcrumb a { color: #fff; text-decoration: none; }
+        .channel-breadcrumb a {
+            color: #fff;
+            text-decoration: none;
+        }
         .channel-tabs {
             display: flex;
             gap: 0.55rem;
@@ -36,7 +39,7 @@
             padding: 0.55rem 0.85rem;
             font-size: 0.82rem;
             color: var(--text-muted);
-            background: rgba(255,255,255,0.03);
+            background: rgba(255, 255, 255, 0.03);
         }
         .channel-tab.active {
             background: rgba(88, 166, 255, 0.15);
@@ -76,13 +79,15 @@
             cursor: pointer;
             transition: all 0.15s ease;
         }
-        .topic-item:hover { border-color: rgba(88,166,255,0.35); }
+        .topic-item:hover {
+            border-color: rgba(88, 166, 255, 0.35);
+        }
         .topic-item.active {
-            border-color: rgba(88,166,255,0.45);
-            box-shadow: 0 0 0 1px rgba(88,166,255,0.12) inset;
+            border-color: rgba(88, 166, 255, 0.45);
+            box-shadow: 0 0 0 1px rgba(88, 166, 255, 0.12) inset;
         }
         .topic-item strong {
-            display:block;
+            display: block;
             margin-bottom: 0.2rem;
         }
         .topic-item small,
@@ -120,7 +125,10 @@
             padding: 0.8rem 0.9rem;
             box-sizing: border-box;
         }
-        .field textarea { min-height: 120px; resize: vertical; }
+        .field textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
         .field textarea:focus,
         .field input:focus,
         .field select:focus {
@@ -128,19 +136,19 @@
             border-color: rgba(88,166,255,0.5);
         }
         .actions-row {
-            display:flex;
-            gap:0.6rem;
-            flex-wrap:wrap;
+            display: flex;
+            gap: 0.6rem;
+            flex-wrap: wrap;
         }
         .section-title {
-            display:flex;
-            justify-content:space-between;
-            align-items:center;
-            gap:0.75rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 0.75rem;
             margin-bottom: 0.7rem;
         }
         .section-title h4 {
-            margin:0;
+            margin: 0;
             font-size: 0.98rem;
         }
         .section-title span {
@@ -157,8 +165,51 @@
             background: rgba(0,0,0,0.12);
             padding: 0.85rem;
         }
-        .entry-card strong { display:block; margin-bottom:0.2rem; }
-        .entry-card small { color: var(--text-muted); }
+        .source-card {
+            display: grid;
+            grid-template-columns: 132px 1fr;
+            gap: 0.9rem;
+            align-items: start;
+        }
+        .source-thumb {
+            width: 132px;
+            aspect-ratio: 16 / 9;
+            border-radius: 12px;
+            overflow: hidden;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.06);
+        }
+        .source-thumb img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+        .source-meta {
+            display: grid;
+            gap: 0.35rem;
+        }
+        .source-badges {
+            display: flex;
+            gap: 0.45rem;
+            flex-wrap: wrap;
+            margin-top: 0.25rem;
+        }
+        .source-pill {
+            border: 1px solid rgba(88, 166, 255, 0.24);
+            background: rgba(88, 166, 255, 0.12);
+            color: #9ecbff;
+            border-radius: 999px;
+            padding: 0.28rem 0.55rem;
+            font-size: 0.72rem;
+        }
+        .entry-card strong {
+            display: block;
+            margin-bottom: 0.2rem;
+        }
+        .entry-card small {
+            color: var(--text-muted);
+        }
         .entry-card pre {
             white-space: pre-wrap;
             word-break: break-word;
@@ -169,7 +220,7 @@
             border-radius: 10px;
             border: 1px solid rgba(255,255,255,0.06);
             max-height: 180px;
-            overflow:auto;
+            overflow: auto;
         }
         .empty-state {
             border: 1px dashed var(--border-color);
@@ -180,10 +231,20 @@
             text-align: center;
         }
         @media (max-width: 1100px) {
-            .shell-grid { grid-template-columns: 1fr; }
+            .shell-grid {
+                grid-template-columns: 1fr;
+            }
         }
         @media (max-width: 760px) {
-            .detail-grid { grid-template-columns: 1fr; }
+            .detail-grid {
+                grid-template-columns: 1fr;
+            }
+            .source-card {
+                grid-template-columns: 1fr;
+            }
+            .source-thumb {
+                width: 100%;
+            }
         }
     </style>
 </head>
@@ -192,7 +253,7 @@
         <header>
             <div>
                 <h1 id="scripts-header-title">Guiones del canal</h1>
-                <p>Convierte varios vídeos en una base de investigación, resume lo importante y genera un guion listo para el storyboard.</p>
+                <p>Convierte varios vídeos en una base de investigación, transcribe su contenido y genera un resumen en español listo para crear un guion.</p>
             </div>
         </header>
 
@@ -220,7 +281,7 @@
             <div class="section-title">
                 <div>
                     <h3 style="margin:0;">Nuevo tema</h3>
-                    <p style="margin:0;">Crea una base de trabajo para agrupar fuentes, resúmenes y borradores.</p>
+                    <p style="margin:0;">Crea una base de trabajo para agrupar vídeos, transcripciones, resúmenes y borradores.</p>
                 </div>
                 <span id="channel-context-note">Selecciona un canal para empezar.</span>
             </div>
@@ -266,7 +327,7 @@
                 <div class="section-title">
                     <div>
                         <h3 id="selected-topic-heading">Selecciona un tema</h3>
-                        <span id="selected-topic-subtitle">Aquí verás las fuentes, resúmenes y borradores.</span>
+                        <span id="selected-topic-subtitle">Aquí verás las fuentes usadas, sus transcripciones y los borradores del guion.</span>
                     </div>
                     <span id="selected-topic-status" class="badge" style="background:rgba(255,255,255,0.05); color:#fff;">Sin tema</span>
                 </div>
@@ -300,13 +361,13 @@
                     <div>
                         <div class="section-title">
                             <div>
-                                <h4>Fuentes del tema</h4>
-                                <span>Pega una URL de YouTube y la app intentará extraer la transcripción y generar el resumen en español automáticamente.</span>
+                                <h4>Vídeos del tema</h4>
+                                <span>Pega una URL de YouTube. Primero se guardará la transcripción y después se generará un resumen en español.</span>
                             </div>
                         </div>
                         <div class="detail-grid">
                             <div class="field">
-                                <label>URL del vídeo o canal</label>
+                                <label>URL del vídeo</label>
                                 <input id="source-url" type="text" placeholder="https://www.youtube.com/watch?v=...">
                             </div>
                             <div class="field">
@@ -315,42 +376,11 @@
                             </div>
                         </div>
                         <div class="field" style="margin-top:0.75rem;">
-                            <label>Texto / transcripción</label>
-                            <textarea id="source-raw-text" placeholder="Opcional. Si lo dejas vacío e indicas una URL, intentaremos sacar la transcripción automáticamente."></textarea>
+                            <label>Transcripción manual</label>
+                            <textarea id="source-raw-text" placeholder="Opcional. Si lo dejas vacío y pones una URL, la app intentará obtener la transcripción automáticamente con Apify."></textarea>
                         </div>
                         <div class="actions-row" style="margin-top:0.75rem;">
                             <button type="button" class="badge" id="add-source-btn" style="background:rgba(63,185,80,0.18); color:#3fb950; border:1px solid rgba(63,185,80,0.25);">Transcribir y resumir</button>
-                        </div>
-                    </div>
-
-                    <div>
-                        <div class="section-title">
-                            <div>
-                                <h4>Apify</h4>
-                                <span>Importa varias URLs con el scraper oficial de YouTube y guárdalas en este tema. Usa las cuatro cuentas de Apify configuradas en Ajustes de sistema.</span>
-                            </div>
-                        </div>
-                        <div class="detail-grid">
-                            <div class="field">
-                                <label>Actor de Apify</label>
-                                <input id="apify-actor-id" type="text" value="streamers/youtube-scraper">
-                            </div>
-                            <div class="field">
-                                <label>Máximo de resultados</label>
-                                <input id="apify-max-results" type="number" value="5" min="1" max="100">
-                            </div>
-                        </div>
-                        <div class="field" style="margin-top:0.75rem;">
-                            <label>Payload JSON</label>
-                            <textarea id="apify-payload">{
-  "startUrls": [
-    { "url": "https://www.youtube.com/watch?v=VIDEO_ID" }
-  ],
-  "maxResults": 5
-}</textarea>
-                        </div>
-                        <div class="actions-row" style="margin-top:0.75rem;">
-                            <button type="button" class="badge" id="run-apify-btn" style="background:rgba(176,114,255,0.18); color:#b072ff; border:1px solid rgba(176,114,255,0.25);">Importar con Apify</button>
                         </div>
                     </div>
 
@@ -387,13 +417,13 @@
                     <div>
                         <div class="section-title">
                             <div>
-                                <h4>Fuentes guardadas</h4>
-                                <span>Texto original, resumen y estado de cada fuente.</span>
+                                <h4>Vídeos usados</h4>
+                                <span>Lista compacta de vídeos usados como fuente de información para este tema.</span>
                             </div>
                             <span id="sources-count">0 fuentes</span>
                         </div>
                         <div id="sources-list" class="list-grid">
-                            <div class="empty-state">Aún no hay fuentes para este tema.</div>
+                            <div class="empty-state">Aún no hay vídeos añadidos a este tema.</div>
                         </div>
                     </div>
 
@@ -480,11 +510,10 @@
                 const res = await fetch(`/api/youtube/channels/${currentChannelId}`);
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.detail || 'No se pudo cargar el canal.');
-                document.getElementById('scripts-header-title').textContent = `${data.internal_name || 'Canal'} · Guiones`;
-                document.getElementById('channel-breadcrumb-name').textContent = data.internal_name || `Canal ${currentChannelId}`;
-                document.getElementById('channel-context-note').textContent = `Trabajando en ${data.internal_name || `Canal ${currentChannelId}`}`;
-                document.getElementById('channel-shell').style.display = 'block';
-                setLinks(currentChannelId);
+                const channelName = data.internal_name || `Canal ${currentChannelId}`;
+                document.getElementById('scripts-header-title').textContent = `${channelName} · Guiones`;
+                document.getElementById('channel-breadcrumb-name').textContent = channelName;
+                document.getElementById('channel-context-note').textContent = `Trabajando en ${channelName}`;
             } catch (error) {
                 document.getElementById('channel-context-note').textContent = error.message || 'No se pudo cargar el canal.';
             }
@@ -505,15 +534,24 @@
 
         function renderSourcesList(sources) {
             if (!sources || !sources.length) {
-                return '<div class="empty-state">Aún no hay fuentes para este tema.</div>';
+                return '<div class="empty-state">Aún no hay vídeos añadidos a este tema.</div>';
             }
             return sources.map((source) => `
                 <article class="entry-card">
-                    <strong>${escapeHtml(source.source_type || 'youtube')} ${source.youtube_video_id ? `· ${escapeHtml(source.youtube_video_id)}` : ''}</strong>
-                    <small>${escapeHtml(source.source_url || 'Sin URL')} · ${shortDate(source.created_at)}</small>
-                    ${source.language ? `<small>Idioma: ${escapeHtml(source.language)}</small>` : ''}
-                    ${source.summary ? `<pre>${escapeHtml(source.summary)}</pre>` : ''}
-                    ${source.translated_text ? `<pre>${escapeHtml(source.translated_text)}</pre>` : ''}
+                    <div class="source-card">
+                        <div class="source-thumb">
+                            ${source.thumbnail_url ? `<img src="${escapeHtml(source.thumbnail_url)}" alt="${escapeHtml(source.title || 'Vídeo fuente')}">` : ''}
+                        </div>
+                        <div class="source-meta">
+                            <strong>${escapeHtml(source.title || source.youtube_video_id || 'Vídeo fuente')}</strong>
+                            <small>${escapeHtml(source.source_url || 'Sin URL')} · ${shortDate(source.created_at)}</small>
+                            <div class="source-badges">
+                                ${source.language ? `<span class="source-pill">${escapeHtml(source.language)}</span>` : ''}
+                                ${source.raw_text ? '<span class="source-pill">Transcripción guardada</span>' : ''}
+                                ${source.summary ? '<span class="source-pill">Resumen en español</span>' : ''}
+                            </div>
+                        </div>
+                    </div>
                 </article>
             `).join('');
         }
@@ -564,7 +602,7 @@
             }
         }
 
-        async function selectTopic(topicId, reload = true) {
+        async function selectTopic(topicId) {
             currentTopicId = topicId;
             const res = await fetch(`/api/scripts/topics/${encodeURIComponent(topicId)}`);
             const data = await res.json();
@@ -586,7 +624,6 @@
             document.getElementById('sources-list').innerHTML = renderSourcesList(data.sources || []);
             document.getElementById('drafts-list').innerHTML = renderDraftsList(data.drafts || []);
             document.getElementById('logs-list').innerHTML = renderLogsList(data.logs || []);
-
             document.querySelectorAll('.topic-item').forEach((item) => {
                 item.classList.toggle('active', String(item.dataset.topicId) === String(topicId));
             });
@@ -657,7 +694,7 @@
             const youtubeVideoId = document.getElementById('source-video-id').value.trim();
             const rawText = document.getElementById('source-raw-text').value.trim();
             if (!sourceUrl && !youtubeVideoId && !rawText) {
-                alert('Añade una URL, un ID de vídeo o un texto.');
+                alert('Añade una URL, un ID de vídeo o una transcripción manual.');
                 return;
             }
             button.disabled = true;
@@ -676,7 +713,7 @@
                 });
                 const data = await res.json();
                 if (!res.ok) {
-                    alert(data.detail || 'No se pudo añadir la fuente.');
+                    alert(data.detail || 'No se pudo transcribir o resumir el vídeo.');
                     return;
                 }
                 document.getElementById('source-url').value = '';
@@ -719,55 +756,22 @@
             await selectTopic(currentTopicId);
         }
 
-        async function importWithApify() {
-            if (!currentTopicId) {
-                alert('Selecciona un tema primero.');
-                return;
-            }
-            const actorId = document.getElementById('apify-actor-id').value.trim() || 'streamers/youtube-scraper';
-            const payloadText = document.getElementById('apify-payload').value.trim();
-            let inputPayload;
-            try {
-                inputPayload = JSON.parse(payloadText);
-            } catch (error) {
-                alert('El payload de Apify debe ser un JSON válido.');
-                return;
-            }
-            if (!inputPayload.maxResults) {
-                inputPayload.maxResults = Number(document.getElementById('apify-max-results').value || 5);
-            }
-            const res = await fetch(`/api/scripts/topics/${encodeURIComponent(currentTopicId)}/apify-import`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    actor_id: actorId,
-                    input_payload: inputPayload,
-                }),
-            });
-            const data = await res.json();
-            if (!res.ok) {
-                alert(data.detail || 'No se pudo importar con Apify.');
-                return;
-            }
-            await selectTopic(currentTopicId);
-        }
-
         document.getElementById('create-topic-btn').addEventListener('click', createTopic);
         document.getElementById('reload-topics-btn').addEventListener('click', () => loadTopics(currentTopicId));
         document.getElementById('save-topic-btn').addEventListener('click', saveSelectedTopic);
         document.getElementById('add-source-btn').addEventListener('click', addSource);
         document.getElementById('save-draft-btn').addEventListener('click', saveDraft);
-        document.getElementById('run-apify-btn').addEventListener('click', importWithApify);
         document.getElementById('topics-list').addEventListener('click', (event) => {
             const card = event.target.closest('.topic-item');
             if (!card) return;
             selectTopic(card.dataset.topicId);
         });
 
-        loadChannelContext().then(() => loadTopics()).catch((error) => {
-            document.getElementById('topics-list').innerHTML = `<div class="empty-state">${escapeHtml(error.message || 'No se pudo inicializar la vista de guiones.')}</div>`;
-        });
+        loadChannelContext()
+            .then(() => loadTopics())
+            .catch((error) => {
+                document.getElementById('topics-list').innerHTML = `<div class="empty-state">${escapeHtml(error.message || 'No se pudo inicializar la vista de guiones.')}</div>`;
+            });
     </script>
 </body>
 </html>
-

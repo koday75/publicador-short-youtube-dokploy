@@ -673,13 +673,26 @@ async def api_add_script_source(topic_id: int, req: ScriptSourceCreateRequest, u
     if not topic:
         raise HTTPException(status_code=404, detail="Tema no encontrado")
     source_url = (req.source_url or "").strip() or None
-    youtube_video_id = (req.youtube_video_id or "").strip() or None
+    youtube_video_id = (req.youtube_video_id or "").strip() or extract_youtube_video_id(source_url)
     raw_text = (req.raw_text or "").strip() or None
     language = req.language
     translated_text = req.translated_text
     summary = req.summary
     apify_run_id = req.apify_run_id
     apify_dataset_id = req.apify_dataset_id
+    source_title = None
+    thumbnail_url = None
+
+    existing_source = db.find_script_source(topic_id, source_url=source_url, youtube_video_id=youtube_video_id)
+    if existing_source and existing_source.get("raw_text") and existing_source.get("summary"):
+        db.add_script_log(
+            topic_id,
+            "source_reused",
+            "Se reutilizó una fuente ya transcrita y resumida para este tema.",
+            {"source_url": existing_source.get("source_url"), "youtube_video_id": existing_source.get("youtube_video_id")},
+            source_id=existing_source.get("id"),
+        )
+        return {"status": "success", "source": existing_source, "reused": True}
 
     if source_url and not raw_text:
         try:
@@ -687,45 +700,99 @@ async def api_add_script_source(topic_id: int, req: ScriptSourceCreateRequest, u
             normalized = normalize_apify_source_item(scraped_item, fallback_url=source_url)
             source_url = normalized["source_url"] or source_url
             youtube_video_id = normalized["youtube_video_id"] or youtube_video_id
+            source_title = normalized["title"] or source_title
+            thumbnail_url = normalized["thumbnail_url"] or thumbnail_url
             raw_text = normalized["raw_text"] or raw_text
             language = normalized["language"] or language
             translated_text = normalized["translated_text"] or translated_text
-            summary = normalized["summary"] or summary
+            if raw_text:
+                db.add_script_log(
+                    topic_id,
+                    "source_transcribed",
+                    "Transcripción obtenida desde YouTube con Apify.",
+                    {
+                        "source_url": source_url,
+                        "youtube_video_id": youtube_video_id,
+                        "language": language,
+                        "has_text": True,
+                    },
+                )
         except Exception as exc:
             logger.warning("No se pudo extraer la transcripción desde Apify para %s: %s", source_url, exc)
 
     if raw_text and not summary:
-        ai_result = summarize_source_in_spanish(raw_text, title=topic.get("title"), source_language=language)
+        ai_result = summarize_source_in_spanish(
+            raw_text,
+            title=source_title or topic.get("title"),
+            source_language=language,
+        )
         summary = ai_result.get("summary") or summary
         translated_text = translated_text or ai_result.get("translated_text")
+        db.add_script_log(
+            topic_id,
+            "source_summarized",
+            "Resumen en español generado a partir de la transcripción.",
+            {
+                "source_url": source_url,
+                "youtube_video_id": youtube_video_id,
+                "language": language,
+                "has_summary": bool(summary),
+            },
+        )
 
     if source_url and not raw_text and not summary:
         raise HTTPException(
             status_code=400,
-            detail="No se pudo extraer texto útil de ese vídeo. Prueba con otra URL, usa el importador de Apify o pega la transcripción manualmente.",
+            detail="No se pudo obtener la transcripción de ese vídeo. Prueba con otra URL o pega la transcripción manualmente.",
+        )
+    if existing_source:
+        db.update_script_source(
+            existing_source["id"],
+            source_url=source_url or existing_source.get("source_url"),
+            youtube_video_id=youtube_video_id or existing_source.get("youtube_video_id"),
+            title=source_title or existing_source.get("title"),
+            thumbnail_url=thumbnail_url or existing_source.get("thumbnail_url"),
+            language=language or existing_source.get("language"),
+            raw_text=raw_text or existing_source.get("raw_text"),
+            translated_text=translated_text or existing_source.get("translated_text"),
+            summary=summary or existing_source.get("summary"),
+            apify_run_id=apify_run_id or existing_source.get("apify_run_id"),
+            apify_dataset_id=apify_dataset_id or existing_source.get("apify_dataset_id"),
+        )
+        source_id = existing_source["id"]
+        db.add_script_log(
+            topic_id,
+            "source_updated",
+            "Fuente del tema actualizada con transcripción y resumen.",
+            {"source_url": source_url, "youtube_video_id": youtube_video_id, "has_text": bool(raw_text), "has_summary": bool(summary)},
+            source_id=source_id,
+        )
+    else:
+        source_id = db.add_script_source(
+            topic_id=topic_id,
+            source_url=source_url,
+            youtube_video_id=youtube_video_id,
+            title=source_title,
+            thumbnail_url=thumbnail_url,
+            source_type=req.source_type or "youtube",
+            language=language,
+            raw_text=raw_text,
+            translated_text=translated_text,
+            summary=summary,
+            apify_run_id=apify_run_id,
+            apify_dataset_id=apify_dataset_id,
+            channel_id=topic.get("channel_id"),
+        )
+        db.add_script_log(
+            topic_id,
+            "source_added",
+            "Vídeo añadido al tema con su transcripción y resumen.",
+            {"source_url": source_url, "youtube_video_id": youtube_video_id, "has_text": bool(raw_text), "has_summary": bool(summary)},
+            source_id=source_id,
         )
 
-    source_id = db.add_script_source(
-        topic_id=topic_id,
-        source_url=source_url,
-        youtube_video_id=youtube_video_id,
-        source_type=req.source_type or "youtube",
-        language=language,
-        raw_text=raw_text,
-        translated_text=translated_text,
-        summary=summary,
-        apify_run_id=apify_run_id,
-        apify_dataset_id=apify_dataset_id,
-        channel_id=topic.get("channel_id"),
-    )
-    db.add_script_log(
-        topic_id,
-        "source_added",
-        "Fuente añadida al tema.",
-        {"source_url": source_url, "youtube_video_id": youtube_video_id, "source_type": req.source_type, "has_text": bool(raw_text), "has_summary": bool(summary)},
-        source_id=source_id,
-    )
-    return {"status": "success", "source": db.list_script_sources(topic_id)[0] if db.list_script_sources(topic_id) else None}
+    source = db.find_script_source(topic_id, source_url=source_url, youtube_video_id=youtube_video_id)
+    return {"status": "success", "source": source}
 
 @app.post("/api/scripts/topics/{topic_id}/drafts")
 async def api_add_script_draft(topic_id: int, req: ScriptDraftCreateRequest, user: str = Depends(get_current_user)):
@@ -755,6 +822,8 @@ async def api_apify_import_topic_sources(topic_id: int, req: ScriptApifyImportRe
                 topic_id=topic_id,
                 source_url=normalized["source_url"],
                 youtube_video_id=normalized["youtube_video_id"],
+                title=normalized["title"],
+                thumbnail_url=normalized["thumbnail_url"],
                 source_type="youtube",
                 language=normalized["language"],
                 raw_text=normalized["raw_text"],
@@ -894,16 +963,22 @@ def normalize_apify_source_item(item: dict, fallback_url: str | None = None) -> 
         or item.get("id")
         or extract_youtube_video_id(source_url)
     )
+    title = item.get("videoTitle") or item.get("title") or item.get("name") or ""
+    thumbnail_url = item.get("thumbnailUrl") or item.get("thumbnail_url") or item.get("thumbnail")
     raw_text = flatten_transcript_text(
         item.get("transcript")
         or item.get("text")
-        or item.get("description")
         or item.get("content")
         or item.get("caption")
         or item.get("subtitles")
     )
-    language = item.get("language") or item.get("lang") or item.get("transcriptLanguage") or item.get("subtitlesLanguage")
-    title = item.get("title")
+    language = (
+        item.get("activeLanguageCode")
+        or item.get("language")
+        or item.get("lang")
+        or item.get("transcriptLanguage")
+        or item.get("subtitlesLanguage")
+    )
     summary = item.get("summary") or item.get("shortDescription") or ""
     translated_text = item.get("translated_text") or item.get("translation") or ""
     if raw_text and not summary:
@@ -914,6 +989,8 @@ def normalize_apify_source_item(item: dict, fallback_url: str | None = None) -> 
     return {
         "source_url": source_url,
         "youtube_video_id": youtube_video_id,
+        "title": title,
+        "thumbnail_url": thumbnail_url,
         "language": language,
         "raw_text": raw_text,
         "translated_text": translated_text,

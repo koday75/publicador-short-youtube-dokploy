@@ -325,6 +325,8 @@ class JobDatabase:
                     channel_id INTEGER,
                     source_url TEXT,
                     youtube_video_id TEXT,
+                    title TEXT,
+                    thumbnail_url TEXT,
                     source_type TEXT DEFAULT 'youtube',
                     language TEXT,
                     raw_text TEXT,
@@ -362,7 +364,7 @@ class JobDatabase:
             """)
             for table_name, columns in [
                 ("script_topics", [("channel_id", "INTEGER"), ("title", "TEXT"), ("topic", "TEXT"), ("status", "TEXT"), ("updated_at", "TIMESTAMP")]),
-                ("script_sources", [("topic_id", "INTEGER"), ("channel_id", "INTEGER"), ("source_url", "TEXT"), ("youtube_video_id", "TEXT"), ("source_type", "TEXT"), ("language", "TEXT"), ("raw_text", "TEXT"), ("translated_text", "TEXT"), ("summary", "TEXT"), ("apify_run_id", "TEXT"), ("apify_dataset_id", "TEXT"), ("updated_at", "TIMESTAMP")]),
+                ("script_sources", [("topic_id", "INTEGER"), ("channel_id", "INTEGER"), ("source_url", "TEXT"), ("youtube_video_id", "TEXT"), ("title", "TEXT"), ("thumbnail_url", "TEXT"), ("source_type", "TEXT"), ("language", "TEXT"), ("raw_text", "TEXT"), ("translated_text", "TEXT"), ("summary", "TEXT"), ("apify_run_id", "TEXT"), ("apify_dataset_id", "TEXT"), ("updated_at", "TIMESTAMP")]),
                 ("script_drafts", [("topic_id", "INTEGER"), ("version", "INTEGER"), ("draft_type", "TEXT"), ("content", "TEXT"), ("updated_at", "TIMESTAMP")]),
                 ("script_logs", [("topic_id", "INTEGER"), ("source_id", "INTEGER"), ("event_type", "TEXT"), ("message", "TEXT"), ("details_json", "TEXT")]),
             ]:
@@ -446,19 +448,60 @@ class JobDatabase:
             params.extend([limit, offset])
             return [dict(row) for row in conn.execute(query, params).fetchall()]
 
-    def add_script_source(self, topic_id: int, source_url=None, youtube_video_id=None, source_type="youtube", language=None, raw_text=None, translated_text=None, summary=None, apify_run_id=None, apify_dataset_id=None, channel_id=None):
+    def find_script_source(self, topic_id: int, source_url=None, youtube_video_id=None):
+        with self._get_connection() as conn:
+            conn.row_factory = sqlite3.Row
+            if youtube_video_id:
+                row = conn.execute(
+                    "SELECT * FROM script_sources WHERE topic_id = ? AND youtube_video_id = ? ORDER BY id DESC LIMIT 1",
+                    (topic_id, youtube_video_id),
+                ).fetchone()
+                if row:
+                    return dict(row)
+            if source_url:
+                row = conn.execute(
+                    "SELECT * FROM script_sources WHERE topic_id = ? AND source_url = ? ORDER BY id DESC LIMIT 1",
+                    (topic_id, source_url),
+                ).fetchone()
+                if row:
+                    return dict(row)
+            return None
+
+    def add_script_source(self, topic_id: int, source_url=None, youtube_video_id=None, title=None, thumbnail_url=None, source_type="youtube", language=None, raw_text=None, translated_text=None, summary=None, apify_run_id=None, apify_dataset_id=None, channel_id=None):
         with self._get_connection() as conn:
             cursor = conn.execute(
                 """
                 INSERT INTO script_sources (
-                    topic_id, channel_id, source_url, youtube_video_id, source_type, language,
+                    topic_id, channel_id, source_url, youtube_video_id, title, thumbnail_url, source_type, language,
                     raw_text, translated_text, summary, apify_run_id, apify_dataset_id
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
-                (topic_id, channel_id, source_url, youtube_video_id, source_type, language, raw_text, translated_text, summary, apify_run_id, apify_dataset_id),
+                (topic_id, channel_id, source_url, youtube_video_id, title, thumbnail_url, source_type, language, raw_text, translated_text, summary, apify_run_id, apify_dataset_id),
             )
             conn.commit()
             return cursor.lastrowid
+
+    def update_script_source(self, source_id: int, source_url=None, youtube_video_id=None, title=None, thumbnail_url=None, language=None, raw_text=None, translated_text=None, summary=None, apify_run_id=None, apify_dataset_id=None):
+        with self._get_connection() as conn:
+            conn.execute(
+                """
+                UPDATE script_sources
+                SET source_url = ?,
+                    youtube_video_id = ?,
+                    title = ?,
+                    thumbnail_url = ?,
+                    language = ?,
+                    raw_text = ?,
+                    translated_text = ?,
+                    summary = ?,
+                    apify_run_id = ?,
+                    apify_dataset_id = ?,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+                """,
+                (source_url, youtube_video_id, title, thumbnail_url, language, raw_text, translated_text, summary, apify_run_id, apify_dataset_id, source_id),
+            )
+            conn.commit()
 
     def list_script_sources(self, topic_id: int):
         with self._get_connection() as conn:
