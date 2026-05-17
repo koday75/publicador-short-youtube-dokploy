@@ -825,7 +825,7 @@
         }
 
         function escapeHtml(value) {
-            return String(value ? '')
+            return String(value ?? '')
                 .replace(/&/g, '&amp;')
                 .replace(/</g, '&lt;')
                 .replace(/>/g, '&gt;')
@@ -847,7 +847,7 @@
                             class="badge comment-open-btn"
                             style="background:rgba(88,166,255,0.15); color:#58a6ff; border:1px solid rgba(88,166,255,0.25);"
                             data-job-id="${escapeHtml(item.job_id || '')}"
-                            data-channel-id="${item.channel_id ? ''}"
+                            data-channel-id="${item.channel_id ?? ''}"
                             data-video-title="${escapeHtml(item.title || item.video_id || '')}"
                         >Ver comentarios</button>
                     </div>
@@ -1071,6 +1071,8 @@
             }
 
             setLinks(channelId);
+            document.getElementById('channel-shell').style.display = 'block';
+            document.getElementById('channel-breadcrumb-name').textContent = `Canal ${channelId}`;
 
             try {
                 const res = await fetch(`/api/youtube/channels/${channelId}/overview`);
@@ -1123,7 +1125,7 @@
                 metricGrid.innerHTML = [
                     renderMetricCard({
                         label: 'Trabajos totales',
-                        value: stats.total_jobs ? 0,
+                        value: stats.total_jobs || 0,
                         note: 'Todo el historial de producción del canal.',
                         className: 'jobs'
                     }),
@@ -1141,7 +1143,7 @@
                     }),
                     renderMetricCard({
                         label: 'Fallidos',
-                        value: stats.failed_jobs ? 0,
+                        value: stats.failed_jobs || 0,
                         note: 'Trabajos que necesitan corrección o reintento.',
                         className: 'failed'
                     }),

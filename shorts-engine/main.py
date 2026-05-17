@@ -32,6 +32,7 @@ from datetime import datetime, timedelta, timezone
 from urllib.parse import urlparse, parse_qs
 
 app = FastAPI(title="Shorts Generation Engine")
+APP_ROOT = os.path.dirname(os.path.abspath(__file__))
 
 # â”€â”€ Cache temporal de candidatos para selecciÃ³n Telegram â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # Clave: session_id (8 chars), Valor: { expires_at, niche, voice_id, items[] }
@@ -83,7 +84,7 @@ app.mount("/assets", StaticFiles(directory="static/dashboard"), name="assets")
 
 @app.get("/icono.ico", include_in_schema=False)
 async def site_favicon():
-    return FileResponse("icono.ico", media_type="image/x-icon")
+    return FileResponse(os.path.join(APP_ROOT, "static", "dashboard", "icono.ico"), media_type="image/x-icon")
 
 # Authentication Helper
 async def get_current_user(request: Request):
