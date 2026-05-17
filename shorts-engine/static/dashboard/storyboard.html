@@ -638,8 +638,81 @@
                     console.error("Error cargando trabajo previo", e);
                 }
             }
+
+            if (importPendingStoryboardScript()) {
+                return;
+            }
             
             addScene(); // Start with one empty if no job loaded
+        }
+
+        function splitImportedScriptIntoScenes(content) {
+            const normalized = String(content || '')
+                .replace(/\r\n/g, '\n')
+                .replace(/\r/g, '\n')
+                .trim();
+            if (!normalized) return [];
+
+            let pieces = normalized
+                .split(/\n*\s*Escena\s+\d+\s*[:.-]\s*/i)
+                .map((part) => part.trim())
+                .filter(Boolean);
+
+            if (!pieces.length) {
+                pieces = normalized
+                    .split(/\n{2,}/)
+                    .map((part) => part.trim())
+                    .filter(Boolean);
+            }
+
+            if (!pieces.length) {
+                pieces = [normalized];
+            }
+
+            return pieces.map((text) => ({
+                text,
+                media_filename: '',
+                subtitle_pos: 5,
+                subtitle_size: 48,
+                show_text: true,
+            }));
+        }
+
+        function importPendingStoryboardScript() {
+            const raw = sessionStorage.getItem('pending_storyboard_script_v1');
+            if (!raw) return false;
+
+            let payload = null;
+            try {
+                payload = JSON.parse(raw);
+            } catch (error) {
+                sessionStorage.removeItem('pending_storyboard_script_v1');
+                return false;
+            }
+
+            const channelId = getChannelIdFromQuery();
+            if (payload.channel_id && channelId && String(payload.channel_id) !== String(channelId)) {
+                return false;
+            }
+
+            const title = String(payload.title || '').trim();
+            if (title) {
+                currentJobTitle = title;
+                document.getElementById('manual-job-title').value = title;
+            }
+
+            const scenes = Array.isArray(payload.scenes) && payload.scenes.length
+                ? payload.scenes
+                : splitImportedScriptIntoScenes(payload.content || '');
+
+            if (!scenes.length) {
+                sessionStorage.removeItem('pending_storyboard_script_v1');
+                return false;
+            }
+
+            scenes.forEach((scene) => addScene(scene));
+            sessionStorage.removeItem('pending_storyboard_script_v1');
+            return true;
         }
 
         function addScene(sceneData = null) {

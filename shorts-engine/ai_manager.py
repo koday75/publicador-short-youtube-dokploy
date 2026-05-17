@@ -57,7 +57,7 @@ class AIManager:
         messages.append({"role": "user", "content": prompt})
 
         data = {
-            "model": "llama3-70b-8192",
+            "model": "llama-3.3-70b-versatile",
             "messages": messages,
             "response_format": {"type": "json_object"},
         }

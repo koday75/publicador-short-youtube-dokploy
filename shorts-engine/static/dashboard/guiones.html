@@ -506,6 +506,7 @@
         let currentTopicId = null;
         let currentTopic = null;
         let currentSources = [];
+        let currentDrafts = [];
 
         function escapeHtml(value) {
             return String(value ?? '')
@@ -646,6 +647,88 @@
             `).join('');
         }
 
+        function getLatestScriptDraft() {
+            if (!currentDrafts.length) return null;
+            const sortedDrafts = [...currentDrafts].sort((a, b) => {
+                const aTime = new Date(a.created_at || 0).getTime();
+                const bTime = new Date(b.created_at || 0).getTime();
+                return bTime - aTime;
+            });
+            return sortedDrafts.find((draft) => String(draft.draft_type || '').toLowerCase() === 'script')
+                || sortedDrafts[0]
+                || null;
+        }
+
+        function setSendToStoryboardState() {
+            const button = document.getElementById('send-to-storyboard-btn');
+            if (!button) return;
+            const hasTypedDraft = Boolean(document.getElementById('draft-content').value.trim());
+            const hasSavedDraft = Boolean(getLatestScriptDraft()?.content);
+            button.disabled = !(currentTopicId && (hasTypedDraft || hasSavedDraft));
+        }
+
+        function splitScriptIntoStoryboardScenes(content) {
+            const normalized = String(content || '')
+                .replace(/\r\n/g, '\n')
+                .replace(/\r/g, '\n')
+                .trim();
+            if (!normalized) return [];
+
+            let pieces = normalized
+                .split(/\n*\s*Escena\s+\d+\s*[:.-]\s*/i)
+                .map((part) => part.trim())
+                .filter(Boolean);
+
+            if (!pieces.length) {
+                pieces = normalized
+                    .split(/\n{2,}/)
+                    .map((part) => part.trim())
+                    .filter(Boolean);
+            }
+
+            if (!pieces.length) {
+                pieces = [normalized];
+            }
+
+            return pieces.map((text) => ({
+                text,
+                media_filename: '',
+                subtitle_pos: 5,
+                subtitle_size: 48,
+                show_text: true,
+            }));
+        }
+
+        function sendCurrentDraftToStoryboard() {
+            if (!currentTopicId || !currentChannelId) {
+                alert('Selecciona un canal y un tema primero.');
+                return;
+            }
+
+            const typedContent = document.getElementById('draft-content').value.trim();
+            const latestDraft = getLatestScriptDraft();
+            const content = typedContent || String(latestDraft?.content || '').trim();
+            if (!content) {
+                alert('Primero genera un resumen o guarda un borrador para enviarlo al storyboard.');
+                return;
+            }
+
+            const scenes = splitScriptIntoStoryboardScenes(content);
+            if (!scenes.length) {
+                alert('No se pudieron preparar escenas desde el guion.');
+                return;
+            }
+
+            sessionStorage.setItem('pending_storyboard_script_v1', JSON.stringify({
+                channel_id: Number(currentChannelId),
+                topic_id: Number(currentTopicId),
+                title: currentTopic?.title || 'Guion importado',
+                content,
+                scenes,
+            }));
+            window.location.href = `/storyboard?channel_id=${encodeURIComponent(currentChannelId)}&script_topic_id=${encodeURIComponent(currentTopicId)}`;
+        }
+
         function renderLogsList(logs) {
             if (!logs || !logs.length) {
                 return '<div class="empty-state">No hay eventos registrados todavía.</div>';
@@ -699,8 +782,10 @@
             document.getElementById('sources-count').textContent = `${(data.sources || []).length} fuente${(data.sources || []).length === 1 ? '' : 's'}`;
             document.getElementById('drafts-count').textContent = `${(data.drafts || []).length} borrador${(data.drafts || []).length === 1 ? '' : 'es'}`;
             currentSources = data.sources || [];
+            currentDrafts = data.drafts || [];
             document.getElementById('sources-list').innerHTML = renderSourcesList(data.sources || []);
             document.getElementById('drafts-list').innerHTML = renderDraftsList(data.drafts || []);
+            setSendToStoryboardState();
             document.querySelectorAll('.topic-item').forEach((item) => {
                 item.classList.toggle('active', String(item.dataset.topicId) === String(topicId));
             });
@@ -841,6 +926,7 @@
                 if (data.script) {
                     document.getElementById('draft-content').value = data.script;
                     document.getElementById('draft-type').value = 'script';
+                    setSendToStoryboardState();
                 }
                 await selectTopic(currentTopicId);
             } finally {
@@ -900,6 +986,8 @@
         document.getElementById('add-source-btn').addEventListener('click', addSource);
         document.getElementById('summary-topic-btn').addEventListener('click', generateTopicSummary);
         document.getElementById('save-draft-btn').addEventListener('click', saveDraft);
+        document.getElementById('send-to-storyboard-btn').addEventListener('click', sendCurrentDraftToStoryboard);
+        document.getElementById('draft-content').addEventListener('input', setSendToStoryboardState);
         document.getElementById('close-transcript-modal').addEventListener('click', closeTranscriptModal);
         document.getElementById('transcript-modal').addEventListener('click', (event) => {
             if (event.target.id === 'transcript-modal') {
