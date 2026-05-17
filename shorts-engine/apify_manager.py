@@ -14,7 +14,7 @@ class ApifyManager:
         self.api_base = "https://api.apify.com/v2"
         self.account_count = 4
         # Actor específico para transcript/subtítulos y metadata.
-        self.default_youtube_actor = "agentx/youtube-transcript"
+        self.default_youtube_actor = "codepoetry/youtube-transcript-ai-scraper"
 
     def _get_api_key_by_index(self, index: int) -> str:
         if index < 1 or index > self.account_count:
@@ -80,6 +80,10 @@ class ApifyManager:
         return [self.get_account_status(i) for i in range(1, self.account_count + 1)]
 
     def get_valid_api_key(self, skip_indices: set[int] | None = None) -> str | None:
+        item = self.get_valid_api_key_with_index(skip_indices=skip_indices)
+        return item[1] if item else None
+
+    def get_valid_api_key_with_index(self, skip_indices: set[int] | None = None) -> tuple[int, str] | None:
         skip_indices = skip_indices or set()
         start_index = self._get_active_index()
         for offset in range(self.account_count):
@@ -97,33 +101,75 @@ class ApifyManager:
                 )
                 if res.ok:
                     self._set_active_index(current_index)
-                    return api_key
+                    return current_index, api_key
             except Exception as exc:
-                logger.warning("Apify key %s no válida: %s", current_index, exc)
+                logger.warning("Apify key %s no valida: %s", current_index, exc)
                 continue
         return None
-
     def run_youtube_scraper(self, input_data: dict[str, Any], actor_id: str | None = None) -> dict[str, Any] | list[dict[str, Any]]:
-        api_key = self.get_valid_api_key()
-        if not api_key:
-            raise RuntimeError("No hay cuentas de Apify configuradas o válidas.")
         actor_path = self._actor_path(actor_id)
         url = f"{self.api_base}/acts/{actor_path}/run-sync-get-dataset-items"
-        res = requests.post(
-            url,
-            params={"token": api_key, "clean": "true"},
-            json=input_data,
-            timeout=180,
-        )
-        if not res.ok:
-            detail = self._extract_error_message(self._safe_json(res))
-            raise RuntimeError(detail or f"Apify respondió con código {res.status_code}.")
-        return self._safe_json(res)
+        skipped: set[int] = set()
+        last_error: Exception | None = None
 
+        for _ in range(self.account_count):
+            key_item = self.get_valid_api_key_with_index(skip_indices=skipped)
+            if not key_item:
+                break
+            key_index, api_key = key_item
+            try:
+                res = requests.post(
+                    url,
+                    params={"token": api_key, "clean": "true", "timeout": 240, "memory": 4096},
+                    json=input_data,
+                    timeout=260,
+                )
+                payload = self._safe_json(res)
+                if res.ok:
+                    return payload
+
+                detail = self._extract_error_message(payload)
+                if self._is_retryable_apify_error(detail or ""):
+                    skipped.add(key_index)
+                    last_error = RuntimeError(detail or f"Apify respondio con codigo {res.status_code}.")
+                    logger.warning("Apify key %s ocupada o limitada; probando otra cuenta: %s", key_index, detail)
+                    continue
+                raise RuntimeError(detail or f"Apify respondio con codigo {res.status_code}.")
+            except requests.Timeout as exc:
+                skipped.add(key_index)
+                last_error = exc
+                logger.warning("Apify key %s agoto el tiempo de espera; probando otra cuenta.", key_index)
+                continue
+
+        if last_error:
+            raise RuntimeError(str(last_error))
+        raise RuntimeError("No hay cuentas de Apify configuradas o validas.")
+
+    @staticmethod
+    def _is_retryable_apify_error(message: str) -> bool:
+        text = (message or "").lower()
+        return any(
+            marker in text
+            for marker in (
+                "memory limit",
+                "actor-memory-limit-exceeded",
+                "rate limit",
+                "too many",
+                "timeout",
+                "timed out",
+                "spending limit",
+            )
+        )
     def fetch_youtube_transcript(self, source_url: str, actor_id: str | None = None) -> dict[str, Any]:
         payload = {
-            "video_url": source_url,
-            "translate": "spanish",
+            "startUrls": [{"url": source_url}],
+            "languages": ["es", "en"],
+            "subType": "both",
+            "outputFormats": ["json", "text", "llm"],
+            "enableAiFallback": True,
+            "maxAiMinutes": 20,
+            "skipAiFallbackIfLongerThan": 25,
+            "maxResults": 1,
         }
         items = self.run_youtube_scraper(payload, actor_id=actor_id)
 
@@ -142,8 +188,9 @@ class ApifyManager:
             summary_row["transcript"] = transcript_text
             summary_row["text"] = transcript_text
 
+        metadata = summary_row.get("metadata") if isinstance(summary_row.get("metadata"), dict) else {}
         if not summary_row.get("thumbnail") and not summary_row.get("thumbnailUrl"):
-            video_id = summary_row.get("videoId") or summary_row.get("video_id")
+            video_id = summary_row.get("videoId") or summary_row.get("video_id") or metadata.get("id")
             if video_id:
                 summary_row["thumbnail"] = f"https://i.ytimg.com/vi/{video_id}/hqdefault.jpg"
 
@@ -162,6 +209,8 @@ class ApifyManager:
             "sourceTranscript",
             "transcript_text",
             "transcriptText",
+            "transcript_llm",
+            "transcriptLlm",
         ):
             value = item.get(key)
             text_value = self._extract_text_from_value(value)

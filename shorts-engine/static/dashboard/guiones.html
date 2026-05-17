@@ -793,6 +793,9 @@
                     alert(data.detail || 'No se pudo transcribir el vídeo.');
                     return;
                 }
+                if (!data.source?.raw_text) {
+                    alert('El vídeo se guardó, pero Apify no devolvió transcripción. Revisa las cuentas Apify o prueba con otro vídeo con subtítulos.');
+                }
                 document.getElementById('source-url').value = '';
                 document.getElementById('source-video-id').value = '';
                 document.getElementById('source-raw-text').value = '';

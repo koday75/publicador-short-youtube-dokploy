@@ -1044,6 +1044,8 @@ def normalize_apify_source_item(item: dict, fallback_url: str | None = None) -> 
         or item.get("sourceTranscript")
         or item.get("transcript_text")
         or item.get("transcriptText")
+        or item.get("transcript_llm")
+        or item.get("transcriptLlm")
         or item.get("translation")
         or metadata.get("transcript")
         or metadata.get("translation")
@@ -1056,6 +1058,8 @@ def normalize_apify_source_item(item: dict, fallback_url: str | None = None) -> 
         or item.get("lang")
         or item.get("transcriptLanguage")
         or item.get("subtitlesLanguage")
+        or item.get("language_code")
+        or item.get("languageCode")
         or metadata.get("source_caption_language_code")
         or metadata.get("target_language")
     )
@@ -1066,11 +1070,6 @@ def normalize_apify_source_item(item: dict, fallback_url: str | None = None) -> 
         translated_text = translation.get("text") or translated_text
     elif isinstance(translation, str):
         translated_text = translation or translated_text
-    if raw_text and not summary:
-        ai_result = summarize_source_in_spanish(raw_text, title=title, source_language=language)
-        summary = ai_result.get("summary", "") or title or ""
-        if not translated_text:
-            translated_text = ai_result.get("translated_text", "") or ""
     return {
         "source_url": source_url,
         "youtube_video_id": youtube_video_id,
