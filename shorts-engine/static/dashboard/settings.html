@@ -170,7 +170,7 @@
         let is2FAEnabled = true;
 
         function escapeHtml(value) {
-            return String(value ? '')
+            return String(value ?? '')
                 .replace(/&/g, '&amp;')
                 .replace(/</g, '&lt;')
                 .replace(/>/g, '&gt;')
@@ -218,7 +218,7 @@
                     <div class="field">
                         <label>Llave API</label>
                         <div style="display:flex; gap:8px; margin-top:5px;">
-                            <input type="password" id="${account.key_name}" placeholder="${configured ? '************' : 'Pega tu API key aqu\\u00ed'}">
+                            <input type="password" id="key-${account.key_name}" placeholder="${configured ? '************' : 'Pega tu API key aqu\\u00ed'}">
                             <button class="save-btn" onclick="saveKey('${account.key_name}', this)">Guardar</button>
                         </div>
                     </div>
@@ -352,7 +352,7 @@
             const value = input.value.trim();
             if (!value) return alert('Escribe la llave primero.');
             button.disabled = true;
-            button.innerText = '⏳';
+            button.innerText = 'Guardando...';
             try {
                 const res = await fetch('/api/settings', {
                     method: 'POST',
