@@ -236,6 +236,39 @@
             color: var(--text-muted);
             text-align: center;
         }
+        .script-modal {
+            position: fixed;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.72);
+            z-index: 1000;
+            padding: 1rem;
+        }
+        .script-modal.active {
+            display: flex;
+        }
+        .script-modal-card {
+            width: min(920px, 96vw);
+            max-height: 86vh;
+            overflow: auto;
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            background: #161b22;
+            padding: 1rem;
+        }
+        .script-modal-card pre {
+            white-space: pre-wrap;
+            word-break: break-word;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            background: rgba(0,0,0,0.22);
+            padding: 1rem;
+            color: #e8eef7;
+            max-height: 56vh;
+            overflow: auto;
+        }
         @media (max-width: 1100px) {
             .shell-grid {
                 grid-template-columns: 1fr;
@@ -386,7 +419,8 @@
                             <textarea id="source-raw-text" placeholder="Opcional. Si lo dejas vacío y pones una URL, la app intentará obtener la transcripción automáticamente con Apify."></textarea>
                         </div>
                         <div class="actions-row" style="margin-top:0.75rem;">
-                            <button type="button" class="badge" id="add-source-btn" style="background:rgba(63,185,80,0.18); color:#3fb950; border:1px solid rgba(63,185,80,0.25);">Transcribir y resumir</button>
+                            <button type="button" class="badge" id="add-source-btn" style="background:rgba(63,185,80,0.18); color:#3fb950; border:1px solid rgba(63,185,80,0.25);">Transcribir</button>
+                            <button type="button" class="badge" id="summary-topic-btn" style="background:rgba(88,166,255,0.15); color:#58a6ff; border:1px solid rgba(88,166,255,0.25);">Resumen</button>
                         </div>
                     </div>
 
@@ -445,20 +479,21 @@
                             <div class="empty-state">Todavía no hay borradores guardados.</div>
                         </div>
                     </div>
-
-                    <div>
-                        <div class="section-title">
-                            <div>
-                                <h4>Registro del tema</h4>
-                                <span>Eventos importantes del flujo de trabajo.</span>
-                            </div>
-                        </div>
-                        <div id="logs-list" class="list-grid">
-                            <div class="empty-state">No hay eventos registrados todavía.</div>
-                        </div>
-                    </div>
                 </div>
             </section>
+        </div>
+    </div>
+
+    <div id="transcript-modal" class="script-modal" aria-hidden="true">
+        <div class="script-modal-card">
+            <div class="section-title">
+                <div>
+                    <h3 id="transcript-modal-title">Transcripción</h3>
+                    <span id="transcript-modal-subtitle">Texto guardado del vídeo usado.</span>
+                </div>
+                <button type="button" class="badge" id="close-transcript-modal" style="background:rgba(255,255,255,0.05); color:#fff; border:1px solid var(--border-color);">Cerrar</button>
+            </div>
+            <pre id="transcript-modal-text"></pre>
         </div>
     </div>
 
@@ -470,6 +505,7 @@
         }
         let currentTopicId = null;
         let currentTopic = null;
+        let currentSources = [];
 
         function escapeHtml(value) {
             return String(value ?? '')
@@ -584,11 +620,11 @@
                             <small>${escapeHtml(source.source_url || 'Sin URL')} · ${shortDate(source.created_at)}</small>
                             <div class="source-badges">
                                 ${source.language ? `<span class="source-pill">${escapeHtml(source.language)}</span>` : ''}
-                                ${source.raw_text ? '<span class="source-pill">Transcripción guardada</span>' : ''}
-                                ${source.summary ? '<span class="source-pill">Resumen en español</span>' : ''}
+                                ${source.raw_text ? '<span class="source-pill">Transcripción guardada</span>' : '<span class="source-pill">Sin transcripción</span>'}
                             </div>
                             <div class="source-actions">
-                                <button type="button" class="badge delete-source-btn" data-source-id="${source.id}" style="background:rgba(248,81,73,0.18); color:#ff7b72; border:1px solid rgba(248,81,73,0.3);">Eliminar vídeo usado</button>
+
+                                <button type="button" class="badge view-transcript-btn" data-source-id="${source.id}" style="background:rgba(88,166,255,0.15); color:#58a6ff; border:1px solid rgba(88,166,255,0.25);">Transcripción</button><button type="button" class="badge delete-source-btn" data-source-id="${source.id}" style="background:rgba(248,81,73,0.18); color:#ff7b72; border:1px solid rgba(248,81,73,0.3);">Eliminar vídeo usado</button>
                             </div>
                         </div>
                     </div>
@@ -662,9 +698,9 @@
             document.getElementById('topic-edit-status').value = currentTopic.status || 'draft';
             document.getElementById('sources-count').textContent = `${(data.sources || []).length} fuente${(data.sources || []).length === 1 ? '' : 's'}`;
             document.getElementById('drafts-count').textContent = `${(data.drafts || []).length} borrador${(data.drafts || []).length === 1 ? '' : 'es'}`;
+            currentSources = data.sources || [];
             document.getElementById('sources-list').innerHTML = renderSourcesList(data.sources || []);
             document.getElementById('drafts-list').innerHTML = renderDraftsList(data.drafts || []);
-            document.getElementById('logs-list').innerHTML = renderLogsList(data.logs || []);
             document.querySelectorAll('.topic-item').forEach((item) => {
                 item.classList.toggle('active', String(item.dataset.topicId) === String(topicId));
             });
@@ -740,7 +776,7 @@
             }
             button.disabled = true;
             const previousText = button.textContent;
-            button.textContent = sourceUrl && !rawText ? 'Transcribiendo...' : 'Guardando fuente...';
+            button.textContent = sourceUrl && !rawText ? 'Transcribiendo...' : 'Guardando transcripción...';
             try {
                 const res = await fetch(`/api/scripts/topics/${encodeURIComponent(currentTopicId)}/sources`, {
                     method: 'POST',
@@ -754,7 +790,7 @@
                 });
                 const data = await res.json();
                 if (!res.ok) {
-                    alert(data.detail || 'No se pudo transcribir o resumir el vídeo.');
+                    alert(data.detail || 'No se pudo transcribir el vídeo.');
                     return;
                 }
                 document.getElementById('source-url').value = '';
@@ -779,6 +815,50 @@
                 return;
             }
             await selectTopic(currentTopicId);
+        }
+
+        async function generateTopicSummary() {
+            if (!currentTopicId) {
+                alert('Selecciona un tema primero.');
+                return;
+            }
+            const button = document.getElementById('summary-topic-btn');
+            button.disabled = true;
+            const previousText = button.textContent;
+            button.textContent = 'Generando resumen...';
+            try {
+                const res = await fetch(`/api/scripts/topics/${encodeURIComponent(currentTopicId)}/summary`, {
+                    method: 'POST',
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) {
+                    alert(data.detail || 'No se pudo generar el resumen.');
+                    return;
+                }
+                if (data.script) {
+                    document.getElementById('draft-content').value = data.script;
+                    document.getElementById('draft-type').value = 'script';
+                }
+                await selectTopic(currentTopicId);
+            } finally {
+                button.disabled = false;
+                button.textContent = previousText;
+            }
+        }
+
+        function openTranscriptModal(sourceId) {
+            const source = currentSources.find((item) => String(item.id) === String(sourceId));
+            if (!source) return;
+            document.getElementById('transcript-modal-title').textContent = source.title || source.youtube_video_id || 'Transcripción';
+            document.getElementById('transcript-modal-subtitle').textContent = source.source_url || 'Texto guardado del vídeo usado.';
+            document.getElementById('transcript-modal-text').textContent = source.raw_text || 'Todavía no hay transcripción guardada para este vídeo.';
+            document.getElementById('transcript-modal').classList.add('active');
+            document.getElementById('transcript-modal').setAttribute('aria-hidden', 'false');
+        }
+
+        function closeTranscriptModal() {
+            document.getElementById('transcript-modal').classList.remove('active');
+            document.getElementById('transcript-modal').setAttribute('aria-hidden', 'true');
         }
 
         async function saveDraft() {
@@ -815,13 +895,25 @@
         document.getElementById('reload-topics-btn').addEventListener('click', () => loadTopics(currentTopicId));
         document.getElementById('save-topic-btn').addEventListener('click', saveSelectedTopic);
         document.getElementById('add-source-btn').addEventListener('click', addSource);
+        document.getElementById('summary-topic-btn').addEventListener('click', generateTopicSummary);
         document.getElementById('save-draft-btn').addEventListener('click', saveDraft);
+        document.getElementById('close-transcript-modal').addEventListener('click', closeTranscriptModal);
+        document.getElementById('transcript-modal').addEventListener('click', (event) => {
+            if (event.target.id === 'transcript-modal') {
+                closeTranscriptModal();
+            }
+        });
         document.getElementById('topics-list').addEventListener('click', (event) => {
             const card = event.target.closest('.topic-item');
             if (!card) return;
             selectTopic(card.dataset.topicId);
         });
         document.getElementById('sources-list').addEventListener('click', (event) => {
+            const transcriptButton = event.target.closest('.view-transcript-btn');
+            if (transcriptButton) {
+                openTranscriptModal(transcriptButton.dataset.sourceId);
+                return;
+            }
             const button = event.target.closest('.delete-source-btn');
             if (!button) return;
             deleteSource(button.dataset.sourceId);

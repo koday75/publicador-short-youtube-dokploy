@@ -280,3 +280,88 @@ class AIManager:
                 continue
 
         raise Exception(f"No se pudo resumir la fuente con la IA. Detalles: {last_error}")
+
+    def generate_script_summary(self, sources, topic_title=None, topic_description=None, provider=None, max_scenes=6):
+        """
+        Genera un guion breve en castellano a partir de varias transcripciones.
+        """
+        configured_providers = []
+        if provider and self._get_api_key(provider):
+            configured_providers.append(provider)
+        else:
+            for p in ["GROQ", "DEEPSEEK", "OPENROUTER", "OPENAI"]:
+                if self._get_api_key(p):
+                    configured_providers.append(p)
+
+        if not configured_providers:
+            raise Exception("No se ha configurado ninguna API de IA.")
+
+        max_scenes = max(1, min(int(max_scenes or 6), 6))
+        sys_msg = (
+            "Eres un guionista experto en videos cortos. "
+            "Usa las transcripciones aportadas para crear un guion original en espanol castellano. "
+            "No copies frases largas literalmente. Condensa, compara y une la informacion importante. "
+            f"El guion debe tener como maximo {max_scenes} escenas. "
+            "Responde solo con JSON valido usando esta estructura exacta: "
+            "{\"summary\":\"resumen general en espanol\", \"script\":\"guion por escenas\", "
+            "\"scenes\":[{\"title\":\"escena\", \"text\":\"texto narrado\"}]}."
+        )
+
+        source_blocks = []
+        for index, source in enumerate(sources or [], start=1):
+            title = str(source.get("title") or source.get("source_url") or f"Fuente {index}").strip()
+            text = str(source.get("raw_text") or source.get("translated_text") or "").strip()
+            if not text:
+                continue
+            source_blocks.append(f"Fuente {index}: {title}\n{text[:9000]}")
+
+        if not source_blocks:
+            raise Exception("No hay transcripciones guardadas para crear el resumen.")
+
+        user_content = "\n\n".join([
+            f"Tema: {topic_title or 'Tema sin titulo'}",
+            f"Enfoque: {topic_description or ''}",
+            "Transcripciones:",
+            "\n\n---\n\n".join(source_blocks)[:24000],
+        ])
+
+        last_error = None
+        for current_provider in configured_providers:
+            api_key = self._get_api_key(current_provider)
+            logger.info(f"Intentando generar resumen de guion con {current_provider}...")
+            try:
+                p_lower = current_provider.lower()
+                if p_lower == "groq":
+                    res_text = self._call_groq(user_content, api_key, system_prompt=sys_msg)
+                elif p_lower == "openai":
+                    res_text = self._call_openai(user_content, api_key, system_prompt=sys_msg)
+                else:
+                    res_text = self._call_openai_compatible(p_lower, user_content, api_key, system_prompt=sys_msg)
+
+                clean_text = res_text.replace("```json", "").replace("```", "").strip()
+                try:
+                    data = json.loads(clean_text)
+                except Exception:
+                    data = {"summary": clean_text, "script": clean_text, "scenes": []}
+
+                scenes = data.get("scenes") if isinstance(data, dict) else []
+                if isinstance(scenes, list):
+                    scenes = scenes[:max_scenes]
+                else:
+                    scenes = []
+                summary = str((data or {}).get("summary") or "").strip()
+                script = str((data or {}).get("script") or "").strip()
+                if not script and scenes:
+                    script = "\n\n".join(
+                        f"Escena {idx}: {str(scene.get('text') or '').strip()}"
+                        for idx, scene in enumerate(scenes, start=1)
+                        if isinstance(scene, dict)
+                    )
+                if summary or script:
+                    return {"summary": summary, "script": script or summary, "scenes": scenes}
+            except Exception as e:
+                logger.error(f"Fallo en {current_provider} al generar resumen de guion: {e}")
+                last_error = e
+                continue
+
+        raise Exception(f"No se pudo generar el resumen del tema. Detalles: {last_error}")

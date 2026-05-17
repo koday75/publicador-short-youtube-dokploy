@@ -720,26 +720,6 @@ async def api_add_script_source(topic_id: int, req: ScriptSourceCreateRequest, u
         except Exception as exc:
             logger.warning("No se pudo extraer la transcripción desde Apify para %s: %s", source_url, exc)
 
-    if raw_text and not summary:
-        ai_result = summarize_source_in_spanish(
-            raw_text,
-            title=source_title or topic.get("title"),
-            source_language=language,
-        )
-        summary = ai_result.get("summary") or summary
-        translated_text = translated_text or ai_result.get("translated_text")
-        db.add_script_log(
-            topic_id,
-            "source_summarized",
-            "Resumen en español generado a partir de la transcripción.",
-            {
-                "source_url": source_url,
-                "youtube_video_id": youtube_video_id,
-                "language": language,
-                "has_summary": bool(summary),
-            },
-        )
-
     if source_url and not raw_text and not summary:
         logger.info(
             "Se guardará la fuente sin transcripción completa porque Apify no devolvió texto útil para %s",
@@ -763,8 +743,8 @@ async def api_add_script_source(topic_id: int, req: ScriptSourceCreateRequest, u
         db.add_script_log(
             topic_id,
             "source_updated",
-            "Fuente del tema actualizada con transcripción y resumen.",
-            {"source_url": source_url, "youtube_video_id": youtube_video_id, "has_text": bool(raw_text), "has_summary": bool(summary)},
+            "Fuente del tema actualizada con transcripción.",
+            {"source_url": source_url, "youtube_video_id": youtube_video_id, "has_text": bool(raw_text)},
             source_id=source_id,
         )
     else:
@@ -786,13 +766,58 @@ async def api_add_script_source(topic_id: int, req: ScriptSourceCreateRequest, u
         db.add_script_log(
             topic_id,
             "source_added",
-            "Vídeo añadido al tema con su transcripción y resumen.",
-            {"source_url": source_url, "youtube_video_id": youtube_video_id, "has_text": bool(raw_text), "has_summary": bool(summary)},
+            "Vídeo añadido al tema con su transcripción.",
+            {"source_url": source_url, "youtube_video_id": youtube_video_id, "has_text": bool(raw_text)},
             source_id=source_id,
         )
 
     source = db.find_script_source(topic_id, source_url=source_url, youtube_video_id=youtube_video_id)
     return {"status": "success", "source": source}
+
+@app.post("/api/scripts/topics/{topic_id}/summary")
+async def api_generate_script_topic_summary(topic_id: int, user: str = Depends(get_current_user)):
+    topic = db.get_script_topic(topic_id)
+    if not topic:
+        raise HTTPException(status_code=404, detail="Tema no encontrado")
+
+    sources = [source for source in db.list_script_sources(topic_id) if (source.get("raw_text") or "").strip()]
+    if not sources:
+        raise HTTPException(status_code=400, detail="Primero transcribe al menos un vídeo del tema.")
+
+    try:
+        result = ai_manager.generate_script_summary(
+            sources,
+            topic_title=topic.get("title"),
+            topic_description=topic.get("topic"),
+            max_scenes=6,
+        )
+    except Exception as exc:
+        db.add_script_log(topic_id, "summary_failed", "No se pudo generar el resumen del tema.", {"error": str(exc)})
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    scenes = result.get("scenes") or []
+    if scenes:
+        content = "\n\n".join(
+            f"Escena {idx}: {str(scene.get('text') or '').strip()}"
+            for idx, scene in enumerate(scenes[:6], start=1)
+            if isinstance(scene, dict) and str(scene.get("text") or "").strip()
+        ).strip()
+    else:
+        content = str(result.get("script") or result.get("summary") or "").strip()
+
+    draft_id = db.add_script_draft(
+        topic_id=topic_id,
+        content=content,
+        draft_type="script",
+        version=len(db.list_script_drafts(topic_id)) + 1,
+    )
+    db.add_script_log(
+        topic_id,
+        "summary_created",
+        "Resumen del tema generado en español.",
+        {"draft_id": draft_id, "sources": len(sources), "scenes": min(len(scenes), 6) if scenes else None},
+    )
+    return {"status": "success", "draft_id": draft_id, "summary": result.get("summary"), "script": content, "scenes": scenes[:6]}
 
 @app.delete("/api/scripts/sources/{source_id}")
 async def api_delete_script_source(source_id: int, topic_id: int = Query(...), user: str = Depends(get_current_user)):
