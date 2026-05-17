@@ -194,10 +194,6 @@
                 <h1 id="scripts-header-title">Guiones del canal</h1>
                 <p>Convierte varios vídeos en una base de investigación, resume lo importante y genera un guion listo para el storyboard.</p>
             </div>
-            <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
-                <a href="/channels" class="badge" style="text-decoration:none; background:rgba(255,255,255,0.05); color:#fff;">← Volver a canales</a>
-                <a id="edit-channel-link" href="/youtube-channels" class="badge" style="text-decoration:none; background:var(--accent); color:#000; font-weight:bold;">Editar canal</a>
-            </div>
         </header>
 
         <section id="channel-shell" class="channel-shell" style="display:none;">
@@ -247,8 +243,8 @@
                 <textarea id="new-topic-description" placeholder="Describe el enfoque, el ángulo narrativo o la idea central del guion."></textarea>
             </div>
             <div class="actions-row" style="margin-top:0.85rem;">
-                <button class="badge" id="create-topic-btn" style="background:var(--accent); color:#000; font-weight:bold; border:none;">Crear tema</button>
-                <button class="badge" id="reload-topics-btn" style="background:rgba(255,255,255,0.05); color:#fff; border:1px solid var(--border-color);">Recargar temas</button>
+                <button type="button" class="badge" id="create-topic-btn" style="background:var(--accent); color:#000; font-weight:bold; border:none;">Crear tema</button>
+                <button type="button" class="badge" id="reload-topics-btn" style="background:rgba(255,255,255,0.05); color:#fff; border:1px solid var(--border-color);">Recargar temas</button>
             </div>
         </section>
 
@@ -297,8 +293,8 @@
                         <textarea id="topic-edit-description"></textarea>
                     </div>
                     <div class="actions-row">
-                        <button class="badge" id="save-topic-btn" style="background:rgba(88,166,255,0.15); color:#58a6ff; border:1px solid rgba(88,166,255,0.25);">Guardar tema</button>
-                        <button class="badge" id="send-to-storyboard-btn" style="background:rgba(255,255,255,0.05); color:#fff; border:1px solid var(--border-color);" disabled>Enviar al storyboard</button>
+                        <button type="button" class="badge" id="save-topic-btn" style="background:rgba(88,166,255,0.15); color:#58a6ff; border:1px solid rgba(88,166,255,0.25);">Guardar tema</button>
+                        <button type="button" class="badge" id="send-to-storyboard-btn" style="background:rgba(255,255,255,0.05); color:#fff; border:1px solid var(--border-color);" disabled>Enviar al storyboard</button>
                     </div>
 
                     <div>
@@ -323,7 +319,7 @@
                             <textarea id="source-raw-text" placeholder="Pega aquí el texto bruto si ya lo tienes o deja que Apify lo extraiga."></textarea>
                         </div>
                         <div class="actions-row" style="margin-top:0.75rem;">
-                            <button class="badge" id="add-source-btn" style="background:rgba(63,185,80,0.18); color:#3fb950; border:1px solid rgba(63,185,80,0.25);">Añadir fuente</button>
+                            <button type="button" class="badge" id="add-source-btn" style="background:rgba(63,185,80,0.18); color:#3fb950; border:1px solid rgba(63,185,80,0.25);">Añadir fuente</button>
                         </div>
                     </div>
 
@@ -354,7 +350,7 @@
 }</textarea>
                         </div>
                         <div class="actions-row" style="margin-top:0.75rem;">
-                            <button class="badge" id="run-apify-btn" style="background:rgba(176,114,255,0.18); color:#b072ff; border:1px solid rgba(176,114,255,0.25);">Importar con Apify</button>
+                            <button type="button" class="badge" id="run-apify-btn" style="background:rgba(176,114,255,0.18); color:#b072ff; border:1px solid rgba(176,114,255,0.25);">Importar con Apify</button>
                         </div>
                     </div>
 
@@ -384,7 +380,7 @@
                             </div>
                         </div>
                         <div class="actions-row" style="margin-top:0.75rem;">
-                            <button class="badge" id="save-draft-btn" style="background:rgba(88,166,255,0.15); color:#58a6ff; border:1px solid rgba(88,166,255,0.25);">Guardar borrador</button>
+                            <button type="button" class="badge" id="save-draft-btn" style="background:rgba(88,166,255,0.15); color:#58a6ff; border:1px solid rgba(88,166,255,0.25);">Guardar borrador</button>
                         </div>
                     </div>
 
@@ -432,7 +428,10 @@
 
     <script>
         const params = new URLSearchParams(window.location.search);
-        const currentChannelId = params.get('channel_id');
+        let currentChannelId = params.get('channel_id') || sessionStorage.getItem('current_channel_id') || null;
+        if (currentChannelId) {
+            sessionStorage.setItem('current_channel_id', currentChannelId);
+        }
         let currentTopicId = null;
         let currentTopic = null;
 
@@ -466,15 +465,17 @@
             document.getElementById('tab-scripts').href = `/guiones?channel_id=${channelId}`;
             document.getElementById('tab-history').href = `/channels/${channelId}/history`;
             document.getElementById('tab-settings').href = `/youtube-channels?channel_id=${channelId}`;
-            document.getElementById('edit-channel-link').href = `/youtube-channels?channel_id=${channelId}`;
         }
 
         async function loadChannelContext() {
             if (!currentChannelId) {
                 document.getElementById('channel-context-note').textContent = 'Selecciona un canal desde la lista principal.';
                 document.getElementById('scripts-header-title').textContent = 'Guiones';
+                document.getElementById('topics-list').innerHTML = '<div class="empty-state">Selecciona un canal para trabajar con guiones.</div>';
                 return;
             }
+            document.getElementById('channel-shell').style.display = 'block';
+            setLinks(currentChannelId);
             try {
                 const res = await fetch(`/api/youtube/channels/${currentChannelId}`);
                 const data = await res.json();
@@ -523,7 +524,7 @@
             }
             return drafts.map((draft) => `
                 <article class="entry-card">
-                    <strong>Versión ${escapeHtml(draft.version ? 1)} · ${escapeHtml(draft.draft_type || 'outline')}</strong>
+                    <strong>Versión ${escapeHtml(draft.version || 1)} · ${escapeHtml(draft.draft_type || 'outline')}</strong>
                     <small>${shortDate(draft.created_at)}</small>
                     <pre>${escapeHtml(draft.content || '')}</pre>
                 </article>
@@ -760,3 +761,4 @@
     </script>
 </body>
 </html>
+
