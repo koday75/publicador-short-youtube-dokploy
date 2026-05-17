@@ -741,9 +741,9 @@ async def api_add_script_source(topic_id: int, req: ScriptSourceCreateRequest, u
         )
 
     if source_url and not raw_text and not summary:
-        raise HTTPException(
-            status_code=400,
-            detail="No se pudo obtener la transcripción de ese vídeo. Prueba con otra URL o pega la transcripción manualmente.",
+        logger.info(
+            "Se guardará la fuente sin transcripción completa porque Apify no devolvió texto útil para %s",
+            source_url,
         )
     if existing_source:
         db.update_script_source(
@@ -951,16 +951,21 @@ def flatten_transcript_text(value: Any) -> str | None:
     if isinstance(value, list):
         parts: list[str] = []
         for item in value:
-            if isinstance(item, str):
-                cleaned = item.strip()
-                if cleaned:
-                    parts.append(cleaned)
-            elif isinstance(item, dict):
-                cleaned = str(item.get("text") or item.get("subtitle") or item.get("caption") or "").strip()
-                if cleaned:
-                    parts.append(cleaned)
+            cleaned = flatten_transcript_text(item)
+            if cleaned:
+                parts.append(cleaned)
         joined = " ".join(parts).strip()
         return joined or None
+    if isinstance(value, dict):
+        for key in ("text", "translation", "caption", "subtitle", "value", "transcript", "source_transcript"):
+            cleaned = flatten_transcript_text(value.get(key))
+            if cleaned:
+                return cleaned
+        for key in ("segments", "items", "captions", "subtitles"):
+            cleaned = flatten_transcript_text(value.get(key))
+            if cleaned:
+                return cleaned
+        return None
     return str(value).strip() or None
 
 
@@ -1010,9 +1015,15 @@ def normalize_apify_source_item(item: dict, fallback_url: str | None = None) -> 
         or item.get("content")
         or item.get("caption")
         or item.get("subtitles")
+        or item.get("source_transcript")
+        or item.get("sourceTranscript")
+        or item.get("transcript_text")
+        or item.get("transcriptText")
         or item.get("translation")
         or metadata.get("transcript")
         or metadata.get("translation")
+        or metadata.get("source_transcript")
+        or metadata.get("sourceTranscript")
     )
     language = (
         item.get("activeLanguageCode")

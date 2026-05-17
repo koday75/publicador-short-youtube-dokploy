@@ -123,6 +123,7 @@ class ApifyManager:
     def fetch_youtube_transcript(self, source_url: str, actor_id: str | None = None) -> dict[str, Any]:
         payload = {
             "video_url": source_url,
+            "translate": "spanish",
         }
         items = self.run_youtube_scraper(payload, actor_id=actor_id)
 
@@ -152,20 +153,25 @@ class ApifyManager:
         if not isinstance(item, dict):
             return ""
 
-        for key in ("transcript", "text", "content", "caption"):
+        for key in (
+            "transcript",
+            "text",
+            "content",
+            "caption",
+            "source_transcript",
+            "sourceTranscript",
+            "transcript_text",
+            "transcriptText",
+        ):
             value = item.get(key)
-            if isinstance(value, dict):
-                text_value = value.get("text")
-                if isinstance(text_value, str) and text_value.strip():
-                    return text_value.strip()
-            if isinstance(value, str) and value.strip():
-                return value.strip()
+            text_value = self._extract_text_from_value(value)
+            if text_value:
+                return text_value
 
         translation = item.get("translation")
-        if isinstance(translation, dict):
-            text_value = translation.get("text")
-            if isinstance(text_value, str) and text_value.strip():
-                return text_value.strip()
+        text_value = self._extract_text_from_value(translation)
+        if text_value:
+            return text_value
 
         transcript_txt_url = item.get("transcript_txt") or item.get("transcriptTxt")
         if transcript_txt_url:
@@ -180,6 +186,32 @@ class ApifyManager:
                 return text
 
         return ""
+
+    def _extract_text_from_value(self, value: Any) -> str:
+        if value is None:
+            return ""
+        if isinstance(value, str):
+            return value.strip()
+        if isinstance(value, dict):
+            for key in ("text", "translation", "caption", "subtitle", "value", "transcript"):
+                nested = value.get(key)
+                text_value = self._extract_text_from_value(nested)
+                if text_value:
+                    return text_value
+            for key in ("segments", "items", "captions", "subtitles", "source_transcript"):
+                nested = value.get(key)
+                text_value = self._extract_text_from_value(nested)
+                if text_value:
+                    return text_value
+            return ""
+        if isinstance(value, list):
+            parts: list[str] = []
+            for item in value:
+                text_value = self._extract_text_from_value(item)
+                if text_value:
+                    parts.append(text_value)
+            return " ".join(parts).strip()
+        return str(value).strip()
 
     def _download_text(self, url: str) -> str:
         api_key = self.get_valid_api_key()
