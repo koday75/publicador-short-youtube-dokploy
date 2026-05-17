@@ -503,6 +503,14 @@ class JobDatabase:
             )
             conn.commit()
 
+    def delete_script_source(self, source_id: int, topic_id: int | None = None):
+        with self._get_connection() as conn:
+            if topic_id is None:
+                conn.execute("DELETE FROM script_sources WHERE id = ?", (source_id,))
+            else:
+                conn.execute("DELETE FROM script_sources WHERE id = ? AND topic_id = ?", (source_id, topic_id))
+            conn.commit()
+
     def list_script_sources(self, topic_id: int):
         with self._get_connection() as conn:
             conn.row_factory = sqlite3.Row

@@ -794,6 +794,34 @@ async def api_add_script_source(topic_id: int, req: ScriptSourceCreateRequest, u
     source = db.find_script_source(topic_id, source_url=source_url, youtube_video_id=youtube_video_id)
     return {"status": "success", "source": source}
 
+@app.delete("/api/scripts/sources/{source_id}")
+async def api_delete_script_source(source_id: int, topic_id: int = Query(...), user: str = Depends(get_current_user)):
+    topic = db.get_script_topic(topic_id)
+    if not topic:
+        raise HTTPException(status_code=404, detail="Tema no encontrado")
+    with db._get_connection() as conn:
+        conn.row_factory = sqlite3.Row
+        row = conn.execute(
+            "SELECT * FROM script_sources WHERE id = ? AND topic_id = ?",
+            (source_id, topic_id),
+        ).fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="Fuente no encontrada")
+
+    db.delete_script_source(source_id, topic_id=topic_id)
+    db.add_script_log(
+        topic_id,
+        "source_deleted",
+        "Vídeo eliminado de las fuentes del tema.",
+        {
+            "source_id": source_id,
+            "source_url": dict(row).get("source_url"),
+            "youtube_video_id": dict(row).get("youtube_video_id"),
+        },
+        source_id=source_id,
+    )
+    return {"status": "success"}
+
 @app.post("/api/scripts/topics/{topic_id}/drafts")
 async def api_add_script_draft(topic_id: int, req: ScriptDraftCreateRequest, user: str = Depends(get_current_user)):
     topic = db.get_script_topic(topic_id)
@@ -950,27 +978,41 @@ def summarize_source_in_spanish(raw_text: str | None, title: str | None = None, 
 def normalize_apify_source_item(item: dict, fallback_url: str | None = None) -> dict:
     if not isinstance(item, dict):
         item = {}
+    metadata = item.get("metadata") if isinstance(item.get("metadata"), dict) else {}
     source_url = (
         item.get("url")
         or item.get("videoUrl")
         or item.get("video_url")
         or item.get("sourceUrl")
+        or metadata.get("url")
         or fallback_url
     )
     youtube_video_id = (
         item.get("videoId")
         or item.get("video_id")
         or item.get("id")
+        or metadata.get("video_id")
+        or metadata.get("videoId")
         or extract_youtube_video_id(source_url)
     )
-    title = item.get("videoTitle") or item.get("title") or item.get("name") or ""
-    thumbnail_url = item.get("thumbnailUrl") or item.get("thumbnail_url") or item.get("thumbnail")
+    title = item.get("videoTitle") or item.get("title") or item.get("name") or metadata.get("title") or ""
+    thumbnail_url = (
+        item.get("thumbnailUrl")
+        or item.get("thumbnail_url")
+        or item.get("thumbnail")
+        or item.get("thumbnail_image_url")
+        or metadata.get("thumbnail")
+        or metadata.get("thumbnail_url")
+    )
     raw_text = flatten_transcript_text(
         item.get("transcript")
         or item.get("text")
         or item.get("content")
         or item.get("caption")
         or item.get("subtitles")
+        or item.get("translation")
+        or metadata.get("transcript")
+        or metadata.get("translation")
     )
     language = (
         item.get("activeLanguageCode")
@@ -978,9 +1020,16 @@ def normalize_apify_source_item(item: dict, fallback_url: str | None = None) -> 
         or item.get("lang")
         or item.get("transcriptLanguage")
         or item.get("subtitlesLanguage")
+        or metadata.get("source_caption_language_code")
+        or metadata.get("target_language")
     )
     summary = item.get("summary") or item.get("shortDescription") or ""
-    translated_text = item.get("translated_text") or item.get("translation") or ""
+    translated_text = item.get("translated_text") or ""
+    translation = item.get("translation")
+    if isinstance(translation, dict):
+        translated_text = translation.get("text") or translated_text
+    elif isinstance(translation, str):
+        translated_text = translation or translated_text
     if raw_text and not summary:
         ai_result = summarize_source_in_spanish(raw_text, title=title, source_language=language)
         summary = ai_result.get("summary", "") or title or ""

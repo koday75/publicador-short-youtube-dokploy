@@ -189,6 +189,12 @@
             display: grid;
             gap: 0.35rem;
         }
+        .source-actions {
+            display: flex;
+            gap: 0.45rem;
+            flex-wrap: wrap;
+            margin-top: 0.35rem;
+        }
         .source-badges {
             display: flex;
             gap: 0.45rem;
@@ -474,6 +480,34 @@
                 .replace(/'/g, '&#39;');
         }
 
+        function extractYoutubeVideoId(value) {
+            const raw = String(value || '').trim();
+            if (!raw) return '';
+            if (/^[A-Za-z0-9_-]{11}$/.test(raw)) return raw;
+            try {
+                const parsed = new URL(raw);
+                const host = (parsed.hostname || '').toLowerCase();
+                if (host.includes('youtu.be')) {
+                    const candidate = parsed.pathname.replace(/^\/+/, '').split('/')[0];
+                    return /^[A-Za-z0-9_-]{11}$/.test(candidate) ? candidate : '';
+                }
+                if (host.includes('youtube.com') || host.includes('youtube-nocookie.com')) {
+                    const fromQuery = parsed.searchParams.get('v');
+                    if (fromQuery && /^[A-Za-z0-9_-]{11}$/.test(fromQuery)) {
+                        return fromQuery;
+                    }
+                    const parts = parsed.pathname.split('/').filter(Boolean);
+                    const idx = parts.findIndex((part) => ['shorts', 'embed', 'live'].includes(part));
+                    if (idx >= 0 && parts[idx + 1] && /^[A-Za-z0-9_-]{11}$/.test(parts[idx + 1])) {
+                        return parts[idx + 1];
+                    }
+                }
+            } catch (error) {
+                return '';
+            }
+            return '';
+        }
+
         function shortDate(value) {
             if (!value) return 'Sin fecha';
             const date = new Date(value);
@@ -536,11 +570,14 @@
             if (!sources || !sources.length) {
                 return '<div class="empty-state">Aún no hay vídeos añadidos a este tema.</div>';
             }
-            return sources.map((source) => `
-                <article class="entry-card">
+            return sources.map((source) => {
+                const inferredVideoId = source.youtube_video_id || extractYoutubeVideoId(source.source_url);
+                const thumb = source.thumbnail_url || (inferredVideoId ? `https://i.ytimg.com/vi/${inferredVideoId}/hqdefault.jpg` : '');
+                return `
+                <article class="entry-card" data-source-id="${source.id}">
                     <div class="source-card">
                         <div class="source-thumb">
-                            ${source.thumbnail_url ? `<img src="${escapeHtml(source.thumbnail_url)}" alt="${escapeHtml(source.title || 'Vídeo fuente')}">` : ''}
+                            ${thumb ? `<img src="${escapeHtml(thumb)}" alt="${escapeHtml(source.title || 'Vídeo fuente')}">` : ''}
                         </div>
                         <div class="source-meta">
                             <strong>${escapeHtml(source.title || source.youtube_video_id || 'Vídeo fuente')}</strong>
@@ -550,10 +587,14 @@
                                 ${source.raw_text ? '<span class="source-pill">Transcripción guardada</span>' : ''}
                                 ${source.summary ? '<span class="source-pill">Resumen en español</span>' : ''}
                             </div>
+                            <div class="source-actions">
+                                <button type="button" class="badge delete-source-btn" data-source-id="${source.id}" style="background:rgba(248,81,73,0.18); color:#ff7b72; border:1px solid rgba(248,81,73,0.3);">Eliminar vídeo usado</button>
+                            </div>
                         </div>
                     </div>
                 </article>
-            `).join('');
+            `;
+            }).join('');
         }
 
         function renderDraftsList(drafts) {
@@ -596,9 +637,9 @@
                 : '<div class="empty-state">No hay temas creados todavía.</div>';
 
             if (selectTopicId) {
-                await selectTopic(selectTopicId, false);
+                await selectTopic(selectTopicId);
             } else if (items.length && !currentTopicId) {
-                await selectTopic(items[0].id, false);
+                await selectTopic(items[0].id);
             }
         }
 
@@ -726,6 +767,20 @@
             }
         }
 
+        async function deleteSource(sourceId) {
+            if (!currentTopicId) return;
+            if (!confirm('¿Quieres eliminar este vídeo usado del tema?')) return;
+            const res = await fetch(`/api/scripts/sources/${encodeURIComponent(sourceId)}?topic_id=${encodeURIComponent(currentTopicId)}`, {
+                method: 'DELETE',
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                alert(data.detail || 'No se pudo eliminar el vídeo usado.');
+                return;
+            }
+            await selectTopic(currentTopicId);
+        }
+
         async function saveDraft() {
             if (!currentTopicId) {
                 alert('Selecciona un tema primero.');
@@ -765,6 +820,11 @@
             const card = event.target.closest('.topic-item');
             if (!card) return;
             selectTopic(card.dataset.topicId);
+        });
+        document.getElementById('sources-list').addEventListener('click', (event) => {
+            const button = event.target.closest('.delete-source-btn');
+            if (!button) return;
+            deleteSource(button.dataset.sourceId);
         });
 
         loadChannelContext()

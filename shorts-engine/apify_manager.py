@@ -13,8 +13,8 @@ class ApifyManager:
         self.db = db
         self.api_base = "https://api.apify.com/v2"
         self.account_count = 4
-        # Actor específico para transcript/subtítulos.
-        self.default_youtube_actor = "marklp/youtube-transcript"
+        # Actor específico para transcript/subtítulos y metadata.
+        self.default_youtube_actor = "agentx/youtube-transcript"
 
     def _get_api_key_by_index(self, index: int) -> str:
         if index < 1 or index > self.account_count:
@@ -122,14 +122,7 @@ class ApifyManager:
 
     def fetch_youtube_transcript(self, source_url: str, actor_id: str | None = None) -> dict[str, Any]:
         payload = {
-            "videoUrl": source_url,
-            # Preferimos español si existe; si no, el actor cae a otro idioma disponible.
-            "languageCode": "es",
-            "includeTxt": True,
-            "includeJson": True,
-            "includeMd": False,
-            "includeSrt": False,
-            "includeCsv": False,
+            "video_url": source_url,
         }
         items = self.run_youtube_scraper(payload, actor_id=actor_id)
 
@@ -148,10 +141,10 @@ class ApifyManager:
             summary_row["transcript"] = transcript_text
             summary_row["text"] = transcript_text
 
-        if not summary_row.get("thumbnailUrl"):
-            video_id = summary_row.get("videoId")
+        if not summary_row.get("thumbnail") and not summary_row.get("thumbnailUrl"):
+            video_id = summary_row.get("videoId") or summary_row.get("video_id")
             if video_id:
-                summary_row["thumbnailUrl"] = f"https://i.ytimg.com/vi/{video_id}/hqdefault.jpg"
+                summary_row["thumbnail"] = f"https://i.ytimg.com/vi/{video_id}/hqdefault.jpg"
 
         return summary_row
 
@@ -161,16 +154,26 @@ class ApifyManager:
 
         for key in ("transcript", "text", "content", "caption"):
             value = item.get(key)
+            if isinstance(value, dict):
+                text_value = value.get("text")
+                if isinstance(text_value, str) and text_value.strip():
+                    return text_value.strip()
             if isinstance(value, str) and value.strip():
                 return value.strip()
 
-        transcript_txt_url = item.get("transcript_txt")
+        translation = item.get("translation")
+        if isinstance(translation, dict):
+            text_value = translation.get("text")
+            if isinstance(text_value, str) and text_value.strip():
+                return text_value.strip()
+
+        transcript_txt_url = item.get("transcript_txt") or item.get("transcriptTxt")
         if transcript_txt_url:
             text = self._download_text(transcript_txt_url)
             if text:
                 return text
 
-        transcript_json_url = item.get("transcript_json")
+        transcript_json_url = item.get("transcript_json") or item.get("transcriptJson")
         if transcript_json_url:
             text = self._download_transcript_json(transcript_json_url)
             if text:
