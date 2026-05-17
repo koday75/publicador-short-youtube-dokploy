@@ -1,0 +1,147 @@
+import logging
+from typing import Any
+
+import requests
+
+from database import JobDatabase
+
+logger = logging.getLogger("apify_manager")
+
+
+class ApifyManager:
+    def __init__(self, db: JobDatabase):
+        self.db = db
+        self.api_base = "https://api.apify.com/v2"
+        self.account_count = 4
+        # Actor público recomendado para empezar con YouTube en Apify Store.
+        self.default_youtube_actor = "streamers/youtube-scraper"
+
+    def _get_api_key_by_index(self, index: int) -> str:
+        if index < 1 or index > self.account_count:
+            return ""
+        return (self.db.get_setting(f"APIFY_API_KEY_{index}") or "").strip()
+
+    def _get_active_index(self) -> int:
+        try:
+            return max(1, min(self.account_count, int(self.db.get_setting("APIFY_CURRENT_KEY_INDEX", "1") or "1")))
+        except Exception:
+            return 1
+
+    def _set_active_index(self, index: int):
+        index = max(1, min(self.account_count, int(index)))
+        self.db.set_setting("APIFY_CURRENT_KEY_INDEX", str(index))
+
+    def _actor_path(self, actor_id: str | None) -> str:
+        actor = (actor_id or self.default_youtube_actor).strip()
+        return actor.replace("/", "~")
+
+    def get_account_status(self, index: int) -> dict[str, Any]:
+        token = self._get_api_key_by_index(index)
+        result = {
+            "key_index": index,
+            "key_name": f"APIFY_API_KEY_{index}",
+            "configured": bool(token),
+            "active": index == self._get_active_index(),
+            "status": "not_configured",
+            "account_name": None,
+            "message": None,
+        }
+        if not token:
+            return result
+
+        try:
+            res = requests.get(
+                f"{self.api_base}/users/me",
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=20,
+            )
+            data = res.json() if res.content else {}
+            if res.ok and data.get("data"):
+                me = data["data"]
+                result.update({
+                    "status": "ok",
+                    "account_name": me.get("username") or me.get("email") or me.get("id"),
+                    "message": "Cuenta válida",
+                })
+            else:
+                result.update({
+                    "status": "error",
+                    "message": self._extract_error_message(data) or "No se pudo validar la cuenta.",
+                })
+        except Exception as exc:
+            logger.warning("No se pudo validar Apify API key %s: %s", index, exc)
+            result.update({
+                "status": "error",
+                "message": str(exc),
+            })
+        return result
+
+    def get_accounts_status(self) -> list[dict[str, Any]]:
+        return [self.get_account_status(i) for i in range(1, self.account_count + 1)]
+
+    def get_valid_api_key(self, skip_indices: set[int] | None = None) -> str | None:
+        skip_indices = skip_indices or set()
+        start_index = self._get_active_index()
+        for offset in range(self.account_count):
+            current_index = ((start_index - 1 + offset) % self.account_count) + 1
+            if current_index in skip_indices:
+                continue
+            api_key = self._get_api_key_by_index(current_index)
+            if not api_key:
+                continue
+            try:
+                res = requests.get(
+                    f"{self.api_base}/users/me",
+                    headers={"Authorization": f"Bearer {api_key}"},
+                    timeout=20,
+                )
+                if res.ok:
+                    self._set_active_index(current_index)
+                    return api_key
+            except Exception as exc:
+                logger.warning("Apify key %s no válida: %s", current_index, exc)
+                continue
+        return None
+
+    def run_youtube_scraper(self, input_data: dict[str, Any], actor_id: str | None = None) -> dict[str, Any]:
+        api_key = self.get_valid_api_key()
+        if not api_key:
+            raise RuntimeError("No hay cuentas de Apify configuradas o válidas.")
+        actor_path = self._actor_path(actor_id)
+        url = f"{self.api_base}/acts/{actor_path}/run-sync-get-dataset-items"
+        res = requests.post(
+            url,
+            params={"token": api_key, "clean": "true"},
+            json=input_data,
+            timeout=120,
+        )
+        if not res.ok:
+            detail = self._extract_error_message(self._safe_json(res))
+            raise RuntimeError(detail or f"Apify respondió con código {res.status_code}.")
+        return self._safe_json(res)
+
+    @staticmethod
+    def _safe_json(response: requests.Response | None) -> dict[str, Any]:
+        if response is None:
+            return {}
+        try:
+            return response.json()
+        except Exception:
+            return {"raw": response.text[:1000] if response.text else ""}
+
+    @staticmethod
+    def _extract_error_message(payload: dict[str, Any] | None) -> str | None:
+        if not payload:
+            return None
+        if isinstance(payload, dict):
+            for key in ("message", "msg", "error", "detail"):
+                value = payload.get(key)
+                if value:
+                    return str(value)
+            data = payload.get("data")
+            if isinstance(data, dict):
+                for key in ("message", "msg", "error", "detail"):
+                    value = data.get(key)
+                    if value:
+                        return str(value)
+        return None

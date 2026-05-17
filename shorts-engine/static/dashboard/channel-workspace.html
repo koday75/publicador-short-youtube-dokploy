@@ -481,6 +481,7 @@
                 <a id="tab-gallery" class="channel-tab" href="#">Galería</a>
                 <a id="tab-jobs" class="channel-tab" href="#">Trabajos</a>
                 <a id="tab-ai-tasks" class="channel-tab" href="#">Registros IA</a>
+                <a id="tab-scripts" class="channel-tab" href="#">Guiones</a>
                 <a id="tab-history" class="channel-tab" href="#">Historial</a>
                 <a id="tab-settings" class="channel-tab" href="#">Ajustes</a>
             </div>
@@ -766,6 +767,7 @@
                 document.getElementById('tab-gallery').href = `/gallery?channel_id=${channelId}`;
                 document.getElementById('tab-jobs').href = `/jobs?channel_id=${channelId}`;
                 document.getElementById('tab-ai-tasks').href = `/ai-tasks?channel_id=${channelId}`;
+                document.getElementById('tab-scripts').href = `/guiones?channel_id=${channelId}`;
                 document.getElementById('tab-history').href = `/channels/${channelId}/history`;
                 document.getElementById('tab-settings').href = `/youtube-channels?channel_id=${channelId}`;
         }
@@ -815,7 +817,7 @@
                     ${thumb}
                     <div class="media-card-body">
                         <strong title="${item.original_name || item.filename}">${item.original_name || item.filename}</strong>
-                        <small>${mediaLabel(item.file_type)} Â· ${item.niche || 'sin nicho'}</small>
+                        <small>${mediaLabel(item.file_type)} · ${item.niche || 'sin nicho'}</small>
                         <small>${shortDate(item.created_at)}</small>
                     </div>
                 </article>
@@ -823,7 +825,7 @@
         }
 
         function escapeHtml(value) {
-            return String(value ?? '')
+            return String(value ? '')
                 .replace(/&/g, '&amp;')
                 .replace(/</g, '&lt;')
                 .replace(/>/g, '&gt;')
@@ -845,7 +847,7 @@
                             class="badge comment-open-btn"
                             style="background:rgba(88,166,255,0.15); color:#58a6ff; border:1px solid rgba(88,166,255,0.25);"
                             data-job-id="${escapeHtml(item.job_id || '')}"
-                            data-channel-id="${item.channel_id ?? ''}"
+                            data-channel-id="${item.channel_id ? ''}"
                             data-video-title="${escapeHtml(item.title || item.video_id || '')}"
                         >Ver comentarios</button>
                     </div>
@@ -1121,7 +1123,7 @@
                 metricGrid.innerHTML = [
                     renderMetricCard({
                         label: 'Trabajos totales',
-                        value: stats.total_jobs ?? 0,
+                        value: stats.total_jobs ? 0,
                         note: 'Todo el historial de producción del canal.',
                         className: 'jobs'
                     }),
@@ -1139,7 +1141,7 @@
                     }),
                     renderMetricCard({
                         label: 'Fallidos',
-                        value: stats.failed_jobs ?? 0,
+                        value: stats.failed_jobs ? 0,
                         note: 'Trabajos que necesitan corrección o reintento.',
                         className: 'failed'
                     }),

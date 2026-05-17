@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guiones - Shorts Engine</title>
+    <link rel="stylesheet" href="/assets/style.css">
+    <link rel="icon" href="/icono.ico" type="image/x-icon">
+    <style>
+        .channel-shell {
+            border: 1px solid rgba(88, 166, 255, 0.18);
+            background: rgba(88, 166, 255, 0.05);
+            border-radius: 18px;
+            padding: 1rem 1.1rem;
+            margin: 0 0 1rem;
+        }
+        .channel-breadcrumb {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            align-items: center;
+            color: var(--text-muted);
+            font-size: 0.84rem;
+            margin-bottom: 0.8rem;
+        }
+        .channel-breadcrumb a { color: #fff; text-decoration: none; }
+        .channel-tabs {
+            display: flex;
+            gap: 0.55rem;
+            flex-wrap: wrap;
+        }
+        .channel-tab {
+            text-decoration: none;
+            border: 1px solid var(--border-color);
+            border-radius: 999px;
+            padding: 0.55rem 0.85rem;
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            background: rgba(255,255,255,0.03);
+        }
+        .channel-tab.active {
+            background: rgba(88, 166, 255, 0.15);
+            color: #58a6ff;
+            border-color: rgba(88, 166, 255, 0.3);
+            font-weight: 700;
+        }
+        .shell-grid {
+            display: grid;
+            grid-template-columns: 1.05fr 1.35fr;
+            gap: 1rem;
+        }
+        .panel {
+            border: 1px solid var(--border-color);
+            border-radius: 18px;
+            background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(0,0,0,0.14));
+            padding: 1rem;
+        }
+        .panel h3 {
+            margin: 0 0 0.35rem;
+        }
+        .panel p {
+            margin: 0;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+        .topic-list {
+            display: grid;
+            gap: 0.75rem;
+            margin-top: 1rem;
+        }
+        .topic-item {
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            background: rgba(0,0,0,0.14);
+            padding: 0.9rem;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .topic-item:hover { border-color: rgba(88,166,255,0.35); }
+        .topic-item.active {
+            border-color: rgba(88,166,255,0.45);
+            box-shadow: 0 0 0 1px rgba(88,166,255,0.12) inset;
+        }
+        .topic-item strong {
+            display:block;
+            margin-bottom: 0.2rem;
+        }
+        .topic-item small,
+        .topic-meta {
+            color: var(--text-muted);
+            font-size: 0.78rem;
+        }
+        .topic-detail {
+            display: grid;
+            gap: 1rem;
+        }
+        .detail-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.75rem;
+        }
+        .field {
+            display: grid;
+            gap: 0.35rem;
+        }
+        .field label {
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--text-muted);
+        }
+        .field input,
+        .field textarea,
+        .field select {
+            width: 100%;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            background: rgba(0,0,0,0.25);
+            color: #fff;
+            padding: 0.8rem 0.9rem;
+            box-sizing: border-box;
+        }
+        .field textarea { min-height: 120px; resize: vertical; }
+        .field textarea:focus,
+        .field input:focus,
+        .field select:focus {
+            outline: 1px solid rgba(88,166,255,0.55);
+            border-color: rgba(88,166,255,0.5);
+        }
+        .actions-row {
+            display:flex;
+            gap:0.6rem;
+            flex-wrap:wrap;
+        }
+        .section-title {
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            gap:0.75rem;
+            margin-bottom: 0.7rem;
+        }
+        .section-title h4 {
+            margin:0;
+            font-size: 0.98rem;
+        }
+        .section-title span {
+            color: var(--text-muted);
+            font-size: 0.82rem;
+        }
+        .list-grid {
+            display: grid;
+            gap: 0.7rem;
+        }
+        .entry-card {
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            background: rgba(0,0,0,0.12);
+            padding: 0.85rem;
+        }
+        .entry-card strong { display:block; margin-bottom:0.2rem; }
+        .entry-card small { color: var(--text-muted); }
+        .entry-card pre {
+            white-space: pre-wrap;
+            word-break: break-word;
+            margin: 0.6rem 0 0;
+            color: #e8eef7;
+            background: rgba(255,255,255,0.03);
+            padding: 0.75rem;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.06);
+            max-height: 180px;
+            overflow:auto;
+        }
+        .empty-state {
+            border: 1px dashed var(--border-color);
+            border-radius: 14px;
+            background: rgba(255,255,255,0.02);
+            padding: 1rem;
+            color: var(--text-muted);
+            text-align: center;
+        }
+        @media (max-width: 1100px) {
+            .shell-grid { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 760px) {
+            .detail-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div>
+                <h1 id="scripts-header-title">Guiones del canal</h1>
+                <p>Convierte varios vídeos en una base de investigación, resume lo importante y genera un guion listo para el storyboard.</p>
+            </div>
+            <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
+                <a href="/channels" class="badge" style="text-decoration:none; background:rgba(255,255,255,0.05); color:#fff;">← Volver a canales</a>
+                <a id="edit-channel-link" href="/youtube-channels" class="badge" style="text-decoration:none; background:var(--accent); color:#000; font-weight:bold;">Editar canal</a>
+            </div>
+        </header>
+
+        <section id="channel-shell" class="channel-shell" style="display:none;">
+            <div class="channel-breadcrumb">
+                <a href="/channels">Canales</a>
+                <span>›</span>
+                <span id="channel-breadcrumb-name">Canal</span>
+                <span>›</span>
+                <strong>Guiones</strong>
+            </div>
+            <div class="channel-tabs">
+                <a id="tab-overview" class="channel-tab" href="#">Resumen</a>
+                <a id="tab-storyboard" class="channel-tab" href="#">Crear vídeos</a>
+                <a id="tab-gallery" class="channel-tab" href="#">Galería</a>
+                <a id="tab-jobs" class="channel-tab" href="#">Trabajos</a>
+                <a id="tab-ai-tasks" class="channel-tab" href="#">Registros IA</a>
+                <a id="tab-scripts" class="channel-tab active" href="#">Guiones</a>
+                <a id="tab-history" class="channel-tab" href="#">Historial</a>
+                <a id="tab-settings" class="channel-tab" href="#">Ajustes</a>
+            </div>
+        </section>
+
+        <section class="panel" style="margin-bottom:1rem;">
+            <div class="section-title">
+                <div>
+                    <h3 style="margin:0;">Nuevo tema</h3>
+                    <p style="margin:0;">Crea una base de trabajo para agrupar fuentes, resúmenes y borradores.</p>
+                </div>
+                <span id="channel-context-note">Selecciona un canal para empezar.</span>
+            </div>
+            <div class="detail-grid">
+                <div class="field">
+                    <label>Título del tema</label>
+                    <input id="new-topic-title" type="text" placeholder="Ej: El origen de los marcos de madera con imán">
+                </div>
+                <div class="field">
+                    <label>Estado</label>
+                    <select id="new-topic-status">
+                        <option value="draft">Borrador</option>
+                        <option value="active">Activo</option>
+                        <option value="archived">Archivado</option>
+                    </select>
+                </div>
+            </div>
+            <div class="field" style="margin-top:0.85rem;">
+                <label>Tema / enfoque</label>
+                <textarea id="new-topic-description" placeholder="Describe el enfoque, el ángulo narrativo o la idea central del guion."></textarea>
+            </div>
+            <div class="actions-row" style="margin-top:0.85rem;">
+                <button class="badge" id="create-topic-btn" style="background:var(--accent); color:#000; font-weight:bold; border:none;">Crear tema</button>
+                <button class="badge" id="reload-topics-btn" style="background:rgba(255,255,255,0.05); color:#fff; border:1px solid var(--border-color);">Recargar temas</button>
+            </div>
+        </section>
+
+        <div class="shell-grid">
+            <section class="panel">
+                <div class="section-title">
+                    <div>
+                        <h3>Temas</h3>
+                        <span>Fuentes, resúmenes y borradores del canal.</span>
+                    </div>
+                    <span id="topics-count">0 temas</span>
+                </div>
+                <div id="topics-list" class="topic-list">
+                    <div class="empty-state">Cargando temas...</div>
+                </div>
+            </section>
+
+            <section class="panel">
+                <div class="section-title">
+                    <div>
+                        <h3 id="selected-topic-heading">Selecciona un tema</h3>
+                        <span id="selected-topic-subtitle">Aquí verás las fuentes, resúmenes y borradores.</span>
+                    </div>
+                    <span id="selected-topic-status" class="badge" style="background:rgba(255,255,255,0.05); color:#fff;">Sin tema</span>
+                </div>
+
+                <div id="topic-detail-empty" class="empty-state">Elige un tema de la lista o crea uno nuevo para empezar.</div>
+
+                <div id="topic-detail" class="topic-detail" style="display:none;">
+                    <div class="detail-grid">
+                        <div class="field">
+                            <label>Título</label>
+                            <input id="topic-edit-title" type="text">
+                        </div>
+                        <div class="field">
+                            <label>Estado</label>
+                            <select id="topic-edit-status">
+                                <option value="draft">Borrador</option>
+                                <option value="active">Activo</option>
+                                <option value="archived">Archivado</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label>Tema / descripción</label>
+                        <textarea id="topic-edit-description"></textarea>
+                    </div>
+                    <div class="actions-row">
+                        <button class="badge" id="save-topic-btn" style="background:rgba(88,166,255,0.15); color:#58a6ff; border:1px solid rgba(88,166,255,0.25);">Guardar tema</button>
+                        <button class="badge" id="send-to-storyboard-btn" style="background:rgba(255,255,255,0.05); color:#fff; border:1px solid var(--border-color);" disabled>Enviar al storyboard</button>
+                    </div>
+
+                    <div>
+                        <div class="section-title">
+                            <div>
+                                <h4>Fuentes del tema</h4>
+                                <span>Vídeos, transcripciones y texto bruto extraído o añadido manualmente.</span>
+                            </div>
+                        </div>
+                        <div class="detail-grid">
+                            <div class="field">
+                                <label>URL del vídeo o canal</label>
+                                <input id="source-url" type="text" placeholder="https://www.youtube.com/watch?v=...">
+                            </div>
+                            <div class="field">
+                                <label>ID de vídeo de YouTube</label>
+                                <input id="source-video-id" type="text" placeholder="Opcional">
+                            </div>
+                        </div>
+                        <div class="field" style="margin-top:0.75rem;">
+                            <label>Texto / transcripción</label>
+                            <textarea id="source-raw-text" placeholder="Pega aquí el texto bruto si ya lo tienes o deja que Apify lo extraiga."></textarea>
+                        </div>
+                        <div class="actions-row" style="margin-top:0.75rem;">
+                            <button class="badge" id="add-source-btn" style="background:rgba(63,185,80,0.18); color:#3fb950; border:1px solid rgba(63,185,80,0.25);">Añadir fuente</button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="section-title">
+                            <div>
+                                <h4>Apify</h4>
+                                <span>Importa varias URLs con el scraper oficial de YouTube y guárdalas en este tema. Usa las cuatro cuentas de Apify configuradas en Ajustes de sistema.</span>
+                            </div>
+                        </div>
+                        <div class="detail-grid">
+                            <div class="field">
+                                <label>Actor de Apify</label>
+                                <input id="apify-actor-id" type="text" value="streamers/youtube-scraper">
+                            </div>
+                            <div class="field">
+                                <label>Máximo de resultados</label>
+                                <input id="apify-max-results" type="number" value="5" min="1" max="100">
+                            </div>
+                        </div>
+                        <div class="field" style="margin-top:0.75rem;">
+                            <label>Payload JSON</label>
+                            <textarea id="apify-payload">{
+  "startUrls": [
+    { "url": "https://www.youtube.com/watch?v=VIDEO_ID" }
+  ],
+  "maxResults": 5
+}</textarea>
+                        </div>
+                        <div class="actions-row" style="margin-top:0.75rem;">
+                            <button class="badge" id="run-apify-btn" style="background:rgba(176,114,255,0.18); color:#b072ff; border:1px solid rgba(176,114,255,0.25);">Importar con Apify</button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="section-title">
+                            <div>
+                                <h4>Borradores</h4>
+                                <span>La IA puede ir refinando el guion por versiones.</span>
+                            </div>
+                        </div>
+                        <div class="field">
+                            <label>Contenido del borrador</label>
+                            <textarea id="draft-content" placeholder="Redacta el guion, un resumen ampliado o una estructura narrativa."></textarea>
+                        </div>
+                        <div class="detail-grid" style="margin-top:0.75rem;">
+                            <div class="field">
+                                <label>Tipo de borrador</label>
+                                <select id="draft-type">
+                                    <option value="outline">Esquema</option>
+                                    <option value="summary">Resumen</option>
+                                    <option value="script">Guion</option>
+                                </select>
+                            </div>
+                            <div class="field">
+                                <label>Versión</label>
+                                <input id="draft-version" type="number" min="1" value="1">
+                            </div>
+                        </div>
+                        <div class="actions-row" style="margin-top:0.75rem;">
+                            <button class="badge" id="save-draft-btn" style="background:rgba(88,166,255,0.15); color:#58a6ff; border:1px solid rgba(88,166,255,0.25);">Guardar borrador</button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="section-title">
+                            <div>
+                                <h4>Fuentes guardadas</h4>
+                                <span>Texto original, resumen y estado de cada fuente.</span>
+                            </div>
+                            <span id="sources-count">0 fuentes</span>
+                        </div>
+                        <div id="sources-list" class="list-grid">
+                            <div class="empty-state">Aún no hay fuentes para este tema.</div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="section-title">
+                            <div>
+                                <h4>Últimos borradores</h4>
+                                <span>Elige una versión para continuar el trabajo.</span>
+                            </div>
+                            <span id="drafts-count">0 borradores</span>
+                        </div>
+                        <div id="drafts-list" class="list-grid">
+                            <div class="empty-state">Todavía no hay borradores guardados.</div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="section-title">
+                            <div>
+                                <h4>Registro del tema</h4>
+                                <span>Eventos importantes del flujo de trabajo.</span>
+                            </div>
+                        </div>
+                        <div id="logs-list" class="list-grid">
+                            <div class="empty-state">No hay eventos registrados todavía.</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <script>
+        const params = new URLSearchParams(window.location.search);
+        const currentChannelId = params.get('channel_id');
+        let currentTopicId = null;
+        let currentTopic = null;
+
+        function escapeHtml(value) {
+            return String(value ? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function shortDate(value) {
+            if (!value) return 'Sin fecha';
+            const date = new Date(value);
+            if (Number.isNaN(date.getTime())) return String(value);
+            return new Intl.DateTimeFormat('es-ES', {
+                day: '2-digit',
+                month: 'short',
+                hour: '2-digit',
+                minute: '2-digit',
+            }).format(date);
+        }
+
+        function setLinks(channelId) {
+            document.getElementById('tab-overview').href = `/channels/${channelId}`;
+            document.getElementById('tab-storyboard').href = `/storyboard?channel_id=${channelId}`;
+            document.getElementById('tab-gallery').href = `/gallery?channel_id=${channelId}`;
+            document.getElementById('tab-jobs').href = `/jobs?channel_id=${channelId}`;
+            document.getElementById('tab-ai-tasks').href = `/ai-tasks?channel_id=${channelId}`;
+            document.getElementById('tab-scripts').href = `/guiones?channel_id=${channelId}`;
+            document.getElementById('tab-history').href = `/channels/${channelId}/history`;
+            document.getElementById('tab-settings').href = `/youtube-channels?channel_id=${channelId}`;
+            document.getElementById('edit-channel-link').href = `/youtube-channels?channel_id=${channelId}`;
+        }
+
+        async function loadChannelContext() {
+            if (!currentChannelId) {
+                document.getElementById('channel-context-note').textContent = 'Selecciona un canal desde la lista principal.';
+                document.getElementById('scripts-header-title').textContent = 'Guiones';
+                return;
+            }
+            try {
+                const res = await fetch(`/api/youtube/channels/${currentChannelId}`);
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || 'No se pudo cargar el canal.');
+                document.getElementById('scripts-header-title').textContent = `${data.internal_name || 'Canal'} · Guiones`;
+                document.getElementById('channel-breadcrumb-name').textContent = data.internal_name || `Canal ${currentChannelId}`;
+                document.getElementById('channel-context-note').textContent = `Trabajando en ${data.internal_name || `Canal ${currentChannelId}`}`;
+                document.getElementById('channel-shell').style.display = 'block';
+                setLinks(currentChannelId);
+            } catch (error) {
+                document.getElementById('channel-context-note').textContent = error.message || 'No se pudo cargar el canal.';
+            }
+        }
+
+        function renderTopicItem(topic) {
+            const active = String(topic.id) === String(currentTopicId);
+            return `
+                <article class="topic-item ${active ? 'active' : ''}" data-topic-id="${topic.id}">
+                    <strong>${escapeHtml(topic.title || 'Sin título')}</strong>
+                    <small>${escapeHtml(topic.topic || 'Sin descripción')}</small>
+                    <div class="topic-meta" style="margin-top:0.45rem;">
+                        ${escapeHtml(topic.status || 'draft')} · ${shortDate(topic.updated_at)}
+                    </div>
+                </article>
+            `;
+        }
+
+        function renderSourcesList(sources) {
+            if (!sources || !sources.length) {
+                return '<div class="empty-state">Aún no hay fuentes para este tema.</div>';
+            }
+            return sources.map((source) => `
+                <article class="entry-card">
+                    <strong>${escapeHtml(source.source_type || 'youtube')} ${source.youtube_video_id ? `· ${escapeHtml(source.youtube_video_id)}` : ''}</strong>
+                    <small>${escapeHtml(source.source_url || 'Sin URL')} · ${shortDate(source.created_at)}</small>
+                    ${source.language ? `<small>Idioma: ${escapeHtml(source.language)}</small>` : ''}
+                    ${source.summary ? `<pre>${escapeHtml(source.summary)}</pre>` : ''}
+                    ${source.translated_text ? `<pre>${escapeHtml(source.translated_text)}</pre>` : ''}
+                </article>
+            `).join('');
+        }
+
+        function renderDraftsList(drafts) {
+            if (!drafts || !drafts.length) {
+                return '<div class="empty-state">Todavía no hay borradores guardados.</div>';
+            }
+            return drafts.map((draft) => `
+                <article class="entry-card">
+                    <strong>Versión ${escapeHtml(draft.version ? 1)} · ${escapeHtml(draft.draft_type || 'outline')}</strong>
+                    <small>${shortDate(draft.created_at)}</small>
+                    <pre>${escapeHtml(draft.content || '')}</pre>
+                </article>
+            `).join('');
+        }
+
+        function renderLogsList(logs) {
+            if (!logs || !logs.length) {
+                return '<div class="empty-state">No hay eventos registrados todavía.</div>';
+            }
+            return logs.map((log) => `
+                <article class="entry-card">
+                    <strong>${escapeHtml(log.event_type || 'evento')}</strong>
+                    <small>${shortDate(log.created_at)} · ${escapeHtml(log.message || '')}</small>
+                    ${log.details && Object.keys(log.details).length ? `<pre>${escapeHtml(JSON.stringify(log.details, null, 2))}</pre>` : ''}
+                </article>
+            `).join('');
+        }
+
+        async function loadTopics(selectTopicId = null) {
+            if (!currentChannelId) {
+                document.getElementById('topics-list').innerHTML = '<div class="empty-state">Selecciona primero un canal.</div>';
+                return;
+            }
+            const res = await fetch(`/api/scripts/topics?channel_id=${encodeURIComponent(currentChannelId)}&limit=100`);
+            const data = await res.json();
+            const items = data.items || [];
+            document.getElementById('topics-count').textContent = `${items.length} tema${items.length === 1 ? '' : 's'}`;
+            document.getElementById('topics-list').innerHTML = items.length
+                ? items.map(renderTopicItem).join('')
+                : '<div class="empty-state">No hay temas creados todavía.</div>';
+
+            if (selectTopicId) {
+                await selectTopic(selectTopicId, false);
+            } else if (items.length && !currentTopicId) {
+                await selectTopic(items[0].id, false);
+            }
+        }
+
+        async function selectTopic(topicId, reload = true) {
+            currentTopicId = topicId;
+            const res = await fetch(`/api/scripts/topics/${encodeURIComponent(topicId)}`);
+            const data = await res.json();
+            if (!res.ok) {
+                alert(data.detail || 'No se pudo cargar el tema.');
+                return;
+            }
+            currentTopic = data.topic;
+            document.getElementById('topic-detail-empty').style.display = 'none';
+            document.getElementById('topic-detail').style.display = 'grid';
+            document.getElementById('selected-topic-heading').textContent = currentTopic.title || 'Tema';
+            document.getElementById('selected-topic-subtitle').textContent = currentTopic.topic || '';
+            document.getElementById('selected-topic-status').textContent = currentTopic.status || 'draft';
+            document.getElementById('topic-edit-title').value = currentTopic.title || '';
+            document.getElementById('topic-edit-description').value = currentTopic.topic || '';
+            document.getElementById('topic-edit-status').value = currentTopic.status || 'draft';
+            document.getElementById('sources-count').textContent = `${(data.sources || []).length} fuente${(data.sources || []).length === 1 ? '' : 's'}`;
+            document.getElementById('drafts-count').textContent = `${(data.drafts || []).length} borrador${(data.drafts || []).length === 1 ? '' : 'es'}`;
+            document.getElementById('sources-list').innerHTML = renderSourcesList(data.sources || []);
+            document.getElementById('drafts-list').innerHTML = renderDraftsList(data.drafts || []);
+            document.getElementById('logs-list').innerHTML = renderLogsList(data.logs || []);
+
+            document.querySelectorAll('.topic-item').forEach((item) => {
+                item.classList.toggle('active', String(item.dataset.topicId) === String(topicId));
+            });
+        }
+
+        async function createTopic() {
+            if (!currentChannelId) {
+                alert('Selecciona un canal primero.');
+                return;
+            }
+            const title = document.getElementById('new-topic-title').value.trim();
+            const topic = document.getElementById('new-topic-description').value.trim();
+            const status = document.getElementById('new-topic-status').value;
+            if (!title || !topic) {
+                alert('Escribe un título y un tema.');
+                return;
+            }
+            const res = await fetch('/api/scripts/topics', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    channel_id: Number(currentChannelId),
+                    title,
+                    topic,
+                    status,
+                }),
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                alert(data.detail || 'No se pudo crear el tema.');
+                return;
+            }
+            document.getElementById('new-topic-title').value = '';
+            document.getElementById('new-topic-description').value = '';
+            await loadTopics(data.topic?.id);
+        }
+
+        async function saveSelectedTopic() {
+            if (!currentTopicId) return;
+            const title = document.getElementById('topic-edit-title').value.trim();
+            const topic = document.getElementById('topic-edit-description').value.trim();
+            const status = document.getElementById('topic-edit-status').value;
+            const res = await fetch(`/api/scripts/topics/${encodeURIComponent(currentTopicId)}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    channel_id: Number(currentChannelId || 0),
+                    title,
+                    topic,
+                    status,
+                }),
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                alert(data.detail || 'No se pudo guardar el tema.');
+                return;
+            }
+            await loadTopics(currentTopicId);
+        }
+
+        async function addSource() {
+            if (!currentTopicId) {
+                alert('Selecciona un tema primero.');
+                return;
+            }
+            const sourceUrl = document.getElementById('source-url').value.trim();
+            const youtubeVideoId = document.getElementById('source-video-id').value.trim();
+            const rawText = document.getElementById('source-raw-text').value.trim();
+            if (!sourceUrl && !youtubeVideoId && !rawText) {
+                alert('Añade una URL, un ID de vídeo o un texto.');
+                return;
+            }
+            const res = await fetch(`/api/scripts/topics/${encodeURIComponent(currentTopicId)}/sources`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    source_url: sourceUrl || null,
+                    youtube_video_id: youtubeVideoId || null,
+                    raw_text: rawText || null,
+                    source_type: 'youtube',
+                }),
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                alert(data.detail || 'No se pudo añadir la fuente.');
+                return;
+            }
+            document.getElementById('source-url').value = '';
+            document.getElementById('source-video-id').value = '';
+            document.getElementById('source-raw-text').value = '';
+            await selectTopic(currentTopicId);
+        }
+
+        async function saveDraft() {
+            if (!currentTopicId) {
+                alert('Selecciona un tema primero.');
+                return;
+            }
+            const content = document.getElementById('draft-content').value.trim();
+            const draftType = document.getElementById('draft-type').value;
+            const version = Number(document.getElementById('draft-version').value || 1);
+            if (!content) {
+                alert('Escribe el contenido del borrador.');
+                return;
+            }
+            const res = await fetch(`/api/scripts/topics/${encodeURIComponent(currentTopicId)}/drafts`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    content,
+                    draft_type: draftType,
+                    version,
+                }),
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                alert(data.detail || 'No se pudo guardar el borrador.');
+                return;
+            }
+            document.getElementById('draft-content').value = '';
+            await selectTopic(currentTopicId);
+        }
+
+        async function importWithApify() {
+            if (!currentTopicId) {
+                alert('Selecciona un tema primero.');
+                return;
+            }
+            const actorId = document.getElementById('apify-actor-id').value.trim() || 'streamers/youtube-scraper';
+            const payloadText = document.getElementById('apify-payload').value.trim();
+            let inputPayload;
+            try {
+                inputPayload = JSON.parse(payloadText);
+            } catch (error) {
+                alert('El payload de Apify debe ser un JSON válido.');
+                return;
+            }
+            if (!inputPayload.maxResults) {
+                inputPayload.maxResults = Number(document.getElementById('apify-max-results').value || 5);
+            }
+            const res = await fetch(`/api/scripts/topics/${encodeURIComponent(currentTopicId)}/apify-import`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    actor_id: actorId,
+                    input_payload: inputPayload,
+                }),
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                alert(data.detail || 'No se pudo importar con Apify.');
+                return;
+            }
+            await selectTopic(currentTopicId);
+        }
+
+        document.getElementById('create-topic-btn').addEventListener('click', createTopic);
+        document.getElementById('reload-topics-btn').addEventListener('click', () => loadTopics(currentTopicId));
+        document.getElementById('save-topic-btn').addEventListener('click', saveSelectedTopic);
+        document.getElementById('add-source-btn').addEventListener('click', addSource);
+        document.getElementById('save-draft-btn').addEventListener('click', saveDraft);
+        document.getElementById('run-apify-btn').addEventListener('click', importWithApify);
+        document.getElementById('topics-list').addEventListener('click', (event) => {
+            const card = event.target.closest('.topic-item');
+            if (!card) return;
+            selectTopic(card.dataset.topicId);
+        });
+
+        loadChannelContext().then(() => loadTopics()).catch((error) => {
+            document.getElementById('topics-list').innerHTML = `<div class="empty-state">${escapeHtml(error.message || 'No se pudo inicializar la vista de guiones.')}</div>`;
+        });
+    </script>
+</body>
+</html>

@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import base64
 import hashlib
@@ -21,6 +21,7 @@ from ai_manager import AIManager
 from elevenlabs_manager import ElevenLabsManager
 from video_editor import VideoEditor
 from kie_manager import KieAiManager
+from apify_manager import ApifyManager
 from youtube_service import YouTubeChannelService, YouTubeAuthError
 
 # Logging setup
@@ -32,13 +33,13 @@ from urllib.parse import urlparse, parse_qs
 
 app = FastAPI(title="Shorts Generation Engine")
 
-# ── Cache temporal de candidatos para selección Telegram ─────────────────────
+# â”€â”€ Cache temporal de candidatos para selecciÃ³n Telegram â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # Clave: session_id (8 chars), Valor: { expires_at, niche, voice_id, items[] }
 _candidates_cache: dict = {}
 
 # Security Configuration
 DASHBOARD_PASSWORD = (os.getenv("DASHBOARD_PASSWORD") or "admin123").strip().strip('"').strip("'") or "admin123"
-logger.info(f"Cargando configuración: DASHBOARD_PASSWORD detectada con longitud {len(DASHBOARD_PASSWORD)}")
+logger.info(f"Cargando configuraciÃ³n: DASHBOARD_PASSWORD detectada con longitud {len(DASHBOARD_PASSWORD)}")
 TOTP_SECRET = (os.getenv("DASHBOARD_TOTP_SECRET") or "").strip()
 
 if not TOTP_SECRET:
@@ -46,9 +47,9 @@ if not TOTP_SECRET:
     digest = hashlib.sha256(DASHBOARD_PASSWORD.encode("utf-8")).digest()
     TOTP_SECRET = base64.b32encode(digest).decode("utf-8").rstrip("=")
     logger.warning("="*50)
-    logger.warning("CONFIGURACIÓN DE SEGURIDAD 2FA (TOTP)")
-    logger.warning("DASHBOARD_TOTP_SECRET no estaba configurado; se usará una clave derivada estable.")
-    logger.warning("Escanea este código o introdúcelo en Authenticator:")
+    logger.warning("CONFIGURACIÃ“N DE SEGURIDAD 2FA (TOTP)")
+    logger.warning("DASHBOARD_TOTP_SECRET no estaba configurado; se usarÃ¡ una clave derivada estable.")
+    logger.warning("Escanea este cÃ³digo o introdÃºcelo en Authenticator:")
     logger.warning(pyotp.totp.TOTP(TOTP_SECRET).provisioning_uri(name="ShortsEngine", issuer_name="EstrellitaStudio"))
     logger.warning("="*50)
 
@@ -63,6 +64,7 @@ active_sessions = set()
 tts_manager = ElevenLabsManager()
 video_editor = VideoEditor()
 kie_manager = KieAiManager(db)
+apify_manager = ApifyManager(db)
 youtube_manager = YouTubeChannelService(db)
 
 # Directory for storage
@@ -164,6 +166,10 @@ async def storyboard_page(request: Request):
 async def settings_page(request: Request):
     return await render_dashboard_file(request, "static/dashboard/settings.html")
 
+@app.get("/guiones", response_class=HTMLResponse)
+async def scripts_page(request: Request):
+    return await render_dashboard_file(request, "static/dashboard/guiones.html")
+
 @app.get("/youtube-channels", response_class=HTMLResponse)
 async def youtube_channels_page(request: Request):
     return await render_dashboard_file(request, "static/dashboard/youtube-channels.html")
@@ -187,7 +193,7 @@ class StoryboardRequest(BaseModel):
     job_id: Optional[str] = None
     tts_engine: Optional[str] = None
     tts_speed: Optional[float] = None
-    title: Optional[str] = None  # Título único del Short (para deduplicación)
+    title: Optional[str] = None  # TÃ­tulo Ãºnico del Short (para deduplicaciÃ³n)
 
 class PublishVideoRequest(BaseModel):
     title: Optional[str] = None
@@ -223,6 +229,28 @@ class RelinkYoutubeVideoRequest(BaseModel):
     video_reference: str
     channel_id: Optional[int] = None
 
+class ScriptTopicCreateRequest(BaseModel):
+    channel_id: int
+    title: str
+    topic: str
+    status: str = "draft"
+
+class ScriptSourceCreateRequest(BaseModel):
+    source_url: Optional[str] = None
+    youtube_video_id: Optional[str] = None
+    source_type: str = "youtube"
+    language: Optional[str] = None
+    raw_text: Optional[str] = None
+    translated_text: Optional[str] = None
+    summary: Optional[str] = None
+    apify_run_id: Optional[str] = None
+    apify_dataset_id: Optional[str] = None
+
+class ScriptDraftCreateRequest(BaseModel):
+    content: str
+    draft_type: str = "outline"
+    version: Optional[int] = 1
+
 class CommentReplyDraftRequest(BaseModel):
     comment_text: str
     video_title: Optional[str] = None
@@ -254,7 +282,7 @@ def parse_iso_datetime(value: Optional[str]) -> Optional[str]:
             dt = dt.replace(tzinfo=timezone.utc)
         return dt.astimezone(timezone.utc).isoformat()
     except Exception:
-        raise HTTPException(status_code=400, detail="publish_at inválido. Usa un ISO 8601 válido.")
+        raise HTTPException(status_code=400, detail="publish_at invÃ¡lido. Usa un ISO 8601 vÃ¡lido.")
 
 def extract_youtube_video_id(value: Optional[str]) -> Optional[str]:
     raw = (value or "").strip()
@@ -393,13 +421,15 @@ async def get_settings(session=Depends(get_current_user)):
     
     # Proveedores API
     for prov in ["GROQ", "OPENAI", "DEEPSEEK", "OPENROUTER",
-                 "KIE_API_KEY_1", "KIE_API_KEY_2", "KIE_API_KEY_3", "KIE_API_KEY_4", "KIE_API_KEY_5"]:
+                 "KIE_API_KEY_1", "KIE_API_KEY_2", "KIE_API_KEY_3", "KIE_API_KEY_4", "KIE_API_KEY_5",
+                 "APIFY_API_KEY_1", "APIFY_API_KEY_2", "APIFY_API_KEY_3", "APIFY_API_KEY_4"]:
         val = db.get_setting(prov)
         keys[prov] = "********" if val else None
 
     # Ajustes varios
     keys["2FA_ENABLED"] = db.get_setting("2FA_ENABLED", "true")
     keys["KIE_CURRENT_KEY_INDEX"] = db.get_setting("KIE_CURRENT_KEY_INDEX", "1")
+    keys["APIFY_CURRENT_KEY_INDEX"] = db.get_setting("APIFY_CURRENT_KEY_INDEX", "1")
     keys["DEFAULT_MUSIC_VOLUME"] = db.get_setting("DEFAULT_MUSIC_VOLUME")
     keys["DEFAULT_VOICE_VOLUME"] = db.get_setting("DEFAULT_VOICE_VOLUME")
 
@@ -436,7 +466,7 @@ async def api_create_youtube_channel(req: YouTubeChannelCreateRequest, user: str
 
     privacy = req.default_privacy_status.strip().lower()
     if privacy not in {"private", "unlisted", "public"}:
-        raise HTTPException(status_code=400, detail="default_privacy_status inválido.")
+        raise HTTPException(status_code=400, detail="default_privacy_status invÃ¡lido.")
 
     channel_id = db.create_youtube_channel({
         "internal_name": req.internal_name,
@@ -493,7 +523,7 @@ async def api_get_youtube_channel_overview(channel_id: int, user: str = Depends(
                 "created_at": job.get("created_at"),
             })
     except Exception as exc:
-        logger.debug(f"No se pudieron cargar vídeos con comentarios para canal {channel_id}: {exc}")
+        logger.debug(f"No se pudieron cargar vÃ­deos con comentarios para canal {channel_id}: {exc}")
 
     return {
         "channel": serialize_youtube_channel(overview["channel"]),
@@ -515,7 +545,7 @@ async def api_update_youtube_channel(channel_id: int, req: YouTubeChannelUpdateR
 
     privacy = req.default_privacy_status.strip().lower()
     if privacy not in {"private", "unlisted", "public"}:
-        raise HTTPException(status_code=400, detail="default_privacy_status inválido.")
+        raise HTTPException(status_code=400, detail="default_privacy_status invÃ¡lido.")
 
     db.update_youtube_channel(channel_id, {
         "internal_name": req.internal_name,
@@ -555,7 +585,7 @@ async def api_youtube_oauth_callback(code: str = None, state: str = None, error:
         logger.warning(f"OAuth de YouTube cancelado o fallido: {error}")
         return RedirectResponse(url=f"/youtube-channels?oauth=error&message={error}")
     if not code or not state:
-        raise HTTPException(status_code=400, detail="Faltan parámetros OAuth.")
+        raise HTTPException(status_code=400, detail="Faltan parÃ¡metros OAuth.")
 
     try:
         channel = youtube_manager.handle_oauth_callback(code, state)
@@ -563,7 +593,7 @@ async def api_youtube_oauth_callback(code: str = None, state: str = None, error:
             return RedirectResponse(url=f"/youtube-channels?oauth=success&id={channel['id']}")
         return RedirectResponse(url="/youtube-channels?oauth=success")
     except YouTubeAuthError as exc:
-        logger.error(f"Callback OAuth falló: {exc}")
+        logger.error(f"Callback OAuth fallÃ³: {exc}")
         return RedirectResponse(url=f"/youtube-channels?oauth=error&message={str(exc)}")
     except Exception as exc:
         logger.error(f"Error inesperado OAuth callback: {exc}")
@@ -588,11 +618,133 @@ async def api_revoke_youtube_channel(channel_id: int, user: str = Depends(get_cu
     except YouTubeAuthError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
+@app.get("/api/apify/accounts")
+async def api_get_apify_accounts(user: str = Depends(get_current_user)):
+    return {"accounts": apify_manager.get_accounts_status()}
+
+class ScriptApifyImportRequest(BaseModel):
+    actor_id: Optional[str] = None
+    input_payload: dict[str, Any] = {}
+
+@app.get("/api/scripts/topics")
+async def api_list_script_topics(channel_id: int = None, search: str = None, limit: int = 50, offset: int = 0, user: str = Depends(get_current_user)):
+    return {
+        "items": db.list_script_topics(channel_id=channel_id, search=search, limit=limit, offset=offset),
+        "total": len(db.list_script_topics(channel_id=channel_id, search=search, limit=1000, offset=0)),
+    }
+
+@app.post("/api/scripts/topics")
+async def api_create_script_topic(req: ScriptTopicCreateRequest, user: str = Depends(get_current_user)):
+    if not req.title.strip():
+        raise HTTPException(status_code=400, detail="El tÃ­tulo del guion es obligatorio.")
+    if not req.topic.strip():
+        raise HTTPException(status_code=400, detail="El tema del guion es obligatorio.")
+    status = req.status if req.status in {"draft", "active", "archived"} else "draft"
+    topic_id = db.create_script_topic(req.channel_id, req.title.strip(), req.topic.strip(), status=status)
+    db.add_script_log(topic_id, "created", "Tema de guion creado correctamente.", {"title": req.title.strip(), "topic": req.topic.strip()})
+    return {"status": "success", "topic": db.get_script_topic(topic_id)}
+
+@app.get("/api/scripts/topics/{topic_id}")
+async def api_get_script_topic(topic_id: int, user: str = Depends(get_current_user)):
+    topic = db.get_script_topic(topic_id)
+    if not topic:
+        raise HTTPException(status_code=404, detail="Tema no encontrado")
+    return {
+        "topic": topic,
+        "sources": db.list_script_sources(topic_id),
+        "drafts": db.list_script_drafts(topic_id),
+        "logs": db.list_script_logs(topic_id, limit=50),
+    }
+
+@app.put("/api/scripts/topics/{topic_id}")
+async def api_update_script_topic(topic_id: int, req: ScriptTopicCreateRequest, user: str = Depends(get_current_user)):
+    topic = db.get_script_topic(topic_id)
+    if not topic:
+        raise HTTPException(status_code=404, detail="Tema no encontrado")
+    status = req.status if req.status in {"draft", "active", "archived"} else "draft"
+    db.update_script_topic(topic_id, req.title.strip(), req.topic.strip(), status=status)
+    db.add_script_log(topic_id, "edited", "Tema de guion actualizado.", {"title": req.title.strip(), "topic": req.topic.strip(), "status": status})
+    return {"status": "success", "topic": db.get_script_topic(topic_id)}
+
+@app.post("/api/scripts/topics/{topic_id}/sources")
+async def api_add_script_source(topic_id: int, req: ScriptSourceCreateRequest, user: str = Depends(get_current_user)):
+    topic = db.get_script_topic(topic_id)
+    if not topic:
+        raise HTTPException(status_code=404, detail="Tema no encontrado")
+    source_id = db.add_script_source(
+        topic_id=topic_id,
+        source_url=req.source_url,
+        youtube_video_id=req.youtube_video_id,
+        source_type=req.source_type or "youtube",
+        language=req.language,
+        raw_text=req.raw_text,
+        translated_text=req.translated_text,
+        summary=req.summary,
+        apify_run_id=req.apify_run_id,
+        apify_dataset_id=req.apify_dataset_id,
+        channel_id=topic.get("channel_id"),
+    )
+    db.add_script_log(
+        topic_id,
+        "source_added",
+        "Fuente aÃ±adida al tema.",
+        {"source_url": req.source_url, "youtube_video_id": req.youtube_video_id, "source_type": req.source_type},
+        source_id=source_id,
+    )
+    return {"status": "success", "source": db.list_script_sources(topic_id)[0] if db.list_script_sources(topic_id) else None}
+
+@app.post("/api/scripts/topics/{topic_id}/drafts")
+async def api_add_script_draft(topic_id: int, req: ScriptDraftCreateRequest, user: str = Depends(get_current_user)):
+    topic = db.get_script_topic(topic_id)
+    if not topic:
+        raise HTTPException(status_code=404, detail="Tema no encontrado")
+    draft_id = db.add_script_draft(topic_id=topic_id, content=req.content, draft_type=req.draft_type, version=req.version or 1)
+    db.add_script_log(topic_id, "draft_saved", "Borrador de guion guardado.", {"draft_type": req.draft_type, "version": req.version or 1})
+    return {"status": "success", "draft_id": draft_id}
+
+@app.post("/api/scripts/topics/{topic_id}/apify-import")
+async def api_apify_import_topic_sources(topic_id: int, req: ScriptApifyImportRequest, user: str = Depends(get_current_user)):
+    topic = db.get_script_topic(topic_id)
+    if not topic:
+        raise HTTPException(status_code=404, detail="Tema no encontrado")
+    if not req.input_payload:
+        raise HTTPException(status_code=400, detail="El payload de Apify no puede estar vac?o.")
+    try:
+        result = apify_manager.run_youtube_scraper(req.input_payload, actor_id=req.actor_id)
+        imported = 0
+        items = result if isinstance(result, list) else (result.get("items") or result.get("data") or [])
+        for item in items:
+            normalized = normalize_apify_source_item(item)
+            if not (normalized["source_url"] or normalized["youtube_video_id"] or normalized["raw_text"]):
+                continue
+            db.add_script_source(
+                topic_id=topic_id,
+                source_url=normalized["source_url"],
+                youtube_video_id=normalized["youtube_video_id"],
+                source_type="youtube",
+                language=normalized["language"],
+                raw_text=normalized["raw_text"],
+                translated_text=normalized["translated_text"],
+                summary=normalized["summary"],
+                channel_id=topic.get("channel_id"),
+            )
+            imported += 1
+        db.add_script_log(
+            topic_id,
+            "apify_import",
+            f"Importadas {imported} fuentes desde Apify.",
+            {"actor_id": req.actor_id or apify_manager.default_youtube_actor, "imported": imported},
+        )
+        return {"status": "success", "imported": imported, "result": result}
+    except Exception as exc:
+        db.add_script_log(topic_id, "apify_import_failed", "Fall? la importaci?n con Apify.", {"error": str(exc)})
+        raise HTTPException(status_code=400, detail=str(exc))
+
 @app.post("/api/auth/login")
 async def api_login(req: LoginRequest, response: Response):
     attempt = req.password.strip().strip('"').strip("'")
     if attempt == DASHBOARD_PASSWORD:
-        # Verificar si 2FA está activo
+        # Verificar si 2FA estÃ¡ activo
         is_2fa_enabled = db.get_setting("2FA_ENABLED") != "false"
         
         if is_2fa_enabled:
@@ -605,7 +757,7 @@ async def api_login(req: LoginRequest, response: Response):
             response.set_cookie(key="session_id", value=session_id, httponly=True)
             return {"status": "success"}
             
-    raise HTTPException(status_code=401, detail="Contraseña incorrecta")
+    raise HTTPException(status_code=401, detail="ContraseÃ±a incorrecta")
 
 @app.post("/api/auth/verify-2fa")
 async def api_verify_2fa(req: Verify2FARequest, response: Response):
@@ -614,14 +766,14 @@ async def api_verify_2fa(req: Verify2FARequest, response: Response):
         active_sessions.add(session_id)
         response.set_cookie(key="session_id", value=session_id, httponly=True)
         return {"status": "success"}
-    raise HTTPException(status_code=401, detail="Código 2FA inválido")
+    raise HTTPException(status_code=401, detail="CÃ³digo 2FA invÃ¡lido")
 
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    logger.error(f"Error de validación 422: {exc.errors()}")
+    logger.error(f"Error de validaciÃ³n 422: {exc.errors()}")
     return JSONResponse(
         status_code=422,
         content={"detail": exc.errors(), "body": exc.body},
@@ -658,12 +810,48 @@ def serialize_youtube_channel(channel: dict | None) -> dict | None:
     safe["default_tags"] = normalize_tags_input(safe.get("default_tags"))
     return safe
 
+def normalize_apify_source_item(item: dict, fallback_url: str | None = None) -> dict:
+    if not isinstance(item, dict):
+        item = {}
+    source_url = (
+        item.get("url")
+        or item.get("videoUrl")
+        or item.get("video_url")
+        or item.get("sourceUrl")
+        or fallback_url
+    )
+    youtube_video_id = (
+        item.get("videoId")
+        or item.get("video_id")
+        or item.get("id")
+        or extract_youtube_video_id(source_url)
+    )
+    raw_text = (
+        item.get("transcript")
+        or item.get("text")
+        or item.get("description")
+        or item.get("content")
+        or item.get("caption")
+        or item.get("subtitles")
+    )
+    language = item.get("language") or item.get("lang")
+    summary = item.get("summary") or item.get("shortDescription") or item.get("title")
+    translated_text = item.get("translated_text") or item.get("translation")
+    return {
+        "source_url": source_url,
+        "youtube_video_id": youtube_video_id,
+        "language": language,
+        "raw_text": raw_text,
+        "translated_text": translated_text,
+        "summary": summary,
+    }
+
 # Dashboard API Data
 @app.get("/api/jobs/check-title")
 async def api_check_title(title: str, exclude: str = None, channel_id: int = None, user: str = Depends(get_current_user)):
     """
-    Verifica si ya existe un job con este título exacto.
-    Usado por n8n ANTES de crear un nuevo Short para evitar duplicados y ahorrar créditos.
+    Verifica si ya existe un job con este tÃ­tulo exacto.
+    Usado por n8n ANTES de crear un nuevo Short para evitar duplicados y ahorrar crÃ©ditos.
     Responde con {"exists": true/false, "title": "..."}.
     Si exists=true, n8n debe buscar una historia diferente.
     """
@@ -671,7 +859,7 @@ async def api_check_title(title: str, exclude: str = None, channel_id: int = Non
     return {
         "exists": exists,
         "title": title,
-        "message": "El título ya existe. Busca otra historia viral." if exists else "Título disponible. Puedes crear el Short."
+        "message": "El tÃ­tulo ya existe. Busca otra historia viral." if exists else "TÃ­tulo disponible. Puedes crear el Short."
     }
 
 class PostItem(BaseModel):
@@ -710,13 +898,13 @@ async def api_delete_candidate(cand_id: Union[int, str], user: str = Depends(get
             raise HTTPException(status_code=404, detail="Candidato no encontrado")
         return {"status": "ok"}
     except ValueError:
-        raise HTTPException(status_code=400, detail="ID de candidato inválido")
+        raise HTTPException(status_code=400, detail="ID de candidato invÃ¡lido")
 
 @app.post("/api/candidates/{cand_id}/process")
 async def api_process_candidate(cand_id: int, request: Request, background_tasks: BackgroundTasks):
     """
-    Toma un candidato, genera un storyboard con IA (traducción, escenas, prompts),
-    reutiliza assets de galería si existen, y crea un borrador en el engine.
+    Toma un candidato, genera un storyboard con IA (traducciÃ³n, escenas, prompts),
+    reutiliza assets de galerÃ­a si existen, y crea un borrador en el engine.
     """
     await get_current_user(request)
     candidate = db.get_candidate_by_id(cand_id)
@@ -724,13 +912,13 @@ async def api_process_candidate(cand_id: int, request: Request, background_tasks
         raise HTTPException(status_code=404, detail="Candidato no encontrado")
 
     try:
-        # 1. Generar Storyboard IA (Simula lo que hacía n8n)
+        # 1. Generar Storyboard IA (Simula lo que hacÃ­a n8n)
         logger.info(f"Generando storyboard IA para candidato {cand_id}: {candidate['title']}")
         storyboard_data = ai_manager.generate_storyboard(candidate["content"])
         scenes_raw = storyboard_data.get("scenes", [])
         
         if not scenes_raw:
-            # Fallback si la IA falla o el JSON es vacío
+            # Fallback si la IA falla o el JSON es vacÃ­o
             scenes_raw = [{"text": candidate["content"][:500], "image_prompt": "cinematic background", "subtitle_pos": 8, "subtitle_size": 48}]
 
         # 2. Gallery-First & Preparar escenas finales
@@ -741,7 +929,7 @@ async def api_process_candidate(cand_id: int, request: Request, background_tasks
             prompt = scene.get("image_prompt", "")
             niche = candidate.get("niche", "default")
             
-            # Buscar coincidencia exacta en galería
+            # Buscar coincidencia exacta en galerÃ­a
             existing_asset = db.find_exact_asset(prompt, niche)
             
             new_scene = {
@@ -797,12 +985,12 @@ async def api_process_candidate(cand_id: int, request: Request, background_tasks
         return {
             "status": "ok", 
             "job_id": job_id, 
-            "message": "✅ Storyboard e imágenes (borrador) listos en el engine."
+            "message": "âœ… Storyboard e imÃ¡genes (borrador) listos en el engine."
         }
         
     except Exception as e:
         logger.error(f"Error en api_process_candidate: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error en la generación IA: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error en la generaciÃ³n IA: {str(e)}")
 
 @app.get("/api/jobs")
 async def api_get_jobs(page: int = 1, limit: int = 25, search: str = None, channel_id: int = None, user: str = Depends(get_current_user)):
@@ -828,7 +1016,7 @@ async def api_get_jobs(page: int = 1, limit: int = 25, search: str = None, chann
         try:
             stats_map = youtube_manager.get_video_statistics(job_channel_id, video_ids)
         except Exception as exc:
-            logger.debug(f"No se pudieron cargar estadísticas de vídeos para canal {job_channel_id}: {exc}")
+            logger.debug(f"No se pudieron cargar estadÃ­sticas de vÃ­deos para canal {job_channel_id}: {exc}")
             continue
         for job in jobs:
             if job.get("channel_id") is None:
@@ -854,7 +1042,7 @@ async def api_get_jobs(page: int = 1, limit: int = 25, search: str = None, chann
 async def api_filter_new_posts(posts: List[PostItem], user: str = Depends(get_current_user)):
     """
     Recibe una lista de posts (con campos opcionales viral_score, etc.) y devuelve
-    TODOS los que no existen aún en la BD, preservando todos sus campos originales.
+    TODOS los que no existen aÃºn en la BD, preservando todos sus campos originales.
     Si todos son duplicados, devuelve 200 con all_duplicates=true en lugar de lanzar un error.
     """
     nuevos = [post.dict() for post in posts if not db.check_title_exists(post.title)]
@@ -880,7 +1068,7 @@ class SaveCandidatesRequest(BaseModel):
 @app.post("/api/jobs/save-candidates")
 async def api_save_candidates(data: SaveCandidatesRequest, user: str = Depends(get_current_user)):
     """
-    Guarda lista de candidatos en el cache temporal (12h) para la selección manual vía Telegram.
+    Guarda lista de candidatos en el cache temporal (12h) para la selecciÃ³n manual vÃ­a Telegram.
     Devuelve un session_id corto (8 chars) que se incrusta en el callback_data de los botones.
     """
     session_id = str(uuid.uuid4())[:8]
@@ -901,18 +1089,18 @@ async def api_save_candidates(data: SaveCandidatesRequest, user: str = Depends(g
 @app.get("/api/jobs/candidate/{session_id}/{index}")
 async def api_get_candidate(session_id: str, index: int, user: str = Depends(get_current_user)):
     """
-    Recupera un candidato específico por session_id e índice (0-based).
-    Usado por el workflow Telegram Handler cuando el usuario toca un botón.
+    Recupera un candidato especÃ­fico por session_id e Ã­ndice (0-based).
+    Usado por el workflow Telegram Handler cuando el usuario toca un botÃ³n.
     """
     session = _candidates_cache.get(session_id)
     if not session:
-        raise HTTPException(status_code=404, detail="Sesión expirada o no encontrada. Ejecuta el workflow de nuevo.")
+        raise HTTPException(status_code=404, detail="SesiÃ³n expirada o no encontrada. Ejecuta el workflow de nuevo.")
     if session["expires_at"] < datetime.now():
         del _candidates_cache[session_id]
-        raise HTTPException(status_code=404, detail="Sesión expirada (>12h). Ejecuta el workflow de nuevo.")
+        raise HTTPException(status_code=404, detail="SesiÃ³n expirada (>12h). Ejecuta el workflow de nuevo.")
     items = session["items"]
     if index < 0 or index >= len(items):
-        raise HTTPException(status_code=400, detail=f"Índice {index} fuera de rango (0-{len(items)-1})")
+        raise HTTPException(status_code=400, detail=f"Ãndice {index} fuera de rango (0-{len(items)-1})")
     candidate = items[index]
     return {
         "title":       candidate.get("title"),
@@ -975,7 +1163,15 @@ async def api_delete_media(media_id: int, user: str = Depends(get_current_user))
 async def api_get_settings(user: str = Depends(get_current_user)):
     """Devuelve todos los ajustes guardados. Los valores sensibles se enmascaran,
     pero los flags de control (2FA_ENABLED) se devuelven tal cual."""
-    NON_SENSITIVE_KEYS = {"2FA_ENABLED", "DEFAULT_TTS_ENGINE", "DEFAULT_VOICE_ID", "DEFAULT_TTS_SPEED", "DEFAULT_MUSIC_FILENAME"}
+    NON_SENSITIVE_KEYS = {
+        "2FA_ENABLED",
+        "DEFAULT_TTS_ENGINE",
+        "DEFAULT_VOICE_ID",
+        "DEFAULT_TTS_SPEED",
+        "DEFAULT_MUSIC_FILENAME",
+        "KIE_CURRENT_KEY_INDEX",
+        "APIFY_CURRENT_KEY_INDEX",
+    }
     
     with db._get_connection() as conn:
         conn.row_factory = sqlite3.Row
@@ -995,6 +1191,13 @@ async def api_get_settings(user: str = Depends(get_current_user)):
     for p in ["GROQ", "OPENAI", "DEEPSEEK", "OPENROUTER"]:
         if f"{p}_API_KEY" in settings:
             settings[p] = settings[f"{p}_API_KEY"]
+
+    for p in [
+        "KIE_API_KEY_1", "KIE_API_KEY_2", "KIE_API_KEY_3", "KIE_API_KEY_4", "KIE_API_KEY_5",
+        "APIFY_API_KEY_1", "APIFY_API_KEY_2", "APIFY_API_KEY_3", "APIFY_API_KEY_4",
+    ]:
+        if p in settings:
+            settings[p] = settings[p]
             
     return settings
 
@@ -1004,7 +1207,7 @@ class SaveSettingsRequest(BaseModel):
 
 @app.post("/api/settings")
 async def api_save_settings(req: SaveSettingsRequest, user: str = Depends(get_current_user)):
-    # Lógica inteligente para el nombre de la llave
+    # LÃ³gica inteligente para el nombre de la llave
     key_name = req.provider.upper()
     if key_name in ["GROQ", "OPENAI", "DEEPSEEK", "OPENROUTER"]:
         key_name = f"{key_name}_API_KEY"
@@ -1109,7 +1312,7 @@ async def api_recheck_ai_task(task_id: str, background_tasks: BackgroundTasks, u
     
     api_key = kie_manager.get_valid_api_key()
     if not api_key:
-        raise HTTPException(status_code=400, detail="No hay llaves de API válidas o con saldo.")
+        raise HTTPException(status_code=400, detail="No hay llaves de API vÃ¡lidas o con saldo.")
         
     db.update_ai_task(task_id, "processing", error_message="")
     
@@ -1163,7 +1366,7 @@ async def api_batch_generate(req: AiBatchGenerateRequest, background_tasks: Back
                 db.update_ai_task(task_id, "completed", result_url=f"/static/uploads/{existing['filename']}", media_id=existing['id'])
             else:
                 task_id = f"draft_{str(uuid.uuid4())[:8]}"
-                # Usamos add_ai_task y lo forzamos a draft después porque add_ai_task inserta como 'processing'
+                # Usamos add_ai_task y lo forzamos a draft despuÃ©s porque add_ai_task inserta como 'processing'
                 db.add_ai_task(task_id, scene.prompt, scene.niche, scene.model or "seedream/5-lite-text-to-image", batch_id=batch_id)
                 db.update_ai_task(task_id, "draft")
         return {"batch_id": batch_id, "status": "draft"}
@@ -1207,7 +1410,7 @@ async def api_submit_ai_task(task_id: str, req: AiTaskSubmitRequest, background_
         conn.commit()
         
     try:
-        # Petición a la API
+        # PeticiÃ³n a la API
         remote_task_id, api_key = kie_manager.create_remote_task(prompt_to_use, task_data["model"])
         
         # Renombramos el ID del task local al nuevo ID remoto para que el polling funcione natural
@@ -1233,7 +1436,7 @@ async def api_get_batch_status(batch_id: str, user: str = Depends(get_current_us
     tasks = db.get_tasks_by_batch(batch_id)
     
     # Construir lista de archivos final (siempre en el orden original si es posible, 
-    # pero aquí confiamos en la lista de tasks de la DB)
+    # pero aquÃ­ confiamos en la lista de tasks de la DB)
     files = []
     for t in tasks:
         if t["status"] == "completed" and t.get("media_id"):
@@ -1260,7 +1463,7 @@ async def api_delete_ai_task(task_id: str, user: str = Depends(get_current_user)
     """Deletes an AI task and associated media."""
     success = db.delete_ai_task(task_id)
     if not success:
-        raise HTTPException(status_code=404, detail="No se encontró o no se pudo borrar la tarea.")
+        raise HTTPException(status_code=404, detail="No se encontrÃ³ o no se pudo borrar la tarea.")
     return {"status": "success"}
 
 async def process_ai_task_background(task_id: str, api_key: str, req: AiGenerateRequest):
@@ -1323,11 +1526,11 @@ async def api_tag_asset(req: AIAssetTagRequest, user: str = Depends(get_current_
 @app.post("/api/storyboard/render")
 async def api_render_storyboard(req: StoryboardRequest, background_tasks: BackgroundTasks, user: str = Depends(get_current_user)):
     
-    # ---- Verificación de título único ANTES de renderizar ----
+    # ---- VerificaciÃ³n de tÃ­tulo Ãºnico ANTES de renderizar ----
     if req.title and db.check_title_exists(req.title, exclude_job_id=req.job_id, channel_id=req.channel_id):
         raise HTTPException(
             status_code=409,
-            detail=f"TITULO_DUPLICADO: Ya existe un trabajo con el título '{req.title}'. Busca otra historia viral."
+            detail=f"TITULO_DUPLICADO: Ya existe un trabajo con el tÃ­tulo '{req.title}'. Busca otra historia viral."
         )
 
     # 1. Aplicar variables por defecto desde DB o guardar las nuevas aportadas por el request
@@ -1410,13 +1613,13 @@ async def api_render_storyboard(req: StoryboardRequest, background_tasks: Backgr
 
 @app.post("/api/storyboard/draft")
 async def api_draft_storyboard(req: StoryboardRequest, background_tasks: BackgroundTasks, user: str = Depends(get_current_user)):
-    """Guarda un Short como borrador sin generar vídeos automáticamente."""
+    """Guarda un Short como borrador sin generar vÃ­deos automÃ¡ticamente."""
 
-    # ---- Verificación de título único ANTES de crear el borrador ----
+    # ---- VerificaciÃ³n de tÃ­tulo Ãºnico ANTES de crear el borrador ----
     if req.title and db.check_title_exists(req.title, exclude_job_id=req.job_id, channel_id=req.channel_id):
         raise HTTPException(
             status_code=409,
-            detail=f"TITULO_DUPLICADO: Ya existe un trabajo con el título '{req.title}'. Busca otra historia viral."
+            detail=f"TITULO_DUPLICADO: Ya existe un trabajo con el tÃ­tulo '{req.title}'. Busca otra historia viral."
         )
 
     job_to_overwrite = None
@@ -1538,7 +1741,7 @@ async def api_get_job_statistics(job_id: str, channel_id: int = None, user: str 
             stats_map = youtube_manager.get_video_statistics(int(resolved_channel_id), [str(video_id)])
             stats = stats_map.get(str(video_id), {})
         except Exception as exc:
-            logger.debug(f"No se pudieron cargar estadísticas del trabajo {job_id}: {exc}")
+            logger.debug(f"No se pudieron cargar estadÃ­sticas del trabajo {job_id}: {exc}")
             stats = {}
 
     return {
@@ -1598,7 +1801,7 @@ async def api_get_job_youtube_comments(job_id: str, channel_id: int = None, user
     if not resolved_channel_id:
         raise HTTPException(status_code=400, detail="El trabajo no tiene canal asociado")
     if not job.get("youtube_video_id"):
-        raise HTTPException(status_code=400, detail="El trabajo no tiene un vídeo de YouTube asociado")
+        raise HTTPException(status_code=400, detail="El trabajo no tiene un vÃ­deo de YouTube asociado")
 
     try:
         comments = youtube_manager.list_video_comments(int(resolved_channel_id), str(job["youtube_video_id"]), max_results=25)
@@ -1622,7 +1825,7 @@ async def api_generate_comment_reply_draft(
     if not job:
         raise HTTPException(status_code=404, detail="Trabajo no encontrado")
     if not job.get("youtube_video_id"):
-        raise HTTPException(status_code=400, detail="El trabajo no tiene un vídeo de YouTube asociado")
+        raise HTTPException(status_code=400, detail="El trabajo no tiene un vÃ­deo de YouTube asociado")
 
     resolved_channel_id = job.get("channel_id")
     if not resolved_channel_id:
@@ -1659,7 +1862,7 @@ async def api_publish_comment_reply(
     if not job:
         raise HTTPException(status_code=404, detail="Trabajo no encontrado")
     if not job.get("youtube_video_id"):
-        raise HTTPException(status_code=400, detail="El trabajo no tiene un vídeo de YouTube asociado")
+        raise HTTPException(status_code=400, detail="El trabajo no tiene un vÃ­deo de YouTube asociado")
 
     resolved_channel_id = job.get("channel_id")
     if not resolved_channel_id:
@@ -1715,14 +1918,14 @@ async def api_publish_job_to_youtube(job_id: str, req: PublishVideoRequest, user
 
     video_path = resolve_job_video_path(job)
     if not video_path or not os.path.exists(video_path):
-        raise HTTPException(status_code=400, detail="No se encontró el vídeo renderizado para publicar")
+        raise HTTPException(status_code=400, detail="No se encontrÃ³ el vÃ­deo renderizado para publicar")
 
     title = (req.title or job.get("title") or job.get("text") or job_id).strip()
     description = (req.description if req.description is not None else job.get("text") or "").strip()
     tags = normalize_tags_input(req.tags or channel.get("default_tags"))
     privacy_status = (req.privacy_status or channel.get("default_privacy_status") or "private").strip().lower()
     if privacy_status not in {"private", "unlisted", "public"}:
-        raise HTTPException(status_code=400, detail="privacy_status inválido")
+        raise HTTPException(status_code=400, detail="privacy_status invÃ¡lido")
     category_id = str(req.category_id or channel.get("default_category_id") or "22")
     publish_at = parse_iso_datetime(req.publish_at)
     if publish_at:
@@ -1755,7 +1958,7 @@ async def api_publish_job_to_youtube(job_id: str, req: PublishVideoRequest, user
         log_job_event(
             job_id,
             "publish_success",
-            "Vídeo publicado en YouTube correctamente.",
+            "VÃ­deo publicado en YouTube correctamente.",
             status="success",
             channel_id=int(resolved_channel_id),
             details={"youtube_video_id": youtube_video_id, "youtube_video_url": youtube_video_url, "publish_at": publish_at},
@@ -1796,7 +1999,7 @@ async def api_set_job_thumbnail(job_id: str, file: UploadFile = File(...), chann
     if channel_id is not None and job.get("channel_id") != channel_id:
         raise HTTPException(status_code=404, detail="Trabajo no encontrado para este canal")
     if not job.get("youtube_video_id"):
-        raise HTTPException(status_code=400, detail="Primero debes publicar el vídeo para poder asignar miniatura")
+        raise HTTPException(status_code=400, detail="Primero debes publicar el vÃ­deo para poder asignar miniatura")
 
     ext = os.path.splitext(file.filename or "")[1].lower()
     if ext not in [".jpg", ".jpeg", ".png"]:
@@ -1851,7 +2054,7 @@ async def api_relink_job_youtube(job_id: str, req: RelinkYoutubeVideoRequest, us
     if not video_id:
         raise HTTPException(
             status_code=400,
-            detail="No se pudo extraer un video_id válido. Pega la URL completa de YouTube o el ID del vídeo.",
+            detail="No se pudo extraer un video_id vÃ¡lido. Pega la URL completa de YouTube o el ID del vÃ­deo.",
         )
 
     youtube_video_url = f"https://www.youtube.com/watch?v={video_id}"
@@ -1859,7 +2062,7 @@ async def api_relink_job_youtube(job_id: str, req: RelinkYoutubeVideoRequest, us
     log_job_event(
         job_id,
         "youtube_relinked",
-        "Vídeo de YouTube re-vinculado manualmente.",
+        "VÃ­deo de YouTube re-vinculado manualmente.",
         status="success",
         channel_id=int(resolved_channel_id),
         details={"youtube_video_id": video_id, "youtube_video_url": youtube_video_url},
@@ -1883,7 +2086,7 @@ async def api_update_job_youtube(job_id: str, req: UpdateYoutubeVideoRequest, us
     if not channel_id:
         raise HTTPException(status_code=400, detail="El trabajo no tiene canal asociado")
     if not job.get("youtube_video_id"):
-        raise HTTPException(status_code=400, detail="Primero debes publicar el vídeo para poder editarlo en YouTube")
+        raise HTTPException(status_code=400, detail="Primero debes publicar el vÃ­deo para poder editarlo en YouTube")
 
     channel = db.get_youtube_channel(int(channel_id))
     if not channel:
@@ -1894,7 +2097,7 @@ async def api_update_job_youtube(job_id: str, req: UpdateYoutubeVideoRequest, us
     tags = normalize_tags_input(req.tags or channel.get("default_tags"))
     privacy_status = (req.privacy_status or channel.get("default_privacy_status") or "private").strip().lower()
     if privacy_status not in {"private", "unlisted", "public"}:
-        raise HTTPException(status_code=400, detail="privacy_status inválido")
+        raise HTTPException(status_code=400, detail="privacy_status invÃ¡lido")
     category_id = str(req.category_id or channel.get("default_category_id") or "22")
     publish_at = parse_iso_datetime(req.publish_at)
     if publish_at:
@@ -1923,7 +2126,7 @@ async def api_update_job_youtube(job_id: str, req: UpdateYoutubeVideoRequest, us
     except YouTubeAuthError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     except Exception as exc:
-        logger.error(f"Error actualizando vídeo de YouTube {job_id}: {exc}")
+        logger.error(f"Error actualizando vÃ­deo de YouTube {job_id}: {exc}")
         raise HTTPException(status_code=500, detail=str(exc))
 
 @app.delete("/api/jobs/{job_id}/youtube")
@@ -1936,7 +2139,7 @@ async def api_delete_job_youtube(job_id: str, user: str = Depends(get_current_us
     if not channel_id:
         raise HTTPException(status_code=400, detail="El trabajo no tiene canal asociado")
     if not job.get("youtube_video_id"):
-        raise HTTPException(status_code=400, detail="El trabajo no tiene un vídeo de YouTube asociado")
+        raise HTTPException(status_code=400, detail="El trabajo no tiene un vÃ­deo de YouTube asociado")
 
     try:
         result = youtube_manager.delete_video(int(channel_id), job["youtube_video_id"])
@@ -1945,11 +2148,11 @@ async def api_delete_job_youtube(job_id: str, user: str = Depends(get_current_us
     except YouTubeAuthError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     except Exception as exc:
-        logger.error(f"Error eliminando vídeo de YouTube {job_id}: {exc}")
+        logger.error(f"Error eliminando vÃ­deo de YouTube {job_id}: {exc}")
         raise HTTPException(status_code=500, detail=str(exc))
 
 def resolve_background_video(niche: str, bg_name: str, custom_id: str = None, channel_id: int = None) -> str:
-    """Resuelve la ruta definitiva del vídeo o imagen de fondo."""
+    """Resuelve la ruta definitiva del vÃ­deo o imagen de fondo."""
     if bg_name == "NICHE":
         bg_name = None
 
@@ -1964,23 +2167,23 @@ def resolve_background_video(niche: str, bg_name: str, custom_id: str = None, ch
         if os.path.exists(custom_path):
             return custom_path
             
-    # 2. Buscar en la galería del canal y, si no aparece, en la galería global
+    # 2. Buscar en la galerÃ­a del canal y, si no aparece, en la galerÃ­a global
     if bg_name:
         for gallery in iter_galleries():
             for media in gallery:
-                # Primero intentar coincidencia exacta con el nombre de archivo (más seguro)
+                # Primero intentar coincidencia exacta con el nombre de archivo (mÃ¡s seguro)
                 if media["filename"] == bg_name or media["original_name"] == bg_name:
                     path = os.path.join(UPLOAD_DIR, media["filename"])
                     if os.path.exists(path):
                         return path
                     
-    # 3. Buscar en la carpeta backgrounds física por nicho
+    # 3. Buscar en la carpeta backgrounds fÃ­sica por nicho
     if niche and bg_name:
         niche_path = os.path.join(BASE_DIR, "backgrounds", niche, bg_name)
         if os.path.exists(niche_path):
             return niche_path
             
-    # 4. Fallback: Buscar CUALQUIER vídeo en la galería marcados con ese nicho o en general
+    # 4. Fallback: Buscar CUALQUIER vÃ­deo en la galerÃ­a marcados con ese nicho o en general
     for gallery in iter_galleries():
         filtered = [m for m in gallery if m.get("file_type") == "video"]
         if filtered:
@@ -1990,7 +2193,7 @@ def resolve_background_video(niche: str, bg_name: str, custom_id: str = None, ch
             if os.path.exists(path):
                 return path
 
-    # 5. Fallbacks estáticos
+    # 5. Fallbacks estÃ¡ticos
     fallbacks = [
         os.path.join(BASE_DIR, "backgrounds", "default", "default.mp4"),
         os.path.join(BASE_DIR, "backgrounds", "default.mp4"),
@@ -2001,7 +2204,7 @@ def resolve_background_video(niche: str, bg_name: str, custom_id: str = None, ch
         if os.path.exists(fallback):
             return fallback
 
-    # 6. Último recurso: El primer vídeo que encontremos en la galería
+    # 6. Ãšltimo recurso: El primer vÃ­deo que encontremos en la galerÃ­a
     for gallery in iter_galleries():
         for media in gallery:
             if media["file_type"] == "video":
@@ -2069,7 +2272,7 @@ async def process_storyboard_job(job_id, req: StoryboardRequest):
                     if bg_path: break
 
             if not bg_path:
-                raise ValueError(f"No se pudo encontrar ningún vídeo de fondo en el sistema para la escena {idx+1}. Por favor, sube al menos un vídeo a la galería.")
+                raise ValueError(f"No se pudo encontrar ningÃºn vÃ­deo de fondo en el sistema para la escena {idx+1}. Por favor, sube al menos un vÃ­deo a la galerÃ­a.")
 
             scene_clips.append({
                 "audio": audio_path,
@@ -2170,7 +2373,7 @@ async def render_short(request: RenderRequest, background_tasks: BackgroundTasks
 
     if not bg_path or not os.path.exists(bg_path):
         db.update_job_status(job_id, "failed", error_message="Fondo no encontrado")
-        raise HTTPException(status_code=400, detail="Error: No hay vídeos de fondo. Sube un vídeo a la galería o añade un 'default.mp4' en storage/backgrounds/default/")
+        raise HTTPException(status_code=400, detail="Error: No hay vÃ­deos de fondo. Sube un vÃ­deo a la galerÃ­a o aÃ±ade un 'default.mp4' en storage/backgrounds/default/")
 
     try:
         # 1. Generate Speech
@@ -2220,3 +2423,4 @@ async def render_short(request: RenderRequest, background_tasks: BackgroundTasks
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
+

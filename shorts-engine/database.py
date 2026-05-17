@@ -1,5 +1,6 @@
 import sqlite3
 import os
+import json
 from datetime import datetime
 
 class JobDatabase:
@@ -304,7 +305,73 @@ class JobDatabase:
                 self._ensure_column(conn, "youtube_oauth_states", "redirect_uri", "TEXT")
             except Exception:
                 pass
-                
+
+            # Guiones / research tables
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS script_topics (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    channel_id INTEGER NOT NULL,
+                    title TEXT NOT NULL,
+                    topic TEXT NOT NULL,
+                    status TEXT NOT NULL DEFAULT 'draft',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS script_sources (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    topic_id INTEGER NOT NULL,
+                    channel_id INTEGER,
+                    source_url TEXT,
+                    youtube_video_id TEXT,
+                    source_type TEXT DEFAULT 'youtube',
+                    language TEXT,
+                    raw_text TEXT,
+                    translated_text TEXT,
+                    summary TEXT,
+                    apify_run_id TEXT,
+                    apify_dataset_id TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (topic_id) REFERENCES script_topics(id) ON DELETE CASCADE
+                )
+            """)
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS script_drafts (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    topic_id INTEGER NOT NULL,
+                    version INTEGER DEFAULT 1,
+                    draft_type TEXT DEFAULT 'outline',
+                    content TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (topic_id) REFERENCES script_topics(id) ON DELETE CASCADE
+                )
+            """)
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS script_logs (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    topic_id INTEGER,
+                    source_id INTEGER,
+                    event_type TEXT NOT NULL,
+                    message TEXT NOT NULL,
+                    details_json TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            for table_name, columns in [
+                ("script_topics", [("channel_id", "INTEGER"), ("title", "TEXT"), ("topic", "TEXT"), ("status", "TEXT"), ("updated_at", "TIMESTAMP")]),
+                ("script_sources", [("topic_id", "INTEGER"), ("channel_id", "INTEGER"), ("source_url", "TEXT"), ("youtube_video_id", "TEXT"), ("source_type", "TEXT"), ("language", "TEXT"), ("raw_text", "TEXT"), ("translated_text", "TEXT"), ("summary", "TEXT"), ("apify_run_id", "TEXT"), ("apify_dataset_id", "TEXT"), ("updated_at", "TIMESTAMP")]),
+                ("script_drafts", [("topic_id", "INTEGER"), ("version", "INTEGER"), ("draft_type", "TEXT"), ("content", "TEXT"), ("updated_at", "TIMESTAMP")]),
+                ("script_logs", [("topic_id", "INTEGER"), ("source_id", "INTEGER"), ("event_type", "TEXT"), ("message", "TEXT"), ("details_json", "TEXT")]),
+            ]:
+                for column_name, column_type in columns:
+                    try:
+                        self._ensure_column(conn, table_name, column_name, column_type)
+                    except Exception:
+                        pass
+                 
             conn.commit()
 
             # Initialize Kie Keys if missing
@@ -312,6 +379,11 @@ class JobDatabase:
             if cursor.fetchone()[0] == 0:
                 conn.execute("INSERT INTO settings (key_name, key_value) VALUES (?, ?)", ("KIE_API_KEY_1", "a89431fe9e4cea7f92f2b969d94f3a4c"))
                 conn.execute("INSERT INTO settings (key_name, key_value) VALUES (?, ?)", ("KIE_CURRENT_KEY_INDEX", "1"))
+                conn.commit()
+
+            cursor = conn.execute("SELECT COUNT(*) FROM settings WHERE key_name = 'APIFY_CURRENT_KEY_INDEX'")
+            if cursor.fetchone()[0] == 0:
+                conn.execute("INSERT INTO settings (key_name, key_value) VALUES (?, ?)", ("APIFY_CURRENT_KEY_INDEX", "1"))
                 conn.commit()
 
     # Multimedia Gallery Methods
@@ -341,6 +413,117 @@ class JobDatabase:
                 (key_name, key_value)
             )
             conn.commit()
+
+    # Script / Guiones methods
+    def create_script_topic(self, channel_id: int, title: str, topic: str, status: str = "draft"):
+        with self._get_connection() as conn:
+            cursor = conn.execute(
+                "INSERT INTO script_topics (channel_id, title, topic, status) VALUES (?, ?, ?, ?)",
+                (channel_id, title, topic, status),
+            )
+            conn.commit()
+            return cursor.lastrowid
+
+    def get_script_topic(self, topic_id: int):
+        with self._get_connection() as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.execute("SELECT * FROM script_topics WHERE id = ?", (topic_id,))
+            row = cursor.fetchone()
+            return dict(row) if row else None
+
+    def list_script_topics(self, channel_id=None, limit=50, offset=0, search=None):
+        with self._get_connection() as conn:
+            conn.row_factory = sqlite3.Row
+            query = "SELECT * FROM script_topics WHERE 1=1"
+            params = []
+            if channel_id is not None:
+                query += " AND channel_id = ?"
+                params.append(channel_id)
+            if search:
+                query += " AND (title LIKE ? OR topic LIKE ?)"
+                params.extend([f"%{search}%", f"%{search}%"])
+            query += " ORDER BY updated_at DESC, id DESC LIMIT ? OFFSET ?"
+            params.extend([limit, offset])
+            return [dict(row) for row in conn.execute(query, params).fetchall()]
+
+    def add_script_source(self, topic_id: int, source_url=None, youtube_video_id=None, source_type="youtube", language=None, raw_text=None, translated_text=None, summary=None, apify_run_id=None, apify_dataset_id=None, channel_id=None):
+        with self._get_connection() as conn:
+            cursor = conn.execute(
+                """
+                INSERT INTO script_sources (
+                    topic_id, channel_id, source_url, youtube_video_id, source_type, language,
+                    raw_text, translated_text, summary, apify_run_id, apify_dataset_id
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (topic_id, channel_id, source_url, youtube_video_id, source_type, language, raw_text, translated_text, summary, apify_run_id, apify_dataset_id),
+            )
+            conn.commit()
+            return cursor.lastrowid
+
+    def list_script_sources(self, topic_id: int):
+        with self._get_connection() as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.execute("SELECT * FROM script_sources WHERE topic_id = ? ORDER BY id DESC", (topic_id,))
+            return [dict(row) for row in cursor.fetchall()]
+
+    def add_script_draft(self, topic_id: int, content: str, draft_type: str = "outline", version: int = 1):
+        with self._get_connection() as conn:
+            cursor = conn.execute(
+                "INSERT INTO script_drafts (topic_id, content, draft_type, version) VALUES (?, ?, ?, ?)",
+                (topic_id, content, draft_type, version),
+            )
+            conn.commit()
+            return cursor.lastrowid
+
+    def list_script_drafts(self, topic_id: int):
+        with self._get_connection() as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.execute("SELECT * FROM script_drafts WHERE topic_id = ? ORDER BY version DESC, id DESC", (topic_id,))
+            return [dict(row) for row in cursor.fetchall()]
+
+    def update_script_topic(self, topic_id: int, title: str, topic: str, status: str | None = None):
+        updates = [
+            "title = ?",
+            "topic = ?",
+            "updated_at = CURRENT_TIMESTAMP",
+        ]
+        params = [title, topic]
+        if status is not None:
+            updates.insert(2, "status = ?")
+            params.insert(2, status)
+        params.append(topic_id)
+        with self._get_connection() as conn:
+            conn.execute(
+                f"UPDATE script_topics SET {', '.join(updates)} WHERE id = ?",
+                params,
+            )
+            conn.commit()
+
+    def add_script_log(self, topic_id: int | None, event_type: str, message: str, details: dict | None = None, source_id: int | None = None):
+        with self._get_connection() as conn:
+            conn.execute(
+                "INSERT INTO script_logs (topic_id, source_id, event_type, message, details_json) VALUES (?, ?, ?, ?, ?)",
+                (
+                    topic_id,
+                    source_id,
+                    event_type,
+                    message,
+                    self._safe_json_dumps(details or {}),
+                ),
+            )
+            conn.commit()
+
+    def list_script_logs(self, topic_id: int, limit: int = 50):
+        with self._get_connection() as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.execute(
+                "SELECT * FROM script_logs WHERE topic_id = ? ORDER BY created_at DESC, id DESC LIMIT ?",
+                (topic_id, limit),
+            )
+            rows = [dict(row) for row in cursor.fetchall()]
+            for row in rows:
+                row["details"] = self._safe_json_loads(row.get("details_json"), default={}) or {}
+            return rows
 
     def get_gallery(self, limit=25, offset=0, search=None, file_type=None, channel_id=None):
         with self._get_connection() as conn:

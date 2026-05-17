@@ -284,6 +284,7 @@
                 <a id="tab-gallery" class="channel-tab" href="#">Galería</a>
                 <a id="tab-jobs" class="channel-tab" href="#">Trabajos</a>
                 <a id="tab-ai-tasks" class="channel-tab" href="#">Registros IA</a>
+                <a id="tab-scripts" class="channel-tab" href="#">Guiones</a>
                 <a id="tab-history" class="channel-tab" href="#">Historial</a>
                 <a id="tab-settings" class="channel-tab active" href="#">Ajustes</a>
             </div>
@@ -544,6 +545,7 @@
                 document.getElementById('tab-gallery').href = `/gallery?channel_id=${currentChannelId}`;
                 document.getElementById('tab-jobs').href = `/jobs?channel_id=${currentChannelId}`;
                 document.getElementById('tab-ai-tasks').href = `/ai-tasks?channel_id=${currentChannelId}`;
+                document.getElementById('tab-scripts').href = `/guiones?channel_id=${currentChannelId}`;
                 document.getElementById('tab-history').href = `/channels/${currentChannelId}/history`;
                 document.getElementById('tab-settings').href = `/youtube-channels?channel_id=${currentChannelId}`;
             } else {

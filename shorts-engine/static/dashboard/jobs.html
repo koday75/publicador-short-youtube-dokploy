@@ -330,6 +330,7 @@
                 <a id="tab-gallery" class="channel-tab" href="#">Galería</a>
                 <a id="tab-jobs" class="channel-tab active" href="#">Trabajos</a>
                 <a id="tab-ai-tasks" class="channel-tab" href="#">Registros IA</a>
+                <a id="tab-scripts" class="channel-tab" href="#">Guiones</a>
                 <a id="tab-history" class="channel-tab" href="#">Historial</a>
                 <a id="tab-settings" class="channel-tab" href="#">Ajustes</a>
             </div>
@@ -480,10 +481,11 @@
                 document.getElementById('channel-breadcrumb-name').textContent = channel.internal_name || `Canal ${channelId}`;
                 document.getElementById('tab-overview').href = `/channels/${channelId}`;
                 document.getElementById('tab-storyboard').href = `/storyboard?channel_id=${channelId}`;
-                document.getElementById('tab-gallery').href = `/gallery?channel_id=${channelId}`;
-                document.getElementById('tab-jobs').href = `/jobs?channel_id=${channelId}`;
-                document.getElementById('tab-ai-tasks').href = `/ai-tasks?channel_id=${channelId}`;
-                document.getElementById('tab-history').href = `/channels/${channelId}/history`;
+            document.getElementById('tab-gallery').href = `/gallery?channel_id=${channelId}`;
+            document.getElementById('tab-jobs').href = `/jobs?channel_id=${channelId}`;
+            document.getElementById('tab-ai-tasks').href = `/ai-tasks?channel_id=${channelId}`;
+            document.getElementById('tab-scripts').href = `/guiones?channel_id=${channelId}`;
+            document.getElementById('tab-history').href = `/channels/${channelId}/history`;
                 document.getElementById('tab-settings').href = `/youtube-channels?channel_id=${channelId}`;
             } catch (e) {
                 console.error('No se pudo cargar el canal:', e);
@@ -531,14 +533,14 @@
                     <td style="font-family:monospace; font-size:0.8rem;">${job.job_id.substring(0, 12)}</td>
                     <td style="max-width:320px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${job.title || job.text || ''}">${displayTitle}</td>
                     <td>${statusCell}</td>
-                    <td>${job.youtube_view_count !== null && job.youtube_view_count !== undefined ? `<button type="button" class="views-pill buttonish" onclick="openVideoStats('${job.job_id}', ${job.channel_id ?? 'null'})">👁 ${new Intl.NumberFormat('es-ES').format(job.youtube_view_count)}</button>` : '<span style="color:var(--text-muted);">—</span>'}</td>
+                    <td>${job.youtube_view_count !== null && job.youtube_view_count !== undefined ? `<button type="button" class="views-pill buttonish" onclick="openVideoStats('${job.job_id}', ${job.channel_id ? 'null'})">👁 ${new Intl.NumberFormat('es-ES').format(job.youtube_view_count)}</button>` : '<span style="color:var(--text-muted);">—</span>'}</td>
                     <td style="font-size:0.85rem; color:var(--text-muted);">${new Date(job.created_at).toLocaleString('es-ES')}</td>
                     <td style="display:flex; gap:6px; flex-wrap:wrap;">
                         <button class="action-btn" style="background:#333; color:#fff;" onclick="window.location.href='${job.channel_id ? `/storyboard?job_id=${job.job_id}&channel_id=${job.channel_id}` : `/storyboard?job_id=${job.job_id}`}'">✏️</button>
-                        ${canPlay ? `<button class="action-btn btn-view" onclick="previewVideo('${job.video_url}', ${job.channel_id ?? 'null'})">▶</button>` : ''}
+                        ${canPlay ? `<button class="action-btn btn-view" onclick="previewVideo('${job.video_url}', ${job.channel_id ? 'null'})">▶</button>` : ''}
                         ${canPublish ? `<button class="action-btn" style="background:rgba(88,166,255,0.15); color:#58a6ff; border:1px solid rgba(88,166,255,0.3);" onclick="window.location.href='${job.channel_id ? `/publish?job_id=${job.job_id}&channel_id=${job.channel_id}` : `/publish?job_id=${job.job_id}`}'">Publicar</button>` : ''}
-                        ${canViewComments ? `<button type="button" class="comments-pill buttonish comment-open-btn" data-job-id="${job.job_id}" data-channel-id="${job.channel_id ?? ''}" data-video-title="${(job.title || displayTitle || job.job_id).replace(/"/g, '&quot;')}">💬 ${new Intl.NumberFormat('es-ES').format(commentCount || 0)}</button>` : ''}
-                        <button class="action-btn" style="background:rgba(255,255,255,0.08); color:#fff; border:1px solid rgba(255,255,255,0.12);" onclick="openJobLogs('${job.job_id}', ${job.channel_id ?? 'null'})">Log</button>
+                        ${canViewComments ? `<button type="button" class="comments-pill buttonish comment-open-btn" data-job-id="${job.job_id}" data-channel-id="${job.channel_id ? ''}" data-video-title="${(job.title || displayTitle || job.job_id).replace(/"/g, '&quot;')}">💬 ${new Intl.NumberFormat('es-ES').format(commentCount || 0)}</button>` : ''}
+                        <button class="action-btn" style="background:rgba(255,255,255,0.08); color:#fff; border:1px solid rgba(255,255,255,0.12);" onclick="openJobLogs('${job.job_id}', ${job.channel_id ? 'null'})">Log</button>
                         <button class="action-btn btn-delete" onclick="deleteJob('${job.job_id}')">Eliminar</button>
                 `;
                 if (job.youtube_video_id) {
@@ -635,7 +637,7 @@
         }
 
         function escapeHtml(value) {
-            return String(value ?? '')
+            return String(value ? '')
                 .replace(/&/g, '&amp;')
                 .replace(/</g, '&lt;')
                 .replace(/>/g, '&gt;')

@@ -7,177 +7,262 @@
     <link rel="stylesheet" href="/assets/style.css">
     <link rel="icon" href="/icono.ico" type="image/x-icon">
     <style>
-        .grid-settings { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 1.5rem; margin-top: 1rem; }
-        .setting-card { border: 1px solid var(--border-color); padding: 1.5rem; border-radius: 12px; background: var(--card-bg); display: flex; flex-direction: column; gap: 1rem; }
-        .setting-card h4 { margin: 0; color: var(--primary); display:flex; align-items:center; gap:8px; }
-        .setting-card label { font-size: 0.7rem; text-transform: uppercase; opacity: 0.6; letter-spacing: 0.05rem; }
-        .header-actions { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+        .header-actions { display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap; }
         .header-link {
-            color: #fff;
-            text-decoration: none;
-            padding: 0.55rem 0.95rem;
-            border-radius: 999px;
-            border: 1px solid var(--border-color);
-            background: rgba(255,255,255,0.04);
-            font-weight: 700;
-            font-size: 0.85rem;
-            transition: all 0.2s ease;
+            color:#fff;
+            text-decoration:none;
+            padding:0.55rem 0.95rem;
+            border-radius:999px;
+            border:1px solid var(--border-color);
+            background:rgba(255,255,255,0.04);
+            font-weight:700;
+            font-size:0.85rem;
+            transition:all 0.2s ease;
         }
-        .header-link:hover { background: rgba(255,255,255,0.08); border-color: var(--accent); }
-        .header-link.primary {
-            background: var(--primary);
-            color: #000;
-            border-color: transparent;
+        .header-link:hover { background:rgba(255,255,255,0.08); border-color:var(--accent); }
+        .header-link.primary { background:var(--primary); color:#000; border-color:transparent; }
+        .header-link.primary:hover { filter:brightness(1.05); }
+        .section-title {
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            gap:1rem;
+            margin-bottom:0.65rem;
+            flex-wrap:wrap;
         }
-        .header-link.primary:hover {
-            filter: brightness(1.05);
-            border-color: transparent;
+        .section-title h2 { margin:0; }
+        .section-title p { margin:0.3rem 0 0; color:var(--text-muted); font-size:0.85rem; }
+        .credits-grid, .api-accounts-grid, .grid-settings {
+            display:grid;
+            grid-template-columns:repeat(auto-fit, minmax(260px, 1fr));
+            gap:1rem;
+            margin-top:1rem;
         }
-        nav { display: flex; gap: 15px; margin-bottom: 2rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; }
-        nav a { color: var(--text-muted); text-decoration: none; font-size: 0.9rem; padding: 5px 10px; border-radius: 4px; }
-        nav a:hover { color: #fff; background: rgba(255,255,255,0.05); }
-        nav a.active { color: var(--accent); font-weight: bold; background: rgba(188, 140, 255, 0.1); }
-        input[type="password"] { border-radius: 6px; padding: 10px; background: #000; border: 1px solid #444; color: #fff; width: 100%; }
-        .save-btn { background: var(--primary); color: #000; font-weight: bold; padding: 10px 15px; border-radius: 6px; border: none; cursor: pointer; white-space: nowrap; }
-
-        /* Credit panel styles */
-        .credits-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem; margin-top: 1rem; }
-        .credit-card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 10px; padding: 1.2rem; text-align: center; transition: border-color 0.3s; }
-        .credit-card.ok { border-color: #238636; }
-        .credit-card.low { border-color: #e3b341; }
-        .credit-card.empty { border-color: #f85149; }
-        .credit-card.not_configured { opacity: 0.4; }
-        .credit-badge { font-size: 2rem; font-weight: bold; margin: 0.5rem 0; }
-        .credit-label { font-size: 0.75rem; color: var(--text-muted); }
-        .credit-bar { width: 100%; height: 6px; background: #333; border-radius: 3px; margin-top: 8px; overflow: hidden; }
-        .credit-bar-fill { height: 100%; border-radius: 3px; transition: width 0.5s; }
-        .credit-status { font-size: 0.7rem; margin-top: 6px; font-weight: bold; padding: 2px 8px; border-radius: 10px; display: inline-block; }
-        .status-ok { background: rgba(35,134,54,0.2); color: #3fb950; }
-        .status-low { background: rgba(227,179,65,0.2); color: #e3b341; }
-        .status-empty { background: rgba(248,81,73,0.2); color: #f85149; }
-        .status-nc { background: rgba(255,255,255,0.05); color: #555; }
-        .current-key { border: 2px solid var(--accent) !important; }
-        .current-key-label { font-size: 0.65rem; color: var(--accent); font-weight: bold; margin-bottom: 4px; }
+        .credit-card, .account-card, .setting-card {
+            background:var(--card-bg);
+            border:1px solid var(--border-color);
+            border-radius:12px;
+            padding:1rem;
+            display:flex;
+            flex-direction:column;
+            gap:0.75rem;
+        }
+        .current-key { border-color:var(--accent) !important; box-shadow:0 0 0 1px rgba(188,140,255,0.15) inset; }
+        .current-key-label { font-size:0.68rem; color:var(--accent); font-weight:bold; text-transform:uppercase; letter-spacing:0.04em; }
+        .credit-label { font-size:0.75rem; color:var(--text-muted); }
+        .credit-badge { font-size:1.9rem; font-weight:800; line-height:1; }
+        .credit-bar { width:100%; height:6px; border-radius:999px; background:#333; overflow:hidden; }
+        .credit-bar-fill { height:100%; border-radius:999px; transition:width 0.5s ease; }
+        .credit-status {
+            display:inline-flex;
+            align-items:center;
+            align-self:flex-start;
+            padding:0.25rem 0.55rem;
+            border-radius:999px;
+            font-size:0.72rem;
+            font-weight:700;
+        }
+        .status-ok { background:rgba(35,134,54,0.18); color:#3fb950; }
+        .status-low { background:rgba(227,179,65,0.18); color:#e3b341; }
+        .status-empty { background:rgba(248,81,73,0.18); color:#f85149; }
+        .status-nc { background:rgba(255,255,255,0.06); color:#aaa; }
+        .setting-card h4, .account-card h4 { margin:0; color:var(--primary); }
+        .setting-card label, .account-card label, .field-label {
+            font-size:0.72rem;
+            text-transform:uppercase;
+            opacity:0.7;
+            letter-spacing:0.05rem;
+        }
+        .field { display:grid; gap:0.35rem; }
+        input[type="password"], input[type="text"], input[type="number"], select, textarea {
+            border-radius:8px;
+            padding:10px 12px;
+            background:#000;
+            border:1px solid #444;
+            color:#fff;
+            width:100%;
+            box-sizing:border-box;
+        }
+        textarea { min-height: 90px; resize: vertical; }
+        .save-btn {
+            background:var(--primary);
+            color:#000;
+            font-weight:bold;
+            padding:10px 15px;
+            border-radius:8px;
+            border:none;
+            cursor:pointer;
+            white-space:nowrap;
+        }
         .hint-box {
-            margin-top: 1rem;
-            padding: 1rem;
-            border: 1px solid var(--border-color);
-            border-radius: 10px;
-            background: rgba(255,255,255,0.03);
-            color: var(--text-muted);
-            font-size: 0.88rem;
-            line-height: 1.5;
+            margin-top:1rem;
+            padding:1rem;
+            border:1px solid var(--border-color);
+            border-radius:12px;
+            background:rgba(255,255,255,0.03);
+            color:var(--text-muted);
+            font-size:0.88rem;
+            line-height:1.5;
         }
-        .hint-box code {
-            color: #fff;
-            background: rgba(255,255,255,0.08);
-            padding: 0.15rem 0.35rem;
-            border-radius: 6px;
+        .empty-state {
+            grid-column:1/-1;
+            text-align:center;
+            padding:2rem;
+            color:var(--text-muted);
+            font-size:0.85rem;
+            border:1px dashed var(--border-color);
+            border-radius:12px;
+            background:rgba(255,255,255,0.02);
+        }
+        @media (max-width: 900px) {
+            .credits-grid, .api-accounts-grid, .grid-settings { grid-template-columns:1fr; }
         }
     </style>
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>Ajustes de Sistema</h1>
+            <h1>Ajustes de sistema</h1>
             <div class="header-actions">
-                <div id="2fa-control" class="badge" style="cursor: pointer; padding: 0.6rem 1.2rem; font-weight: bold; font-size: 0.8rem;">Cargando Seguridad...</div>
-                <a class="header-link primary" href="/channels">📺 Canales de trabajo</a>
+                <div id="2fa-control" class="badge" style="cursor:pointer; padding:0.6rem 1.2rem; font-weight:bold; font-size:0.8rem;">Cargando seguridad...</div>
+                <a class="header-link primary" href="/channels">Canales de trabajo</a>
             </div>
         </header>
 
-        <!-- CREDITS SECTION -->
-        <section class="card" style="margin-bottom: 2rem;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+        <section class="card" style="margin-bottom:2rem;">
+            <div class="section-title">
                 <div>
-                    <h2 style="margin:0;">💳 Créditos de Kie.ai</h2>
-                    <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 5px;">
-                        Saldo disponible por cuenta. Se actualiza al pulsar "Consultar".
-                    </p>
+                    <h2>Cr&eacute;ditos de Kie.ai</h2>
+                    <p>Saldo disponible por cuenta. Se actualiza al pulsar &quot;Consultar cr&eacute;ditos&quot;.</p>
                 </div>
-                <button onclick="loadCredits(true)" id="btn-refresh-credits" style="background: var(--accent); color: #000; font-weight: bold;">
-                    🔄 Consultar Créditos
-                </button>
+                <button onclick="loadCredits(true)" id="btn-refresh-credits" style="background:var(--accent); color:#000; font-weight:bold;">Consultar cr&eacute;ditos</button>
             </div>
             <div id="credits-section" class="credits-grid">
-                <div style="grid-column: 1/-1; text-align:center; padding: 2rem; color: var(--text-muted); font-size: 0.85rem;">
-                    Pulsa "Consultar Créditos" para ver el saldo de cada cuenta.
-                </div>
+                <div class="empty-state">Pulsa &quot;Consultar cr&eacute;ditos&quot; para ver el saldo de cada cuenta.</div>
             </div>
         </section>
 
-        <!-- API KEYS SECTION -->
+        <section class="card" style="margin-bottom:2rem;">
+            <div class="section-title">
+                <div>
+                    <h2>Cuentas Apify</h2>
+                    <p>Estas cuatro cuentas se usar&aacute;n en rotaci&oacute;n para importar guiones y textos desde YouTube. Todas las secciones del canal compartir&aacute;n estas cuentas.</p>
+                </div>
+                <button onclick="loadApifyAccounts(true)" id="btn-refresh-apify" style="background:var(--accent); color:#000; font-weight:bold;">Consultar cuentas</button>
+            </div>
+            <div id="apify-accounts-section" class="api-accounts-grid">
+                <div class="empty-state">Pulsa &quot;Consultar cuentas&quot; para validar las cuatro claves de Apify.</div>
+            </div>
+        </section>
+
         <section class="card">
-            <div style="margin-bottom: 1.5rem;">
-                <h2 style="margin:0;">🔑 Configuración de Llaves API</h2>
-                <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 5px;">
-                    Configura las credenciales de los proveedores de IA.
-                </p>
+            <div class="section-title">
+                <div>
+                    <h2>Configuraci&oacute;n de llaves API</h2>
+                    <p>Configura las credenciales de los proveedores de IA.</p>
+                </div>
             </div>
-            <div id="keys-list" class="grid-settings">
-                <!-- Generado dinámicamente -->
-            </div>
+            <div id="keys-list" class="grid-settings"></div>
         </section>
     </div>
 
     <script>
         let is2FAEnabled = true;
-        let currentKieKeyIndex = 1;
+
+        function escapeHtml(value) {
+            return String(value ? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function renderKeyCard(provider, isConfigured, statusText, statusColor) {
+            const fieldPlaceholder = isConfigured ? '************' : 'Pega tu API key aqu\u00ed';
+            return `
+                <div class="setting-card">
+                    <div style="display:flex; justify-content:space-between; align-items:center; gap:0.75rem;">
+                        <h4>${escapeHtml(provider)}</h4>
+                        <small style="color:${statusColor}">${escapeHtml(statusText)}</small>
+                    </div>
+                    <div class="field">
+                        <label>Llave API</label>
+                        <div style="display:flex; gap:8px; margin-top:5px;">
+                            <input type="password" id="key-${provider}" placeholder="${fieldPlaceholder}">
+                            <button class="save-btn" onclick="saveKey('${provider}', this)">Guardar</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderApifyCard(account) {
+            const configured = !!account.configured;
+            const statusClass = account.status === 'ok'
+                ? 'status-ok'
+                : account.status === 'error'
+                    ? 'status-empty'
+                    : 'status-nc';
+            const statusText = account.status === 'ok'
+                ? (account.message || 'Cuenta v\u00e1lida')
+                : account.status === 'error'
+                    ? (account.message || 'Error')
+                    : 'No configurada';
+            return `
+                <div class="account-card ${account.active ? 'current-key' : ''}">
+                    <div style="display:flex; justify-content:space-between; gap:0.75rem; align-items:center;">
+                        <h4>${escapeHtml(account.key_name)}</h4>
+                        ${account.active ? '<span class="current-key-label">Cuenta activa</span>' : ''}
+                    </div>
+                    <div class="field">
+                        <label>Llave API</label>
+                        <div style="display:flex; gap:8px; margin-top:5px;">
+                            <input type="password" id="${account.key_name}" placeholder="${configured ? '************' : 'Pega tu API key aqu\\u00ed'}">
+                            <button class="save-btn" onclick="saveKey('${account.key_name}', this)">Guardar</button>
+                        </div>
+                    </div>
+                    <span class="credit-status ${statusClass}">${escapeHtml(statusText)}</span>
+                </div>
+            `;
+        }
 
         async function loadSettings() {
             try {
                 const res = await fetch('/api/settings');
                 const data = await res.json();
-                currentKieKeyIndex = parseInt(data['KIE_CURRENT_KEY_INDEX'] || '1') || 1;
-                // The current key is the LAST used (before increment), so subtract 1
-                const activeKey = currentKieKeyIndex === 1 ? 5 : currentKieKeyIndex - 1;
-
-                // 2FA Control
-                is2FAEnabled = data["2FA_ENABLED"] !== "false";
+                is2FAEnabled = data['2FA_ENABLED'] !== 'false';
                 const ctrl = document.getElementById('2fa-control');
                 if (is2FAEnabled) {
-                    ctrl.innerHTML = '🛡️ 2FA ACTIVADO';
+                    ctrl.textContent = '2FA activado';
                     ctrl.style.background = 'rgba(35, 134, 54, 0.2)';
                     ctrl.style.color = '#3fb950';
                 } else {
-                    ctrl.innerHTML = '🔓 2FA DESACTIVADO';
+                    ctrl.textContent = '2FA desactivado';
                     ctrl.style.background = 'rgba(248, 81, 73, 0.2)';
                     ctrl.style.color = '#f85149';
                 }
                 ctrl.onclick = toggle2FA;
 
                 const keysContainer = document.getElementById('keys-list');
-                keysContainer.innerHTML = '';
                 const providers = [
-                    'GROQ', 'OPENAI', 'DEEPSEEK', 'OPENROUTER',
-                    'KIE_API_KEY_1', 'KIE_API_KEY_2', 'KIE_API_KEY_3', 'KIE_API_KEY_4', 'KIE_API_KEY_5'
+                    'GROQ',
+                    'OPENAI',
+                    'DEEPSEEK',
+                    'OPENROUTER',
+                    'KIE_API_KEY_1',
+                    'KIE_API_KEY_2',
+                    'KIE_API_KEY_3',
+                    'KIE_API_KEY_4',
+                    'KIE_API_KEY_5',
                 ];
-
-                providers.forEach(p => {
-                    const isConfigured = data[p] === '********';
-                    const statusText = isConfigured ? '✅ Configurada' : '⏳ Pendiente';
-                    const statusColor = isConfigured ? '#3fb950' : '#e3b341';
-                    const fieldPlaceholder = isConfigured ? '••••••••••••••••' : 'Pega tu API Key aquí';
-
-                    keysContainer.innerHTML += `
-                        <div class="setting-card">
-                            <div style="display:flex; justify-content:space-between; align-items:center;">
-                                <h4>${p}</h4>
-                                <small style="color:${statusColor}">${statusText}</small>
-                            </div>
-                            <div>
-                                <label>Llave API</label>
-                                <div style="display: flex; gap: 8px; margin-top:5px;">
-                                    <input type="password" id="key-${p}" placeholder="${fieldPlaceholder}">
-                                    <button class="save-btn" onclick="saveKey('${p}')">Guardar</button>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                });
-            } catch (e) {
-                alert("Error crítico cargando ajustes: " + e.message);
-                console.error("Error cargando ajustes", e);
+                keysContainer.innerHTML = providers.map((provider) => {
+                    const configured = data[provider] === '********';
+                    return renderKeyCard(provider, configured, configured ? 'Configurada' : 'Pendiente', configured ? '#3fb950' : '#e3b341');
+                }).join('');
+            } catch (error) {
+                alert(`Error cr\u00edtico cargando ajustes: ${error.message}`);
+                console.error(error);
             }
         }
 
@@ -185,107 +270,116 @@
             const btn = document.getElementById('btn-refresh-credits');
             if (showLoading) {
                 btn.disabled = true;
-                btn.innerText = '⏳ Consultando...';
+                btn.innerText = 'Consultando...';
             }
-
             try {
                 const res = await fetch('/api/kie/credits');
                 const data = await res.json();
-                
-                // Get current active key
                 const settingsRes = await fetch('/api/settings');
                 const settings = await settingsRes.json();
-                const nextIndex = parseInt(settings['KIE_CURRENT_KEY_INDEX'] || '1') || 1;
-                const activeIndex = nextIndex === 1 ? 5 : nextIndex - 1;
-
+                const activeIndex = (parseInt(settings['KIE_CURRENT_KEY_INDEX'] || '1') || 1);
+                const visibleActive = activeIndex === 1 ? 5 : activeIndex - 1;
                 const container = document.getElementById('credits-section');
-                container.innerHTML = '';
-
-                // Compute max credits for relative bar
-                const maxCredits = Math.max(...data.keys.map(k => k.credits || 0), 100);
-
-                data.keys.forEach(k => {
-                    const credits = k.credits || 0;
+                const maxCredits = Math.max(...data.keys.map((k) => k.credits || 0), 100);
+                container.innerHTML = data.keys.map((key) => {
+                    const credits = key.credits || 0;
                     let statusClass = 'not_configured';
                     let statusLabel = 'No configurada';
                     let barColor = '#555';
                     let badgeClass = 'status-nc';
-
-                    if (k.configured) {
+                    if (key.configured) {
                         if (credits > 50) { statusClass = 'ok'; statusLabel = 'Disponible'; barColor = '#3fb950'; badgeClass = 'status-ok'; }
-                        else if (credits > 10) { statusClass = 'low'; statusLabel = '⚠️ Bajo'; barColor = '#e3b341'; badgeClass = 'status-low'; }
-                        else { statusClass = 'empty'; statusLabel = '❌ Agotada'; barColor = '#f85149'; badgeClass = 'status-empty'; }
+                        else if (credits > 10) { statusClass = 'low'; statusLabel = 'Bajo'; barColor = '#e3b341'; badgeClass = 'status-low'; }
+                        else { statusClass = 'empty'; statusLabel = 'Agotada'; barColor = '#f85149'; badgeClass = 'status-empty'; }
                     }
-
-                    const isActive = k.key_index === activeIndex;
-                    const barPct = k.configured ? Math.min((credits / maxCredits) * 100, 100) : 0;
-
-                    container.innerHTML += `
-                        <div class="credit-card ${statusClass} ${isActive ? 'current-key' : ''}">
-                            ${isActive ? '<div class="current-key-label">▶ CUENTA ACTIVA</div>' : ''}
-                            <div class="credit-label">${k.key_name}</div>
-                            <div class="credit-badge" style="color: ${barColor}">${k.configured ? credits.toLocaleString() : '—'}</div>
-                            <div class="credit-label">créditos</div>
-                            <div class="credit-bar">
-                                <div class="credit-bar-fill" style="width: ${barPct}%; background: ${barColor};"></div>
-                            </div>
-                            <div class="credit-status ${badgeClass}">${k.error || statusLabel}</div>
+                    const barPct = key.configured ? Math.min((credits / maxCredits) * 100, 100) : 0;
+                    const active = key.key_index === visibleActive;
+                    return `
+                        <div class="credit-card ${statusClass} ${active ? 'current-key' : ''}">
+                            ${active ? '<div class="current-key-label">Cuenta activa</div>' : ''}
+                            <div class="credit-label">${escapeHtml(key.key_name)}</div>
+                            <div class="credit-badge" style="color:${barColor}">${key.configured ? credits.toLocaleString() : '—'}</div>
+                            <div class="credit-label">cr&eacute;ditos</div>
+                            <div class="credit-bar"><div class="credit-bar-fill" style="width:${barPct}%; background:${barColor};"></div></div>
+                            <span class="credit-status ${badgeClass}">${escapeHtml(key.error || statusLabel)}</span>
                         </div>
                     `;
-                });
-            } catch(e) {
-                document.getElementById('credits-section').innerHTML = `
-                    <div style="grid-column:1/-1; color: var(--error); text-align:center; padding: 1rem;">
-                        Error al consultar créditos: ${e.message}
-                    </div>`;
+                }).join('');
+            } catch (error) {
+                document.getElementById('credits-section').innerHTML = `<div class="empty-state" style="border-style:solid; color:var(--error);">Error al consultar créditos: ${escapeHtml(error.message)}</div>`;
             } finally {
                 btn.disabled = false;
-                btn.innerText = '🔄 Consultar Créditos';
+                btn.innerText = 'Consultar créditos';
+            }
+        }
+
+        async function loadApifyAccounts(showLoading = false) {
+            const btn = document.getElementById('btn-refresh-apify');
+            if (showLoading) {
+                btn.disabled = true;
+                btn.innerText = 'Consultando...';
+            }
+            try {
+                const res = await fetch('/api/apify/accounts');
+                const data = await res.json();
+                const accounts = data.accounts || [];
+                const container = document.getElementById('apify-accounts-section');
+                container.innerHTML = accounts.length
+                    ? accounts.map(renderApifyCard).join('')
+                    : '<div class="empty-state" style="border-style:solid;">No hay cuentas de Apify configuradas.</div>';
+            } catch (error) {
+                document.getElementById('apify-accounts-section').innerHTML = `<div class="empty-state" style="border-style:solid; color:var(--error);">Error al consultar cuentas de Apify: ${escapeHtml(error.message)}</div>`;
+            } finally {
+                btn.disabled = false;
+                btn.innerText = 'Consultar cuentas';
             }
         }
 
         async function toggle2FA() {
             const newState = !is2FAEnabled;
-            if(!confirm(`¿Seguro que quieres ${newState ? 'ACTIVAR' : 'DESACTIVAR'} el 2FA?`)) return;
+            if (!confirm(`¿Seguro que quieres ${newState ? 'activar' : 'desactivar'} el 2FA?`)) return;
             await fetch('/api/settings', {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ provider: '2FA_ENABLED', api_key: newState ? "true" : "false" })
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ provider: '2FA_ENABLED', api_key: newState ? 'true' : 'false' })
             });
             loadSettings();
         }
 
-        async function saveKey(provider) {
+        async function saveKey(provider, button) {
             const input = document.getElementById(`key-${provider}`);
-            const val = input.value;
-            if(!val) return alert("Escribe la llave primero");
-
-            const btn = event.target;
-            btn.disabled = true;
-            btn.innerText = "⏳";
-
+            if (!input) return;
+            const value = input.value.trim();
+            if (!value) return alert('Escribe la llave primero.');
+            button.disabled = true;
+            button.innerText = '⏳';
             try {
                 const res = await fetch('/api/settings', {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ provider, api_key: val })
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ provider, api_key: value })
                 });
-                if(res.ok) {
+                if (res.ok) {
                     alert(`Llave de ${provider} guardada correctamente.`);
                     input.value = '';
                     loadSettings();
+                    if (provider.startsWith('APIFY_')) loadApifyAccounts();
+                    if (provider.startsWith('KIE_')) loadCredits();
                 } else {
-                    alert("Error al guardar la llave.");
+                    const data = await res.json().catch(() => ({}));
+                    alert(data.detail || 'Error al guardar la llave.');
                 }
-            } catch(e) {
-                alert("Error de conexión.");
+            } catch (error) {
+                alert('Error de conexión.');
             } finally {
-                btn.disabled = false;
-                btn.innerText = "Guardar";
+                button.disabled = false;
+                button.innerText = 'Guardar';
             }
         }
 
         loadSettings();
+        loadCredits();
+        loadApifyAccounts();
     </script>
 </body>
 </html>
