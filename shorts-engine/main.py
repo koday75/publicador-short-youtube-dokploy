@@ -672,24 +672,57 @@ async def api_add_script_source(topic_id: int, req: ScriptSourceCreateRequest, u
     topic = db.get_script_topic(topic_id)
     if not topic:
         raise HTTPException(status_code=404, detail="Tema no encontrado")
+    source_url = (req.source_url or "").strip() or None
+    youtube_video_id = (req.youtube_video_id or "").strip() or None
+    raw_text = (req.raw_text or "").strip() or None
+    language = req.language
+    translated_text = req.translated_text
+    summary = req.summary
+    apify_run_id = req.apify_run_id
+    apify_dataset_id = req.apify_dataset_id
+
+    if source_url and not raw_text:
+        try:
+            scraped_item = apify_manager.fetch_youtube_transcript(source_url)
+            normalized = normalize_apify_source_item(scraped_item, fallback_url=source_url)
+            source_url = normalized["source_url"] or source_url
+            youtube_video_id = normalized["youtube_video_id"] or youtube_video_id
+            raw_text = normalized["raw_text"] or raw_text
+            language = normalized["language"] or language
+            translated_text = normalized["translated_text"] or translated_text
+            summary = normalized["summary"] or summary
+        except Exception as exc:
+            logger.warning("No se pudo extraer la transcripción desde Apify para %s: %s", source_url, exc)
+
+    if raw_text and not summary:
+        ai_result = summarize_source_in_spanish(raw_text, title=topic.get("title"), source_language=language)
+        summary = ai_result.get("summary") or summary
+        translated_text = translated_text or ai_result.get("translated_text")
+
+    if source_url and not raw_text and not summary:
+        raise HTTPException(
+            status_code=400,
+            detail="No se pudo extraer texto útil de ese vídeo. Prueba con otra URL, usa el importador de Apify o pega la transcripción manualmente.",
+        )
+
     source_id = db.add_script_source(
         topic_id=topic_id,
-        source_url=req.source_url,
-        youtube_video_id=req.youtube_video_id,
+        source_url=source_url,
+        youtube_video_id=youtube_video_id,
         source_type=req.source_type or "youtube",
-        language=req.language,
-        raw_text=req.raw_text,
-        translated_text=req.translated_text,
-        summary=req.summary,
-        apify_run_id=req.apify_run_id,
-        apify_dataset_id=req.apify_dataset_id,
+        language=language,
+        raw_text=raw_text,
+        translated_text=translated_text,
+        summary=summary,
+        apify_run_id=apify_run_id,
+        apify_dataset_id=apify_dataset_id,
         channel_id=topic.get("channel_id"),
     )
     db.add_script_log(
         topic_id,
         "source_added",
-        "Fuente aÃ±adida al tema.",
-        {"source_url": req.source_url, "youtube_video_id": req.youtube_video_id, "source_type": req.source_type},
+        "Fuente añadida al tema.",
+        {"source_url": source_url, "youtube_video_id": youtube_video_id, "source_type": req.source_type, "has_text": bool(raw_text), "has_summary": bool(summary)},
         source_id=source_id,
     )
     return {"status": "success", "source": db.list_script_sources(topic_id)[0] if db.list_script_sources(topic_id) else None}
@@ -811,6 +844,40 @@ def serialize_youtube_channel(channel: dict | None) -> dict | None:
     safe["default_tags"] = normalize_tags_input(safe.get("default_tags"))
     return safe
 
+
+def flatten_transcript_text(value: Any) -> str | None:
+    if value is None:
+        return None
+    if isinstance(value, str):
+        text = value.strip()
+        return text or None
+    if isinstance(value, list):
+        parts: list[str] = []
+        for item in value:
+            if isinstance(item, str):
+                cleaned = item.strip()
+                if cleaned:
+                    parts.append(cleaned)
+            elif isinstance(item, dict):
+                cleaned = str(item.get("text") or item.get("subtitle") or item.get("caption") or "").strip()
+                if cleaned:
+                    parts.append(cleaned)
+        joined = " ".join(parts).strip()
+        return joined or None
+    return str(value).strip() or None
+
+
+def summarize_source_in_spanish(raw_text: str | None, title: str | None = None, source_language: str | None = None) -> dict[str, str]:
+    text = (raw_text or "").strip()
+    if not text:
+        return {"summary": "", "translated_text": ""}
+    try:
+        return ai_manager.summarize_script_source(text, title=title, source_language=source_language)
+    except Exception as exc:
+        logger.warning("No se pudo resumir la fuente con IA: %s", exc)
+        fallback = text[:1200].strip()
+        return {"summary": fallback, "translated_text": ""}
+
 def normalize_apify_source_item(item: dict, fallback_url: str | None = None) -> dict:
     if not isinstance(item, dict):
         item = {}
@@ -827,7 +894,7 @@ def normalize_apify_source_item(item: dict, fallback_url: str | None = None) -> 
         or item.get("id")
         or extract_youtube_video_id(source_url)
     )
-    raw_text = (
+    raw_text = flatten_transcript_text(
         item.get("transcript")
         or item.get("text")
         or item.get("description")
@@ -835,9 +902,15 @@ def normalize_apify_source_item(item: dict, fallback_url: str | None = None) -> 
         or item.get("caption")
         or item.get("subtitles")
     )
-    language = item.get("language") or item.get("lang")
-    summary = item.get("summary") or item.get("shortDescription") or item.get("title")
-    translated_text = item.get("translated_text") or item.get("translation")
+    language = item.get("language") or item.get("lang") or item.get("transcriptLanguage") or item.get("subtitlesLanguage")
+    title = item.get("title")
+    summary = item.get("summary") or item.get("shortDescription") or ""
+    translated_text = item.get("translated_text") or item.get("translation") or ""
+    if raw_text and not summary:
+        ai_result = summarize_source_in_spanish(raw_text, title=title, source_language=language)
+        summary = ai_result.get("summary", "") or title or ""
+        if not translated_text:
+            translated_text = ai_result.get("translated_text", "") or ""
     return {
         "source_url": source_url,
         "youtube_video_id": youtube_video_id,

@@ -301,7 +301,7 @@
                         <div class="section-title">
                             <div>
                                 <h4>Fuentes del tema</h4>
-                                <span>Vídeos, transcripciones y texto bruto extraído o añadido manualmente.</span>
+                                <span>Pega una URL de YouTube y la app intentará extraer la transcripción y generar el resumen en español automáticamente.</span>
                             </div>
                         </div>
                         <div class="detail-grid">
@@ -316,10 +316,10 @@
                         </div>
                         <div class="field" style="margin-top:0.75rem;">
                             <label>Texto / transcripción</label>
-                            <textarea id="source-raw-text" placeholder="Pega aquí el texto bruto si ya lo tienes o deja que Apify lo extraiga."></textarea>
+                            <textarea id="source-raw-text" placeholder="Opcional. Si lo dejas vacío e indicas una URL, intentaremos sacar la transcripción automáticamente."></textarea>
                         </div>
                         <div class="actions-row" style="margin-top:0.75rem;">
-                            <button type="button" class="badge" id="add-source-btn" style="background:rgba(63,185,80,0.18); color:#3fb950; border:1px solid rgba(63,185,80,0.25);">Añadir fuente</button>
+                            <button type="button" class="badge" id="add-source-btn" style="background:rgba(63,185,80,0.18); color:#3fb950; border:1px solid rgba(63,185,80,0.25);">Transcribir y resumir</button>
                         </div>
                     </div>
 
@@ -652,6 +652,7 @@
                 alert('Selecciona un tema primero.');
                 return;
             }
+            const button = document.getElementById('add-source-btn');
             const sourceUrl = document.getElementById('source-url').value.trim();
             const youtubeVideoId = document.getElementById('source-video-id').value.trim();
             const rawText = document.getElementById('source-raw-text').value.trim();
@@ -659,25 +660,33 @@
                 alert('Añade una URL, un ID de vídeo o un texto.');
                 return;
             }
-            const res = await fetch(`/api/scripts/topics/${encodeURIComponent(currentTopicId)}/sources`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    source_url: sourceUrl || null,
-                    youtube_video_id: youtubeVideoId || null,
-                    raw_text: rawText || null,
-                    source_type: 'youtube',
-                }),
-            });
-            const data = await res.json();
-            if (!res.ok) {
-                alert(data.detail || 'No se pudo añadir la fuente.');
-                return;
+            button.disabled = true;
+            const previousText = button.textContent;
+            button.textContent = sourceUrl && !rawText ? 'Transcribiendo...' : 'Guardando fuente...';
+            try {
+                const res = await fetch(`/api/scripts/topics/${encodeURIComponent(currentTopicId)}/sources`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        source_url: sourceUrl || null,
+                        youtube_video_id: youtubeVideoId || null,
+                        raw_text: rawText || null,
+                        source_type: 'youtube',
+                    }),
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    alert(data.detail || 'No se pudo añadir la fuente.');
+                    return;
+                }
+                document.getElementById('source-url').value = '';
+                document.getElementById('source-video-id').value = '';
+                document.getElementById('source-raw-text').value = '';
+                await selectTopic(currentTopicId);
+            } finally {
+                button.disabled = false;
+                button.textContent = previousText;
             }
-            document.getElementById('source-url').value = '';
-            document.getElementById('source-video-id').value = '';
-            document.getElementById('source-raw-text').value = '';
-            await selectTopic(currentTopicId);
         }
 
         async function saveDraft() {

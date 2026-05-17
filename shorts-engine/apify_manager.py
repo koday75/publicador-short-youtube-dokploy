@@ -13,8 +13,7 @@ class ApifyManager:
         self.db = db
         self.api_base = "https://api.apify.com/v2"
         self.account_count = 4
-        # Actor público recomendado para empezar con YouTube en Apify Store.
-        self.default_youtube_actor = "streamers/youtube-scraper"
+        self.default_youtube_actor = "apify/youtube-scraper"
 
     def _get_api_key_by_index(self, index: int) -> str:
         if index < 1 or index > self.account_count:
@@ -103,7 +102,7 @@ class ApifyManager:
                 continue
         return None
 
-    def run_youtube_scraper(self, input_data: dict[str, Any], actor_id: str | None = None) -> dict[str, Any]:
+    def run_youtube_scraper(self, input_data: dict[str, Any], actor_id: str | None = None) -> dict[str, Any] | list[dict[str, Any]]:
         api_key = self.get_valid_api_key()
         if not api_key:
             raise RuntimeError("No hay cuentas de Apify configuradas o válidas.")
@@ -120,8 +119,24 @@ class ApifyManager:
             raise RuntimeError(detail or f"Apify respondió con código {res.status_code}.")
         return self._safe_json(res)
 
+    def fetch_youtube_transcript(self, source_url: str, actor_id: str | None = None) -> dict[str, Any]:
+        payload = {
+            "startUrls": [{"url": source_url}],
+            "maxResults": 1,
+            "downloadSubtitles": True,
+            "subtitlesFormat": "text",
+        }
+        items = self.run_youtube_scraper(payload, actor_id=actor_id)
+        if isinstance(items, list) and items:
+            return items[0]
+        if isinstance(items, dict):
+            data = items.get("items") or items.get("data") or []
+            if isinstance(data, list) and data:
+                return data[0]
+        return {}
+
     @staticmethod
-    def _safe_json(response: requests.Response | None) -> dict[str, Any]:
+    def _safe_json(response: requests.Response | None) -> dict[str, Any] | list[dict[str, Any]]:
         if response is None:
             return {}
         try:
