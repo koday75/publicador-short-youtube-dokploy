@@ -149,6 +149,75 @@
             font-weight: 700;
             font-size: 0.9rem;
         }
+        .global-effects-panel {
+            margin-top: 1rem;
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 1rem;
+        }
+        .effect-card {
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            background: rgba(255,255,255,0.03);
+            padding: 0.85rem;
+            display: grid;
+            gap: 0.5rem;
+        }
+        .effect-card label {
+            display: block;
+            font-size: 0.82rem;
+            color: #fff;
+        }
+        .effect-card small {
+            display: block;
+            color: var(--text-muted);
+            line-height: 1.4;
+            font-size: 0.74rem;
+        }
+        .effect-card input[type="range"] {
+            width: 100%;
+        }
+        .effect-card select,
+        .effect-card input[type="number"] {
+            width: 100%;
+        }
+        .scene-effects {
+            margin-top: 0.4rem;
+            border-top: 1px dashed rgba(255,255,255,0.12);
+            padding-top: 0.85rem;
+            display: grid;
+            gap: 0.75rem;
+        }
+        .scene-effects-title {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 0.82rem;
+            color: var(--text-muted);
+        }
+        .scene-effects-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.75rem;
+        }
+        .scene-field {
+            display: grid;
+            gap: 0.35rem;
+        }
+        .scene-field label {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        .scene-field input[type="range"] {
+            width: 100%;
+        }
+        .scene-field select,
+        .scene-field input[type="number"] {
+            width: 100%;
+        }
         .channel-shell {
             border: 1px solid rgba(88, 166, 255, 0.18);
             background: rgba(88, 166, 255, 0.05);
@@ -252,6 +321,24 @@
             font-size: 0.95rem;
             overflow-wrap: anywhere;
         }
+        @media (max-width: 1100px) {
+            .scene-card {
+                grid-template-columns: 56px 1fr;
+            }
+            .scene-card > :nth-child(3),
+            .scene-card > :nth-child(4) {
+                grid-column: 2;
+            }
+            .volume-panel,
+            .global-effects-panel,
+            .scene-effects-grid {
+                grid-template-columns: 1fr;
+            }
+            .preview-box {
+                width: 100%;
+                max-width: 220px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -350,6 +437,41 @@
                         <button type="button" onclick="adjustVolume('voice', 0.05)">+</button>
                         <span id="voice-volume-value" class="volume-value">100%</span>
                     </div>
+                </div>
+            </div>
+            <div class="global-effects-panel">
+                <div class="effect-card">
+                    <label>
+                        <input type="checkbox" id="global-intro-fade-enabled" checked onchange="syncGlobalFadeLabel('intro')">
+                        Fundido de entrada
+                    </label>
+                    <small>Aplica un fundido desde negro al comienzo del vídeo.</small>
+                    <input id="global-intro-fade-duration" type="range" min="0" max="3" step="0.1" value="0.8" oninput="syncGlobalFadeLabel('intro')">
+                    <div class="volume-value" id="global-intro-fade-label">0.8s</div>
+                </div>
+                <div class="effect-card">
+                    <label>
+                        <input type="checkbox" id="global-outro-fade-enabled" checked onchange="syncGlobalFadeLabel('outro')">
+                        Fundido de salida
+                    </label>
+                    <small>Hace una salida suave a negro al terminar.</small>
+                    <input id="global-outro-fade-duration" type="range" min="0" max="3" step="0.1" value="0.8" oninput="syncGlobalFadeLabel('outro')">
+                    <div class="volume-value" id="global-outro-fade-label">0.8s</div>
+                </div>
+                <div class="effect-card">
+                    <label>
+                        <input type="checkbox" id="global-music-fade-enabled" checked onchange="syncGlobalFadeLabel('music')">
+                        Bajada final de música
+                    </label>
+                    <small>La música baja de volumen antes del cierre para evitar un corte brusco.</small>
+                    <input id="global-music-fade-duration" type="range" min="0" max="4" step="0.1" value="2.0" oninput="syncGlobalFadeLabel('music')">
+                    <div class="volume-value" id="global-music-fade-label">2.0s</div>
+                </div>
+                <div class="effect-card">
+                    <label for="global-tail-silence">Silencio final extra</label>
+                    <small>Deja un pequeño margen tras la voz antes de la bajada de música.</small>
+                    <input id="global-tail-silence" type="range" min="0" max="4" step="0.1" value="2.0" oninput="syncGlobalFadeLabel('tail')">
+                    <div class="volume-value" id="global-tail-silence-label">2.0s</div>
                 </div>
             </div>
         </div>
@@ -539,6 +661,30 @@
             syncVolumeLabel(kind);
         }
 
+        function syncGlobalFadeLabel(kind) {
+            const mapping = {
+                intro: ['global-intro-fade-duration', 'global-intro-fade-label', 'global-intro-fade-enabled'],
+                outro: ['global-outro-fade-duration', 'global-outro-fade-label', 'global-outro-fade-enabled'],
+                music: ['global-music-fade-duration', 'global-music-fade-label', 'global-music-fade-enabled'],
+                tail: ['global-tail-silence', 'global-tail-silence-label', null],
+            };
+            const config = mapping[kind];
+            if (!config) return;
+            const input = document.getElementById(config[0]);
+            const label = document.getElementById(config[1]);
+            const enabled = config[2] ? document.getElementById(config[2]).checked : true;
+            if (!input || !label) return;
+            const value = enabled ? parseFloat(input.value || '0') : 0;
+            label.textContent = `${value.toFixed(1)}s`;
+        }
+
+        function syncSceneEffectLabel(sceneId, kind) {
+            const input = document.getElementById(`${kind}-${sceneId}`);
+            const label = document.getElementById(`${kind}-label-${sceneId}`);
+            if (!input || !label) return;
+            label.textContent = kind === 'scene-image-zoom' ? `${parseFloat(input.value || '1').toFixed(2)}x` : `${parseFloat(input.value || '0').toFixed(1)}s`;
+        }
+
         async function init() {
             await reloadGalleryData();
             
@@ -583,6 +729,10 @@
                 console.error("Error loading settings:", e);
                 onEngineChange();
             }
+            syncGlobalFadeLabel('intro');
+            syncGlobalFadeLabel('outro');
+            syncGlobalFadeLabel('music');
+            syncGlobalFadeLabel('tail');
             
             const urlParams = new URLSearchParams(window.location.search);
             const jobId = urlParams.get('job_id');
@@ -761,6 +911,53 @@
                             Mostrar texto en pantalla
                         </label>
                     </div>
+                    <div class="scene-effects">
+                        <div class="scene-effects-title">
+                            <strong>Efectos de escena</strong>
+                            <span>Entrada, salida y movimiento de imagen</span>
+                        </div>
+                        <div class="scene-effects-grid">
+                            <div class="scene-field">
+                                <label for="scene-transition-in-${id}">Entrada</label>
+                                <select id="scene-transition-in-${id}" onchange="syncSceneEffectLabel(${id}, 'scene-transition-in-duration')">
+                                    <option value="fade">Fundido desde negro</option>
+                                    <option value="none">Sin efecto</option>
+                                </select>
+                            </div>
+                            <div class="scene-field">
+                                <label for="scene-transition-in-duration-${id}">Duración entrada</label>
+                                <input type="range" id="scene-transition-in-duration-${id}" min="0" max="3" step="0.1" value="0.8" oninput="syncSceneEffectLabel(${id}, 'scene-transition-in-duration')">
+                                <div class="volume-value" id="scene-transition-in-duration-label-${id}">0.8s</div>
+                            </div>
+                            <div class="scene-field">
+                                <label for="scene-transition-out-${id}">Salida</label>
+                                <select id="scene-transition-out-${id}" onchange="syncSceneEffectLabel(${id}, 'scene-transition-out-duration')">
+                                    <option value="fade">Fundido a negro</option>
+                                    <option value="none">Sin efecto</option>
+                                </select>
+                            </div>
+                            <div class="scene-field">
+                                <label for="scene-transition-out-duration-${id}">Duración salida</label>
+                                <input type="range" id="scene-transition-out-duration-${id}" min="0" max="3" step="0.1" value="0.8" oninput="syncSceneEffectLabel(${id}, 'scene-transition-out-duration')">
+                                <div class="volume-value" id="scene-transition-out-duration-label-${id}">0.8s</div>
+                            </div>
+                            <div class="scene-field">
+                                <label for="scene-image-effect-${id}">Efecto imagen</label>
+                                <select id="scene-image-effect-${id}">
+                                    <option value="zoom_in">Zoom suave</option>
+                                    <option value="zoom_out">Zoom hacia fuera</option>
+                                    <option value="pan_left">Paneo izquierda</option>
+                                    <option value="pan_right">Paneo derecha</option>
+                                    <option value="none">Sin efecto</option>
+                                </select>
+                            </div>
+                            <div class="scene-field">
+                                <label for="scene-image-zoom-${id}">Intensidad zoom</label>
+                                <input type="range" id="scene-image-zoom-${id}" min="1" max="1.4" step="0.01" value="1.12" oninput="syncSceneEffectLabel(${id}, 'scene-image-zoom')">
+                                <div class="volume-value" id="scene-image-zoom-label-${id}">1.12x</div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div class="preview-box" id="preview-${id}">
                     <span>Vista previa</span>
@@ -805,6 +1002,29 @@
                         document.getElementById(`pos-${id}`).value = sceneData.subtitle_pos;
                     }
                 }
+
+                const transitionIn = document.getElementById(`scene-transition-in-${id}`);
+                const transitionOut = document.getElementById(`scene-transition-out-${id}`);
+                const imageEffect = document.getElementById(`scene-image-effect-${id}`);
+                const imageZoom = document.getElementById(`scene-image-zoom-${id}`);
+                const transitionInDuration = document.getElementById(`scene-transition-in-duration-${id}`);
+                const transitionOutDuration = document.getElementById(`scene-transition-out-duration-${id}`);
+
+                if (transitionIn) transitionIn.value = sceneData.transition_in || 'fade';
+                if (transitionOut) transitionOut.value = sceneData.transition_out || 'fade';
+                if (imageEffect) imageEffect.value = sceneData.image_effect || 'zoom_in';
+                if (imageZoom && sceneData.image_zoom !== undefined && sceneData.image_zoom !== null) {
+                    imageZoom.value = String(sceneData.image_zoom);
+                }
+                if (transitionInDuration && sceneData.transition_in_duration !== undefined && sceneData.transition_in_duration !== null) {
+                    transitionInDuration.value = String(sceneData.transition_in_duration);
+                }
+                if (transitionOutDuration && sceneData.transition_out_duration !== undefined && sceneData.transition_out_duration !== null) {
+                    transitionOutDuration.value = String(sceneData.transition_out_duration);
+                }
+                syncSceneEffectLabel(id, 'scene-transition-in-duration');
+                syncSceneEffectLabel(id, 'scene-transition-out-duration');
+                syncSceneEffectLabel(id, 'scene-image-zoom');
             }
             
             updatePreview(id);
@@ -1035,7 +1255,13 @@
                     media_filename: document.getElementById(`media-${id}`).value,
                     subtitle_pos: parseInt(document.getElementById(`pos-${id}`).value),
                     subtitle_size: parseInt(document.getElementById(`size-${id}`).value),
-                    show_text: document.getElementById(`show-text-${id}`).checked
+                    show_text: document.getElementById(`show-text-${id}`).checked,
+                    transition_in: document.getElementById(`scene-transition-in-${id}`).value,
+                    transition_in_duration: parseFloat(document.getElementById(`scene-transition-in-duration-${id}`).value),
+                    transition_out: document.getElementById(`scene-transition-out-${id}`).value,
+                    transition_out_duration: parseFloat(document.getElementById(`scene-transition-out-duration-${id}`).value),
+                    image_effect: document.getElementById(`scene-image-effect-${id}`).value,
+                    image_zoom: parseFloat(document.getElementById(`scene-image-zoom-${id}`).value)
                 });
             });
 
@@ -1051,6 +1277,10 @@
                     music_filename: document.getElementById('global-music').value,
                     music_volume: parseFloat(document.getElementById('music-volume-range').value),
                     voice_volume: parseFloat(document.getElementById('voice-volume-range').value),
+                    intro_fade_duration: document.getElementById('global-intro-fade-enabled').checked ? parseFloat(document.getElementById('global-intro-fade-duration').value) : 0,
+                    outro_fade_duration: document.getElementById('global-outro-fade-enabled').checked ? parseFloat(document.getElementById('global-outro-fade-duration').value) : 0,
+                    music_fade_out_duration: document.getElementById('global-music-fade-enabled').checked ? parseFloat(document.getElementById('global-music-fade-duration').value) : 0,
+                    tail_silence_seconds: parseFloat(document.getElementById('global-tail-silence').value),
                     voice_id: document.getElementById('global-voice').value,
                     niche: document.getElementById('global-niche').value,
                     channel_id: getChannelIdFromQuery(),

@@ -182,12 +182,22 @@ class StoryboardScene(BaseModel):
     subtitle_pos: Optional[Union[int, str]] = 5
     subtitle_size: Optional[Union[int, str]] = 48
     show_text: Optional[bool] = True
+    transition_in: Optional[str] = "fade"
+    transition_in_duration: Optional[float] = 0.8
+    transition_out: Optional[str] = "fade"
+    transition_out_duration: Optional[float] = 0.8
+    image_effect: Optional[str] = "zoom_in"
+    image_zoom: Optional[float] = 1.12
 
 class StoryboardRequest(BaseModel):
     scenes: List[StoryboardScene]
     music_filename: Optional[str] = None
     music_volume: Optional[float] = None
     voice_volume: Optional[float] = None
+    intro_fade_duration: Optional[float] = 0.8
+    outro_fade_duration: Optional[float] = 0.8
+    music_fade_out_duration: Optional[float] = 2.0
+    tail_silence_seconds: Optional[float] = 2.0
     voice_id: Optional[str] = None
     niche: str = "default"
     channel_id: Optional[int] = None
@@ -2515,7 +2525,13 @@ async def process_storyboard_job(job_id, req: StoryboardRequest):
                 "text": scene.text,
                 "sub_pos": scene.subtitle_pos,
                 "sub_size": scene.subtitle_size,
-                "show_text": scene.show_text if scene.show_text is not None else True
+                "show_text": scene.show_text if scene.show_text is not None else True,
+                "transition_in": scene.transition_in or "fade",
+                "transition_in_duration": scene.transition_in_duration if scene.transition_in_duration is not None else 0.8,
+                "transition_out": scene.transition_out or "fade",
+                "transition_out_duration": scene.transition_out_duration if scene.transition_out_duration is not None else 0.8,
+                "image_effect": scene.image_effect or "zoom_in",
+                "image_zoom": scene.image_zoom if scene.image_zoom is not None else 1.12,
             })
 
         # 3. Final Assembly
@@ -2529,7 +2545,11 @@ async def process_storyboard_job(job_id, req: StoryboardRequest):
             output_path,
             music_path=global_music_path,
             music_volume=req.music_volume if req.music_volume is not None else float(db.get_setting("DEFAULT_MUSIC_VOLUME") or 0.2),
-            voice_volume=req.voice_volume if req.voice_volume is not None else float(db.get_setting("DEFAULT_VOICE_VOLUME") or 1.0)
+            voice_volume=req.voice_volume if req.voice_volume is not None else float(db.get_setting("DEFAULT_VOICE_VOLUME") or 1.0),
+            intro_fade_duration=req.intro_fade_duration if req.intro_fade_duration is not None else 0.8,
+            outro_fade_duration=req.outro_fade_duration if req.outro_fade_duration is not None else 0.8,
+            music_fade_out_duration=req.music_fade_out_duration if req.music_fade_out_duration is not None else 2.0,
+            tail_silence_seconds=req.tail_silence_seconds if req.tail_silence_seconds is not None else 2.0,
         )
         db.update_job_status(job_id, "rendered", video_url=f"/static/shorts/{output_filename}")
         log_job_event(

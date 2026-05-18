@@ -98,7 +98,7 @@ class VideoEditor:
         except Exception:
             return 0.0
 
-    def _apply_global_fades(self, input_path: str, output_path: str, fade_duration: float = 0.8):
+    def _apply_global_fades(self, input_path: str, output_path: str, intro_fade_duration: float = 0.8, outro_fade_duration: float = 0.8):
         """Apply a visual fade in/out and only an audio fade in to the full video."""
         total_duration = self._get_media_duration(input_path)
         if total_duration <= 0:
@@ -106,15 +106,22 @@ class VideoEditor:
             shutil.copy(input_path, output_path)
             return output_path
 
-        fade_duration = max(0.2, min(fade_duration, total_duration / 4))
-        fade_out_start = max(0.0, total_duration - fade_duration)
+        intro_fade_duration = max(0.0, min(float(intro_fade_duration or 0.0), total_duration / 4))
+        outro_fade_duration = max(0.0, min(float(outro_fade_duration or 0.0), total_duration / 4))
+        fade_filters = []
+        audio_filters = []
+        if intro_fade_duration > 0:
+            fade_filters.append(f"fade=t=in:st=0:d={intro_fade_duration:.3f}")
+            audio_filters.append(f"afade=t=in:st=0:d={intro_fade_duration:.3f}")
+        if outro_fade_duration > 0:
+            fade_out_start = max(0.0, total_duration - outro_fade_duration)
+            fade_filters.append(f"fade=t=out:st={fade_out_start:.3f}:d={outro_fade_duration:.3f}")
         cmd = [
             'ffmpeg', '-y', '-i', input_path,
             '-filter_complex',
             (
-                f"[0:v]fade=t=in:st=0:d={fade_duration:.3f},"
-                f"fade=t=out:st={fade_out_start:.3f}:d={fade_duration:.3f}[v];"
-                f"[0:a]afade=t=in:st=0:d={fade_duration:.3f}[a]"
+                f"[0:v]{','.join(fade_filters) if fade_filters else 'null'}[v];"
+                f"[0:a]{','.join(audio_filters) if audio_filters else 'anull'}[a]"
             ),
             '-map', '[v]', '-map', '[a]',
             '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '22',
@@ -149,7 +156,9 @@ class VideoEditor:
 
     def create_short(self, background_video: str, audio_path: str, output_path: str,
                      music_path: str = None, music_volume: float = 0.2, voice_volume: float = 1.0,
-                     logo_path: str = None, logo_position: str = "top-right"):
+                     logo_path: str = None, logo_position: str = "top-right",
+                     intro_fade_duration: float = 0.8, outro_fade_duration: float = 0.8,
+                     music_fade_out_duration: float = 2.0, tail_silence_seconds: float = 2.0):
         srt_path = f"temp_subs_{uuid.uuid4().hex[:8]}.srt"
         temp_render_path = f"{output_path}.render_{uuid.uuid4().hex[:8]}.mp4"
         temp_extended_path = f"{output_path}.extended_{uuid.uuid4().hex[:8]}.mp4"
@@ -208,11 +217,11 @@ class VideoEditor:
             cmd[-1] = temp_render_path
             subprocess.run(cmd, check=True, capture_output=True)
             if music_path:
-                self._extend_tail_with_silence(temp_render_path, temp_extended_path, extra_seconds=2.0)
-                self._add_global_music(temp_extended_path, music_path, music_volume, temp_audio_mix_path)
-                self._apply_global_fades(temp_audio_mix_path, output_path)
+                self._extend_tail_with_silence(temp_render_path, temp_extended_path, extra_seconds=tail_silence_seconds)
+                self._add_global_music(temp_extended_path, music_path, music_volume, temp_audio_mix_path, music_fade_out_duration=music_fade_out_duration)
+                self._apply_global_fades(temp_audio_mix_path, output_path, intro_fade_duration=intro_fade_duration, outro_fade_duration=outro_fade_duration)
             else:
-                self._apply_global_fades(temp_render_path, output_path)
+                self._apply_global_fades(temp_render_path, output_path, intro_fade_duration=intro_fade_duration, outro_fade_duration=outro_fade_duration)
             return output_path
         except subprocess.CalledProcessError as e:
             logger.error(f"FFmpeg failed: {e.stderr.decode()}")
@@ -227,7 +236,9 @@ class VideoEditor:
                     except Exception:
                         pass
 
-    def assemble_storyboard(self, scenes, output_path, music_path=None, music_volume=0.2, voice_volume=1.0):
+    def assemble_storyboard(self, scenes, output_path, music_path=None, music_volume=0.2, voice_volume=1.0,
+                            intro_fade_duration: float = 0.8, outro_fade_duration: float = 0.8,
+                            music_fade_out_duration: float = 2.0, tail_silence_seconds: float = 2.0):
         """
         Ensambla escenas con transiciones crossfade (fundido) entre clips.
         scenes: list of {audio, video, text, sub_pos, sub_size}
@@ -253,6 +264,10 @@ class VideoEditor:
                     raise Exception(f"La escena {idx+1} no tiene un vídeo o imagen de fondo asignado.")
 
                 is_image = scene["video"].lower().endswith(('.jpg', '.jpeg', '.png', '.webp'))
+                scene_transition_in = str(scene.get("transition_in", "fade") or "fade").lower()
+                scene_transition_out = str(scene.get("transition_out", "fade") or "fade").lower()
+                scene_transition_in_duration = max(0.0, min(float(scene.get("transition_in_duration", 0.8) or 0.0), audio_duration / 2))
+                scene_transition_out_duration = max(0.0, min(float(scene.get("transition_out_duration", 0.8) or 0.0), audio_duration / 2))
                 
                 # Normalize Subtitle Position
                 pos_val = str(scene.get("sub_pos", "5")).lower()
@@ -273,6 +288,11 @@ class VideoEditor:
 
                 tune_settings = ['-tune', 'stillimage'] if is_image else []
                 show_text = bool(scene.get("show_text", True))
+                clip_fades = []
+                if scene_transition_in != "none" and scene_transition_in_duration > 0:
+                    clip_fades.append(f"fade=t=in:st=0:d={scene_transition_in_duration:.3f}")
+                if scene_transition_out != "none" and scene_transition_out_duration > 0:
+                    clip_fades.append(f"fade=t=out:st={max(0.0, audio_duration - scene_transition_out_duration):.3f}:d={scene_transition_out_duration:.3f}")
                 drawtext = ""
                 if show_text and str(scene.get("text", "")).strip():
                     char_width = sub_size * 0.55
@@ -296,16 +316,42 @@ class VideoEditor:
 
                 if is_image:
                     inputs = ['-loop', '1', '-i', scene["video"]]
-                    # Smooth zoom dynamic speed: target 1.3 in audio_duration
-                    zoom_speed = 0.3 / d_frames if d_frames > 0 else 0.001
+                    image_effect = str(scene.get("image_effect", "zoom_in") or "zoom_in").lower()
+                    image_zoom = self._safe_volume(scene.get("image_zoom"), default=1.12, min_value=1.0, max_value=1.4)
+                    image_zoom = max(1.0, min(1.4, image_zoom))
+                    zoom_span = max(0.01, image_zoom - 1.0)
+                    max_frame_step = max(1, d_frames - 1)
+                    if image_effect == "zoom_out":
+                        zoom_expr = f"{image_zoom:.4f}-({zoom_span:.4f}*on/{max_frame_step})"
+                        pan_x = "(iw-iw/zoom)/2"
+                        pan_y = "(ih-ih/zoom)/2"
+                    elif image_effect == "pan_left":
+                        zoom_expr = f"{image_zoom:.4f}"
+                        pan_x = f"max(0,(iw-iw/zoom)*({max_frame_step}-on)/{max_frame_step})"
+                        pan_y = "(ih-ih/zoom)/2"
+                    elif image_effect == "pan_right":
+                        zoom_expr = f"{image_zoom:.4f}"
+                        pan_x = f"min((iw-iw/zoom), (iw-iw/zoom)*on/{max_frame_step})"
+                        pan_y = "(ih-ih/zoom)/2"
+                    elif image_effect == "zoom_soft":
+                        zoom_expr = f"1+({zoom_span:.4f}*0.6*on/{max_frame_step})"
+                        pan_x = "(iw-iw/zoom)/2"
+                        pan_y = "(ih-ih/zoom)/2"
+                    else:
+                        zoom_expr = f"1+({zoom_span:.4f}*on/{max_frame_step})"
+                        pan_x = "(iw-iw/zoom)/2"
+                        pan_y = "(ih-ih/zoom)/2"
                     video_filter = (
                         "scale=1080:1920:force_original_aspect_ratio=increase,"
                         "crop=1080:1920,"
-                        f"zoompan=z='zoom+{zoom_speed:.5f}':d={d_frames}:s=1080x1920,setsar=1"
+                        f"zoompan=z='min(max({zoom_expr},1.0),1.4)':x='{pan_x}':y='{pan_y}':d={d_frames}:s=1080x1920:fps={fps},setsar=1"
                     )
                 else:
                     inputs = ['-stream_loop', '-1', '-i', scene["video"]]
                     video_filter = "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,setsar=1"
+
+                if clip_fades:
+                    video_filter = f"{video_filter},{','.join(clip_fades)}"
 
                 voice_volume = self._safe_volume(voice_volume, default=1.0, max_value=1.35)
                 cmd = ['ffmpeg', '-y'] + inputs + [
@@ -331,11 +377,11 @@ class VideoEditor:
             # --- Assemble with crossfade transitions ---
             if len(temp_clips) == 1:
                 if music_path:
-                    self._extend_tail_with_silence(temp_clips[0], temp_extended_path, extra_seconds=2.0)
-                    self._add_global_music(temp_extended_path, music_path, music_volume, temp_music_path)
-                    self._apply_global_fades(temp_music_path, output_path)
+                    self._extend_tail_with_silence(temp_clips[0], temp_extended_path, extra_seconds=tail_silence_seconds)
+                    self._add_global_music(temp_extended_path, music_path, music_volume, temp_music_path, music_fade_out_duration=music_fade_out_duration)
+                    self._apply_global_fades(temp_music_path, output_path, intro_fade_duration=intro_fade_duration, outro_fade_duration=outro_fade_duration)
                 else:
-                    self._apply_global_fades(temp_clips[0], output_path)
+                    self._apply_global_fades(temp_clips[0], output_path, intro_fade_duration=intro_fade_duration, outro_fade_duration=outro_fade_duration)
                 return output_path
 
             # Build xfade chain for smooth dissolve between clips
@@ -377,11 +423,11 @@ class VideoEditor:
 
             # Add global music if provided
             if music_path:
-                self._extend_tail_with_silence(assembled, temp_extended_path, extra_seconds=2.0)
-                self._add_global_music(temp_extended_path, music_path, music_volume, temp_music_path)
-                self._apply_global_fades(temp_music_path, output_path)
+                self._extend_tail_with_silence(assembled, temp_extended_path, extra_seconds=tail_silence_seconds)
+                self._add_global_music(temp_extended_path, music_path, music_volume, temp_music_path, music_fade_out_duration=music_fade_out_duration)
+                self._apply_global_fades(temp_music_path, output_path, intro_fade_duration=intro_fade_duration, outro_fade_duration=outro_fade_duration)
             else:
-                self._apply_global_fades(assembled, output_path)
+                self._apply_global_fades(assembled, output_path, intro_fade_duration=intro_fade_duration, outro_fade_duration=outro_fade_duration)
 
             if assembled != output_path and os.path.exists(assembled):
                 os.remove(assembled)
@@ -401,9 +447,9 @@ class VideoEditor:
                     except Exception:
                         pass
 
-    def _add_global_music(self, video_path, music_path, volume, output_path):
+    def _add_global_music(self, video_path, music_path, volume, output_path, music_fade_out_duration: float = 2.0):
         video_duration = self._get_media_duration(video_path)
-        music_fade_out = 2.0 if video_duration >= 2.0 else max(0.2, video_duration / 4)
+        music_fade_out = max(0.2, min(float(music_fade_out_duration or 0.0), video_duration / 2 if video_duration > 0 else 2.0))
         music_fade_out_start = max(0.0, video_duration - music_fade_out)
         volume = self._safe_volume(volume, default=0.2, max_value=1.0)
         cmd = [
