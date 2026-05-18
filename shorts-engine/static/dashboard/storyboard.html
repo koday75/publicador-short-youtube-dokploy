@@ -385,7 +385,7 @@
                 </p>
                 <div style="display:flex; gap:10px; align-items:center; margin-bottom: 1rem; flex-wrap: wrap;">
                     <button class="badge badge-processing" style="background: var(--accent); color: #000; border:none;" onclick="triggerSceneUpload()">+ Subir archivo</button>
-                    <button class="badge" style="background: rgba(88,166,255,0.15); color: #58a6ff; border:1px solid rgba(88,166,255,0.3);" onclick="refreshMediaPicker()">↻ Recargar galería</button>
+                    <button class="badge" style="background: rgba(88,166,255,0.15); color: #58a6ff; border:1px solid rgba(88,166,255,0.3);" onclick="reloadGalleryDataAndRefreshPicker()">↻ Recargar galería</button>
                     <span id="media-picker-context" style="color: var(--text-muted); font-size: 0.8rem;"></span>
                     <input type="file" id="scene-media-upload" accept="image/*,video/*" style="display:none" onchange="uploadSceneMedia(this)">
                 </div>
@@ -935,6 +935,13 @@
             document.getElementById('scene-media-upload').click();
         }
 
+        async function reloadGalleryDataAndRefreshPicker() {
+            await reloadGalleryData();
+            if (document.getElementById('mediaPickerModal')?.classList.contains('active')) {
+                refreshMediaPicker();
+            }
+        }
+
         async function reloadGalleryData() {
             const channelId = getChannelIdFromQuery();
             const musicSelect = document.getElementById('global-music');
@@ -981,14 +988,8 @@
                 method: 'POST',
                 body: formData
             });
+            const data = await res.json().catch(() => ({}));
             if(res.ok) {
-                if (data.job_id) {
-                    currentJobId = data.job_id;
-                }
-                if (requestData.title) {
-                    currentJobTitle = requestData.title;
-                }
-                const data = await res.json();
                 await reloadGalleryData();
                 if(currentMediaSceneId) {
                     const mediaField = document.getElementById(`media-${currentMediaSceneId}`);
@@ -998,7 +999,9 @@
                         updatePreview(currentMediaSceneId);
                     }
                 }
-                refreshMediaPicker();
+                if (document.getElementById('mediaPickerModal')?.classList.contains('active')) {
+                    refreshMediaPicker();
+                }
             } else {
                 alert('No se pudo subir el archivo');
             }
