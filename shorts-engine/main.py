@@ -1842,7 +1842,11 @@ async def api_render_storyboard(req: StoryboardRequest, background_tasks: Backgr
         tts_engine=req.tts_engine,
         tts_speed=req.tts_speed,
         title=req.title,
-        channel_id=req.channel_id
+        channel_id=req.channel_id,
+        intro_fade_duration=req.intro_fade_duration,
+        outro_fade_duration=req.outro_fade_duration,
+        music_fade_out_duration=req.music_fade_out_duration,
+        tail_silence_seconds=req.tail_silence_seconds
     )
     log_job_event(
         job_id,
@@ -1907,7 +1911,11 @@ async def api_draft_storyboard(req: StoryboardRequest, background_tasks: Backgro
         tts_engine=req.tts_engine or db.get_setting("DEFAULT_TTS_ENGINE") or "edge-tts",
         tts_speed=req.tts_speed or float(db.get_setting("DEFAULT_TTS_SPEED") or 1.0),
         title=req.title,
-        channel_id=req.channel_id
+        channel_id=req.channel_id,
+        intro_fade_duration=req.intro_fade_duration,
+        outro_fade_duration=req.outro_fade_duration,
+        music_fade_out_duration=req.music_fade_out_duration,
+        tail_silence_seconds=req.tail_silence_seconds
     )
     log_job_event(
         job_id,
@@ -2610,6 +2618,10 @@ async def render_short(request: RenderRequest, background_tasks: BackgroundTasks
         channel_id=request.channel_id,
         music_volume=request.music_volume,
         voice_volume=request.voice_volume,
+        intro_fade_duration=0.8,
+        outro_fade_duration=0.8,
+        music_fade_out_duration=2.0,
+        tail_silence_seconds=2.0,
     )
     log_job_event(
         job_id,

@@ -772,6 +772,25 @@
                             document.getElementById('voice-volume-range').value = parseFloat(job.voice_volume).toFixed(2);
                             syncVolumeLabel('voice');
                         }
+                        if(job.intro_fade_duration !== null && job.intro_fade_duration !== undefined) {
+                            document.getElementById('global-intro-fade-duration').value = parseFloat(job.intro_fade_duration).toFixed(1);
+                        }
+                        if(job.outro_fade_duration !== null && job.outro_fade_duration !== undefined) {
+                            document.getElementById('global-outro-fade-duration').value = parseFloat(job.outro_fade_duration).toFixed(1);
+                        }
+                        if(job.music_fade_out_duration !== null && job.music_fade_out_duration !== undefined) {
+                            document.getElementById('global-music-fade-duration').value = parseFloat(job.music_fade_out_duration).toFixed(1);
+                        }
+                        if(job.tail_silence_seconds !== null && job.tail_silence_seconds !== undefined) {
+                            document.getElementById('global-tail-silence').value = parseFloat(job.tail_silence_seconds).toFixed(1);
+                        }
+                        document.getElementById('global-intro-fade-enabled').checked = parseFloat(job.intro_fade_duration || 0) > 0;
+                        document.getElementById('global-outro-fade-enabled').checked = parseFloat(job.outro_fade_duration || 0) > 0;
+                        document.getElementById('global-music-fade-enabled').checked = parseFloat(job.music_fade_out_duration || 0) > 0;
+                        syncGlobalFadeLabel('intro');
+                        syncGlobalFadeLabel('outro');
+                        syncGlobalFadeLabel('music');
+                        syncGlobalFadeLabel('tail');
                         
                         // Guardar título para reenviarlo al renderizar
                         if(job.title) {

@@ -105,6 +105,26 @@ class JobDatabase:
                 pass
 
             try:
+                self._ensure_column(conn, "jobs", "intro_fade_duration", "REAL")
+            except Exception:
+                pass
+
+            try:
+                self._ensure_column(conn, "jobs", "outro_fade_duration", "REAL")
+            except Exception:
+                pass
+
+            try:
+                self._ensure_column(conn, "jobs", "music_fade_out_duration", "REAL")
+            except Exception:
+                pass
+
+            try:
+                self._ensure_column(conn, "jobs", "tail_silence_seconds", "REAL")
+            except Exception:
+                pass
+
+            try:
                 self._ensure_column(conn, "jobs", "tts_engine", "TEXT")
             except Exception:
                 pass
@@ -696,15 +716,15 @@ class JobDatabase:
             cursor = conn.execute(query, params)
             return cursor.fetchone()[0] > 0
 
-    def add_job(self, job_id, text, niche, voice_id, status="processing", scenes_json=None, music_filename=None, music_volume=None, voice_volume=None, tts_engine=None, tts_speed=None, title=None, channel_id=None):
+    def add_job(self, job_id, text, niche, voice_id, status="processing", scenes_json=None, music_filename=None, music_volume=None, voice_volume=None, tts_engine=None, tts_speed=None, title=None, channel_id=None, intro_fade_duration=None, outro_fade_duration=None, music_fade_out_duration=None, tail_silence_seconds=None):
         with self._get_connection() as conn:
             conn.execute(
-                "INSERT INTO jobs (job_id, channel_id, title, text, niche, voice_id, status, scenes_json, music_filename, music_volume, voice_volume, tts_engine, tts_speed) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                (job_id, channel_id, title, text, niche, voice_id, status, scenes_json, music_filename, music_volume, voice_volume, tts_engine, tts_speed)
+                "INSERT INTO jobs (job_id, channel_id, title, text, niche, voice_id, status, scenes_json, music_filename, music_volume, voice_volume, tts_engine, tts_speed, intro_fade_duration, outro_fade_duration, music_fade_out_duration, tail_silence_seconds) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (job_id, channel_id, title, text, niche, voice_id, status, scenes_json, music_filename, music_volume, voice_volume, tts_engine, tts_speed, intro_fade_duration, outro_fade_duration, music_fade_out_duration, tail_silence_seconds)
             )
             conn.commit()
 
-    def save_or_update_job(self, job_id, text, niche, voice_id, status="processing", scenes_json=None, music_filename=None, music_volume=None, voice_volume=None, tts_engine=None, tts_speed=None, title=None, channel_id=None):
+    def save_or_update_job(self, job_id, text, niche, voice_id, status="processing", scenes_json=None, music_filename=None, music_volume=None, voice_volume=None, tts_engine=None, tts_speed=None, title=None, channel_id=None, intro_fade_duration=None, outro_fade_duration=None, music_fade_out_duration=None, tail_silence_seconds=None):
         with self._get_connection() as conn:
             existing = conn.execute("SELECT id FROM jobs WHERE job_id = ?", (job_id,)).fetchone()
             if existing:
@@ -723,16 +743,20 @@ class JobDatabase:
                         voice_volume = ?,
                         tts_engine = ?,
                         tts_speed = ?,
+                        intro_fade_duration = ?,
+                        outro_fade_duration = ?,
+                        music_fade_out_duration = ?,
+                        tail_silence_seconds = ?,
                         error_message = NULL,
                         finished_at = NULL
                     WHERE job_id = ?
                     """,
-                    (channel_id, title, text, niche, voice_id, status, scenes_json, music_filename, music_volume, voice_volume, tts_engine, tts_speed, job_id)
+                    (channel_id, title, text, niche, voice_id, status, scenes_json, music_filename, music_volume, voice_volume, tts_engine, tts_speed, intro_fade_duration, outro_fade_duration, music_fade_out_duration, tail_silence_seconds, job_id)
                 )
             else:
                 conn.execute(
-                    "INSERT INTO jobs (job_id, channel_id, title, text, niche, voice_id, status, scenes_json, music_filename, music_volume, voice_volume, tts_engine, tts_speed) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                    (job_id, channel_id, title, text, niche, voice_id, status, scenes_json, music_filename, music_volume, voice_volume, tts_engine, tts_speed)
+                    "INSERT INTO jobs (job_id, channel_id, title, text, niche, voice_id, status, scenes_json, music_filename, music_volume, voice_volume, tts_engine, tts_speed, intro_fade_duration, outro_fade_duration, music_fade_out_duration, tail_silence_seconds) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    (job_id, channel_id, title, text, niche, voice_id, status, scenes_json, music_filename, music_volume, voice_volume, tts_engine, tts_speed, intro_fade_duration, outro_fade_duration, music_fade_out_duration, tail_silence_seconds)
                 )
             conn.commit()
 
