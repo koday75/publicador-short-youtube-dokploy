@@ -175,8 +175,7 @@ class VideoEditor:
         music_volume = self._safe_volume(music_volume, default=0.14, max_value=1.0)
         audio_mix = (
             f"[1:a]aformat=sample_fmts=fltp:sample_rates=44100:channel_layouts=stereo,"
-            f"volume={voice_volume:.3f},alimiter=limit=0.95[levelvoice];"
-            f"[levelvoice]dynaudnorm=f=150:g=9[voice]"
+            f"volume={voice_volume:.3f},alimiter=limit=0.95[voice]"
         )
 
         if music_path:
@@ -321,24 +320,25 @@ class VideoEditor:
                     image_zoom = max(1.0, min(1.4, image_zoom))
                     zoom_span = max(0.01, image_zoom - 1.0)
                     max_frame_step = max(1, d_frames - 1)
+                    motion_step = max(1, int(max_frame_step * 0.55))
                     if image_effect == "zoom_out":
-                        zoom_expr = f"{image_zoom:.4f}-({zoom_span:.4f}*on/{max_frame_step})"
+                        zoom_expr = f"{image_zoom:.4f}-({zoom_span:.4f}*on/{motion_step})"
                         pan_x = "(iw-iw/zoom)/2"
                         pan_y = "(ih-ih/zoom)/2"
                     elif image_effect == "pan_left":
                         zoom_expr = f"{image_zoom:.4f}"
-                        pan_x = f"max(0,(iw-iw/zoom)*({max_frame_step}-on)/{max_frame_step})"
+                        pan_x = f"max(0,(iw-iw/zoom)-((iw-iw/zoom)*on/{motion_step}))"
                         pan_y = "(ih-ih/zoom)/2"
                     elif image_effect == "pan_right":
                         zoom_expr = f"{image_zoom:.4f}"
-                        pan_x = f"min((iw-iw/zoom), (iw-iw/zoom)*on/{max_frame_step})"
+                        pan_x = f"min((iw-iw/zoom), (iw-iw/zoom)*on/{motion_step})"
                         pan_y = "(ih-ih/zoom)/2"
                     elif image_effect == "zoom_soft":
-                        zoom_expr = f"1+({zoom_span:.4f}*0.6*on/{max_frame_step})"
+                        zoom_expr = f"1+({zoom_span:.4f}*0.75*on/{motion_step})"
                         pan_x = "(iw-iw/zoom)/2"
                         pan_y = "(ih-ih/zoom)/2"
                     else:
-                        zoom_expr = f"1+({zoom_span:.4f}*on/{max_frame_step})"
+                        zoom_expr = f"1+({zoom_span:.4f}*on/{motion_step})"
                         pan_x = "(iw-iw/zoom)/2"
                         pan_y = "(ih-ih/zoom)/2"
                     video_filter = (
@@ -360,8 +360,7 @@ class VideoEditor:
                     (
                         f"[0:v]{video_filter}{drawtext},format=yuv420p,fps={fps}[v];"
                         f"[1:a]aformat=sample_fmts=fltp:sample_rates=44100:channel_layouts=stereo,"
-                        f"volume={voice_volume:.3f},alimiter=limit=0.95,"
-                        f"dynaudnorm=f=150:g=9[a]"
+                        f"volume={voice_volume:.3f},alimiter=limit=0.95[a]"
                     ),
                     '-map', '[v]', '-map', '[a]',
                     '-c:v', 'libx264', '-preset', 'ultrafast', '-pix_fmt', 'yuv420p'
