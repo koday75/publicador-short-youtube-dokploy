@@ -155,10 +155,10 @@ class VideoEditor:
         return output_path
 
     def create_short(self, background_video: str, audio_path: str, output_path: str,
-                     music_path: str = None, music_volume: float = 0.2, voice_volume: float = 1.0,
+                     music_path: str = None, music_volume: float = 0.14, voice_volume: float = 1.0,
                      logo_path: str = None, logo_position: str = "top-right",
                      intro_fade_duration: float = 0.8, outro_fade_duration: float = 0.8,
-                     music_fade_out_duration: float = 2.0, tail_silence_seconds: float = 2.0):
+                     music_fade_out_duration: float = 2.0, tail_silence_seconds: float = 5.0):
         srt_path = f"temp_subs_{uuid.uuid4().hex[:8]}.srt"
         temp_render_path = f"{output_path}.render_{uuid.uuid4().hex[:8]}.mp4"
         temp_extended_path = f"{output_path}.extended_{uuid.uuid4().hex[:8]}.mp4"
@@ -172,7 +172,7 @@ class VideoEditor:
         inputs = ['-stream_loop', '-1', '-i', background_video, '-i', audio_path]
         filter_complex = f"[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,setsar=1,{sub_filter}[v]"
         voice_volume = self._safe_volume(voice_volume, default=1.0, max_value=1.35)
-        music_volume = self._safe_volume(music_volume, default=0.2, max_value=1.0)
+        music_volume = self._safe_volume(music_volume, default=0.14, max_value=1.0)
         audio_mix = (
             f"[1:a]aformat=sample_fmts=fltp:sample_rates=44100:channel_layouts=stereo,"
             f"volume={voice_volume:.3f},alimiter=limit=0.95[levelvoice];"
@@ -184,7 +184,7 @@ class VideoEditor:
             audio_mix += (
                 f";[2:a]aformat=sample_fmts=fltp:sample_rates=44100:channel_layouts=stereo,"
                 f"volume={music_volume:.3f}[bgmusic];"
-                f"[voice][bgmusic]amix=inputs=2:duration=first:weights='1 0.45':normalize=1,"
+                f"[voice][bgmusic]amix=inputs=2:duration=first:weights='1 0.25':normalize=1,"
                 f"alimiter=limit=0.95[a]"
             )
         else:
@@ -236,9 +236,9 @@ class VideoEditor:
                     except Exception:
                         pass
 
-    def assemble_storyboard(self, scenes, output_path, music_path=None, music_volume=0.2, voice_volume=1.0,
+    def assemble_storyboard(self, scenes, output_path, music_path=None, music_volume=0.14, voice_volume=1.0,
                             intro_fade_duration: float = 0.8, outro_fade_duration: float = 0.8,
-                            music_fade_out_duration: float = 2.0, tail_silence_seconds: float = 2.0):
+                            music_fade_out_duration: float = 2.0, tail_silence_seconds: float = 5.0):
         """
         Ensambla escenas con transiciones crossfade (fundido) entre clips.
         scenes: list of {audio, video, text, sub_pos, sub_size}
@@ -451,7 +451,7 @@ class VideoEditor:
         video_duration = self._get_media_duration(video_path)
         music_fade_out = max(0.2, min(float(music_fade_out_duration or 0.0), video_duration / 2 if video_duration > 0 else 2.0))
         music_fade_out_start = max(0.0, video_duration - music_fade_out)
-        volume = self._safe_volume(volume, default=0.2, max_value=1.0)
+        volume = self._safe_volume(volume, default=0.14, max_value=1.0)
         cmd = [
             'ffmpeg', '-y', '-i', video_path, '-stream_loop', '-1', '-i', music_path,
             '-filter_complex',
@@ -460,7 +460,7 @@ class VideoEditor:
                 f"volume={volume:.3f},"
                 f"afade=t=in:st=0:d=1.0,"
                 f"afade=t=out:st={music_fade_out_start:.3f}:d={music_fade_out:.3f}[bg];"
-                f"[0:a][bg]amix=inputs=2:duration=first:weights='1 0.45':normalize=1,"
+                f"[0:a][bg]amix=inputs=2:duration=first:weights='1 0.25':normalize=1,"
                 f"alimiter=limit=0.95[aout]"
             ),
             '-map', '0:v', '-map', '[aout]',
