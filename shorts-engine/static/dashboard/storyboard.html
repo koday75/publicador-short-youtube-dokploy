@@ -540,11 +540,11 @@
                             </div>
                             <div class="ai-field">
                                 <label for="leonardo-width">Ancho</label>
-                                <input type="number" id="leonardo-width" min="256" max="2048" step="64" value="1024">
+                                <input type="number" id="leonardo-width" min="256" max="1536" step="64" value="864">
                             </div>
                             <div class="ai-field">
                                 <label for="leonardo-height">Alto</label>
-                                <input type="number" id="leonardo-height" min="256" max="2048" step="64" value="1792">
+                                <input type="number" id="leonardo-height" min="256" max="1536" step="64" value="1536">
                             </div>
                             <div class="ai-field">
                                 <label for="leonardo-num-images">Imágenes</label>
@@ -588,11 +588,11 @@
                             </div>
                             <div class="ai-field">
                                 <label for="leonardo-video-width">Ancho</label>
-                                <input type="number" id="leonardo-video-width" min="256" max="2048" step="64" value="1024">
+                                <input type="number" id="leonardo-video-width" min="256" max="1536" step="64" value="864">
                             </div>
                             <div class="ai-field">
                                 <label for="leonardo-video-height">Alto</label>
-                                <input type="number" id="leonardo-video-height" min="256" max="2048" step="64" value="1792">
+                                <input type="number" id="leonardo-video-height" min="256" max="1536" step="64" value="1536">
                             </div>
                             <div class="ai-field">
                                 <label for="leonardo-video-duration">Duración (segundos)</label>
@@ -2006,8 +2006,8 @@
             const useReference = document.getElementById('leonardo-use-reference')?.checked;
             const sourceMediaFilename = useReference ? getSceneMediaFilename(sceneId) : '';
             const modelId = document.getElementById('leonardo-model-id').value.trim() || String(currentChannelContext?.leonardo_default_model_id || '').trim();
-            const width = parseInt(document.getElementById('leonardo-width').value || '1024', 10);
-            const height = parseInt(document.getElementById('leonardo-height').value || '1792', 10);
+            const width = parseInt(document.getElementById('leonardo-width').value || '864', 10);
+            const height = parseInt(document.getElementById('leonardo-height').value || '1536', 10);
             const numImages = parseInt(document.getElementById('leonardo-num-images').value || '1', 10);
             const negativePrompt = document.getElementById('leonardo-negative-prompt').value.trim();
             const currentJob = currentJobId || new URLSearchParams(window.location.search).get('job_id') || null;
@@ -2026,8 +2026,8 @@
                     channel_id: channelId,
                     job_id: currentJob,
                     model_id: modelId || null,
-                    width: Number.isFinite(width) ? width : 1024,
-                    height: Number.isFinite(height) ? height : 1792,
+                    width: Number.isFinite(width) ? width : 864,
+                    height: Number.isFinite(height) ? height : 1536,
                     num_images: Number.isFinite(numImages) ? numImages : 1,
                     negative_prompt: negativePrompt || null,
                     source_media_filename: sourceMediaFilename || null,
@@ -2126,8 +2126,8 @@
             const sourceItem = getSceneMediaItem(sceneId);
             const model = document.getElementById('leonardo-video-model').value.trim() || 'MOTION2';
             const resolution = document.getElementById('leonardo-video-resolution').value.trim() || 'RESOLUTION_720';
-            const width = parseInt(document.getElementById('leonardo-video-width').value || '1024', 10);
-            const height = parseInt(document.getElementById('leonardo-video-height').value || '1792', 10);
+            const width = parseInt(document.getElementById('leonardo-video-width').value || '864', 10);
+            const height = parseInt(document.getElementById('leonardo-video-height').value || '1536', 10);
             const duration = parseInt(document.getElementById('leonardo-video-duration').value || '5', 10);
             const frameInterpolation = document.getElementById('leonardo-video-frame-interpolation')?.checked;
             const currentJob = currentJobId || new URLSearchParams(window.location.search).get('job_id') || null;
@@ -2149,8 +2149,8 @@
                     job_id: currentJob,
                     model,
                     resolution,
-                    width: Number.isFinite(width) ? width : 1024,
-                    height: Number.isFinite(height) ? height : 1792,
+                    width: Number.isFinite(width) ? width : 864,
+                    height: Number.isFinite(height) ? height : 1536,
                     duration: Number.isFinite(duration) ? duration : 5,
                     frame_interpolation: frameInterpolation,
                     source_media_filename: sourceMediaFilename || null,

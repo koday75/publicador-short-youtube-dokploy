@@ -387,8 +387,8 @@ class LeonardoGenerateRequest(BaseModel):
     job_id: Optional[str] = None
     niche: str = "general"
     model_id: Optional[str] = None
-    width: Optional[int] = 1024
-    height: Optional[int] = 1024
+    width: Optional[int] = 864
+    height: Optional[int] = 1536
     num_images: Optional[int] = 1
     negative_prompt: Optional[str] = None
     seed: Optional[int] = None
@@ -1150,6 +1150,31 @@ def estimate_leonardo_image_cost(model_id: str | None, width: int | None, height
     return round(max(0.2, base), 2)
 
 
+def normalize_leonardo_image_dimensions(width: int | None, height: int | None) -> tuple[int, int]:
+    default_width = 864
+    default_height = 1536
+    max_dimension = 1536
+    min_dimension = 16
+    step = 8
+
+    try:
+        safe_width = int(width or default_width)
+    except Exception:
+        safe_width = default_width
+    try:
+        safe_height = int(height or default_height)
+    except Exception:
+        safe_height = default_height
+
+    safe_width = max(min_dimension, min(max_dimension, safe_width))
+    safe_height = max(min_dimension, min(max_dimension, safe_height))
+
+    safe_width = max(min_dimension, (safe_width // step) * step)
+    safe_height = max(min_dimension, (safe_height // step) * step)
+
+    return safe_width, safe_height
+
+
 def estimate_leonardo_video_cost(model: str | None, resolution: str | None, duration: int | None, frame_interpolation: bool = False) -> float:
     model_ref = (model or "").strip().upper()
     base_map = {
@@ -1801,7 +1826,7 @@ def build_leonardo_model_catalog(channel_id: int | None = None) -> dict[str, lis
             "name": model.get("name") or model_id,
             "description": model.get("description") or "",
             "kind": "image",
-            "estimated_cost": estimate_leonardo_image_cost(model_id, 1024, 1792, 1),
+            "estimated_cost": estimate_leonardo_image_cost(model_id, 864, 1536, 1),
         })
 
     if not image_models:
@@ -1811,7 +1836,7 @@ def build_leonardo_model_catalog(channel_id: int | None = None) -> dict[str, lis
                 "name": item["name"],
                 "description": "",
                 "kind": "image",
-                "estimated_cost": estimate_leonardo_image_cost(item["id"], 1024, 1792, 1),
+                "estimated_cost": estimate_leonardo_image_cost(item["id"], 864, 1536, 1),
             }
             for item in LEONARDO_FALLBACK_IMAGE_MODELS
         ]
@@ -1929,12 +1954,14 @@ async def api_generate_leonardo_image(req: LeonardoGenerateRequest, background_t
                     uploaded = leonardo_manager.upload_init_image(str(media["file_path"]))
                     init_image_id = uploaded.get("id")
 
+        safe_width, safe_height = normalize_leonardo_image_dimensions(req.width, req.height)
+
         generation_id, raw_data = leonardo_manager.create_image_generation(
             effective_prompt,
             model_id=requested_model or channel_model or global_model,
             style_ids=applied_style_ids,
-            width=req.width or 1024,
-            height=req.height or 1024,
+            width=safe_width,
+            height=safe_height,
             num_images=req.num_images or 1,
             negative_prompt=req.negative_prompt,
             seed=req.seed,
@@ -2312,6 +2339,7 @@ async def process_leonardo_task_background(task_id: str, generation_id: str, req
         or normalize_leonardo_model_id(db.get_setting("LEONARDO_DEFAULT_MODEL_ID"))
         or "leonardo"
     )
+    safe_width, safe_height = normalize_leonardo_image_dimensions(req.width, req.height)
     cost_recorded = False
     try:
         while time.time() - start_time < 600:  # 10 min max
@@ -2345,8 +2373,8 @@ async def process_leonardo_task_background(task_id: str, generation_id: str, req
             if status in {"COMPLETE", "COMPLETED", "SUCCESS"} and not cost_recorded:
                 cost_amount, cost_unit = reconcile_leonardo_credit_balance(task_id, data, fallback_cost=estimate_leonardo_image_cost(
                     model_ref,
-                    req.width,
-                    req.height,
+                    safe_width,
+                    safe_height,
                     req.num_images,
                     bool(req.init_image_id or req.init_generation_image_id or req.source_media_filename),
                     bool(req.transparency),
