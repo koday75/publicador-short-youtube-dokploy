@@ -7,6 +7,51 @@
     <link rel="stylesheet" href="/assets/style.css">
     <link rel="icon" href="/icono.ico" type="image/x-icon">
     <style>
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            gap: 1rem;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            margin-bottom: 1.25rem;
+        }
+        .page-header-actions {
+            display: flex;
+            gap: 0.65rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.45rem;
+            border-radius: 999px;
+            border: 1px solid var(--border-color);
+            padding: 0.68rem 1rem;
+            font-weight: 700;
+            text-decoration: none;
+            color: #fff;
+            background: rgba(255,255,255,0.04);
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .btn:hover {
+            border-color: rgba(88, 166, 255, 0.35);
+            background: rgba(88, 166, 255, 0.12);
+        }
+        .btn-primary {
+            background: linear-gradient(90deg, #58a6ff, #8f5cff);
+            border-color: transparent;
+            color: #fff;
+        }
+        .btn-primary:hover {
+            background: linear-gradient(90deg, #69b2ff, #9d6cff);
+        }
+        .btn-secondary {
+            background: rgba(255,255,255,0.05);
+            color: #fff;
+        }
         .ranking-topbar {
             display: flex;
             justify-content: space-between;
@@ -81,6 +126,46 @@
             border-radius: 18px;
             padding: 1rem;
             margin-bottom: 1rem;
+        }
+        .channel-shell {
+            border: 1px solid rgba(88, 166, 255, 0.18);
+            background: rgba(88, 166, 255, 0.05);
+            border-radius: 18px;
+            padding: 1rem 1.1rem;
+            margin: 0 0 1rem;
+        }
+        .channel-breadcrumb {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            align-items: center;
+            color: var(--text-muted);
+            font-size: 0.84rem;
+            margin-bottom: 0.8rem;
+        }
+        .channel-breadcrumb a {
+            color: #fff;
+            text-decoration: none;
+        }
+        .channel-tabs {
+            display: flex;
+            gap: 0.55rem;
+            flex-wrap: wrap;
+        }
+        .channel-tab {
+            text-decoration: none;
+            border: 1px solid var(--border-color);
+            border-radius: 999px;
+            padding: 0.55rem 0.85rem;
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            background: rgba(255,255,255,0.03);
+        }
+        .channel-tab.active {
+            background: rgba(88, 166, 255, 0.15);
+            color: #58a6ff;
+            border-color: rgba(88, 166, 255, 0.3);
+            font-weight: 700;
         }
         .chart-wrap {
             width: 100%;
@@ -161,13 +246,13 @@
 <body>
     <div class="dashboard-shell">
         <header class="page-header">
-            <div>
-                <h1 id="page-title">📊 Ranking del canal</h1>
-                <p id="page-subtitle" class="page-subtitle">Analítica diaria, semanal y mensual de los trabajos publicados.</p>
-            </div>
-            <div class="page-header-actions">
-                <a id="back-channel-link" class="btn btn-secondary" href="#">← Volver al canal</a>
-                <a id="edit-channel-link" class="btn btn-primary" href="#">Editar canal</a>
+                <div>
+                    <h1 id="page-title">📊 Ranking del canal</h1>
+                    <p id="page-subtitle" class="page-subtitle">Analítica diaria, semanal y mensual de los trabajos publicados.</p>
+                </div>
+                <div class="page-header-actions">
+                    <a id="back-channel-link" class="btn btn-secondary" href="#">← Volver al canal</a>
+                    <a id="edit-channel-link" class="btn btn-primary" href="#">Editar canal</a>
             </div>
         </header>
 
@@ -210,7 +295,7 @@
                     <option value="comments">Comentarios</option>
                     <option value="engagement">Engagement</option>
                 </select>
-                <button id="refresh-btn" class="ranking-btn">↻ Actualizar</button>
+                <button id="refresh-btn" class="ranking-btn">↻ Sincronizar datos</button>
             </div>
         </section>
 
