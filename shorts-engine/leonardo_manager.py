@@ -1,7 +1,7 @@
-import json
 import logging
 import os
 import uuid
+import json
 from typing import Any
 
 import requests
@@ -51,6 +51,7 @@ class LeonardoManager:
         prompt: str,
         *,
         model_id: str | None = None,
+        style_ids: list[str] | None = None,
         width: int = 1024,
         height: int = 1024,
         num_images: int = 1,
@@ -82,6 +83,8 @@ class LeonardoManager:
         }
         if model_id:
             payload["modelId"] = model_id
+        if style_ids:
+            payload["style_ids"] = [sid for sid in style_ids if sid]
         if negative_prompt:
             payload["negative_prompt"] = negative_prompt
         if seed is not None:

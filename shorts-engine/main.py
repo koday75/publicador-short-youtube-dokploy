@@ -10,6 +10,7 @@ import logging
 import time
 import asyncio
 import json
+import unicodedata
 import pyotp
 from fastapi import FastAPI, HTTPException, BackgroundTasks, Request, Response, Depends, File, UploadFile, Query
 from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse
@@ -423,6 +424,11 @@ class YouTubeChannelCreateRequest(BaseModel):
     google_client_id: Optional[str] = None
     google_client_secret: Optional[str] = None
     google_redirect_uri: Optional[str] = None
+    visual_style_name: Optional[str] = None
+    visual_style_prompt: Optional[str] = None
+    visual_style_palette: Optional[str] = None
+    visual_style_notes: Optional[str] = None
+    leonardo_default_model_id: Optional[str] = None
     default_privacy_status: str = "private"
     default_category_id: str = "22"
     default_tags: Optional[Union[List[str], str]] = []
@@ -436,6 +442,11 @@ class YouTubeChannelUpdateRequest(BaseModel):
     google_client_id: Optional[str] = None
     google_client_secret: Optional[str] = None
     google_redirect_uri: Optional[str] = None
+    visual_style_name: Optional[str] = None
+    visual_style_prompt: Optional[str] = None
+    visual_style_palette: Optional[str] = None
+    visual_style_notes: Optional[str] = None
+    leonardo_default_model_id: Optional[str] = None
     default_privacy_status: str = "private"
     default_category_id: str = "22"
     default_tags: Optional[Union[List[str], str]] = []
@@ -509,6 +520,11 @@ async def api_create_youtube_channel(req: YouTubeChannelCreateRequest, user: str
         "google_client_id": req.google_client_id,
         "google_client_secret": req.google_client_secret,
         "google_redirect_uri": req.google_redirect_uri,
+        "visual_style_name": req.visual_style_name,
+        "visual_style_prompt": req.visual_style_prompt,
+        "visual_style_palette": req.visual_style_palette,
+        "visual_style_notes": req.visual_style_notes,
+        "leonardo_default_model_id": req.leonardo_default_model_id,
         "default_privacy_status": privacy,
         "default_category_id": str(req.default_category_id or "22"),
         "default_tags": normalize_tags_input(req.default_tags),
@@ -588,6 +604,11 @@ async def api_update_youtube_channel(channel_id: int, req: YouTubeChannelUpdateR
         "google_client_id": req.google_client_id if req.google_client_id is not None and req.google_client_id.strip() else existing.get("google_client_id"),
         "google_client_secret": req.google_client_secret if req.google_client_secret is not None and req.google_client_secret.strip() else existing.get("google_client_secret"),
         "google_redirect_uri": req.google_redirect_uri if req.google_redirect_uri is not None and req.google_redirect_uri.strip() else existing.get("google_redirect_uri"),
+        "visual_style_name": req.visual_style_name if req.visual_style_name is not None else existing.get("visual_style_name"),
+        "visual_style_prompt": req.visual_style_prompt if req.visual_style_prompt is not None else existing.get("visual_style_prompt"),
+        "visual_style_palette": req.visual_style_palette if req.visual_style_palette is not None else existing.get("visual_style_palette"),
+        "visual_style_notes": req.visual_style_notes if req.visual_style_notes is not None else existing.get("visual_style_notes"),
+        "leonardo_default_model_id": req.leonardo_default_model_id if req.leonardo_default_model_id is not None else existing.get("leonardo_default_model_id"),
         "default_privacy_status": privacy,
         "default_category_id": str(req.default_category_id or "22"),
         "default_tags": normalize_tags_input(req.default_tags),
@@ -999,6 +1020,100 @@ def serialize_youtube_channel(channel: dict | None) -> dict | None:
         safe["google_client_secret"] = "********"
     safe["default_tags"] = normalize_tags_input(safe.get("default_tags"))
     return safe
+
+
+LEONARDO_STYLE_PRESETS = {
+    "3d render": "debdf72a-91a4-467b-bf61-cc02bdeb69c6",
+    "bokeh": "9fdc5e8c-4d13-49b4-9ce6-5a74cbb19177",
+    "cinematic": "a5632c7c-ddbb-4e2f-ba34-8456ab3ac436",
+    "cinematico": "a5632c7c-ddbb-4e2f-ba34-8456ab3ac436",
+    "cinematic concept": "33abbb99-03b9-4dd7-9761-ee98650b2c88",
+    "creative": "6fedbf1f-4a17-45ec-84fb-92fe524a29ef",
+    "dynamic": "111dc692-d470-4eec-b791-3475abac4c46",
+    "fashion": "594c4a08-a522-4e0e-b7ff-e4dac4b6b622",
+    "graphic design pop art": "2e74ec31-f3a4-4825-b08b-2894f6d13941",
+    "graphic design vector": "1fbb6a68-9319-44d2-8d56-2957ca0ece6a",
+    "hdr": "97c20e5c-1af6-4d42-b227-54d03d8f0727",
+    "illustration": "645e4195-f63d-4715-a3f2-3fb1e6eb8c70",
+    "ilustracion": "645e4195-f63d-4715-a3f2-3fb1e6eb8c70",
+    "macro": "30c1d34f-e3a9-479a-b56f-c018bbc9c02a",
+    "minimalist": "cadc8cd6-7838-4c99-b645-df76be8ba8d8",
+    "minimalista": "cadc8cd6-7838-4c99-b645-df76be8ba8d8",
+    "moody": "621e1c9a-6319-4bee-a12d-ae40659162fa",
+    "portrait": "8e2bc543-6ee2-45f9-bcd9-594b6ce84dcd",
+    "pro b&w photography": "22a9a7d2-2166-4d86-80ff-22e2643adbcf",
+    "pro color photography": "7c3f932b-a572-47cb-9b9b-f20211e63b5b",
+    "pro film photography": "581ba6d6-5aac-4492-bebe-54c424a0d46e",
+    "portrait fashion": "0d34f8e1-46d4-428f-8ddd-4b11811fa7c9",
+    "ray traced": "b504f83c-3326-4947-82e1-7fe9e839ec0f",
+    "sketch (b&w)": "be8c6b58-739c-4d44-b9c1-b032ed308b61",
+    "sketch (color)": "093accc3-7633-4ffd-82da-d34000dfc0d6",
+    "stock photo": "5bdc3f2a-1be6-4d1c-8e77-992a30824a2c",
+    "vibrant": "dee282d3-891f-4f73-ba02-7f8131e5541b",
+    "vibrante": "dee282d3-891f-4f73-ba02-7f8131e5541b",
+}
+
+LEONARDO_STYLE_COMPATIBLE_MODELS = {
+    "7b592283-e8a7-4c5a-9ba6-d18c31f258b9",  # Lucid Origin
+    "05ce0082-2d80-4a2d-8653-4d1c85e2418e",  # Lucid Realism
+    "28aeddf8-bd19-4803-80fc-79602d1a9989",  # FLUX.1 Kontext
+    "de7d3faf-762f-48e0-b3b7-9d0ac3a3fcf3",  # Leonardo Phoenix 1.0
+    "b2614463-296c-462a-9586-aafdb8f00e36",  # Flux Dev
+    "1dd50843-d653-4516-a8e3-f0238ee453ff",  # Flux Schnell
+    "6b645e3a-d64f-4341-a6d8-7a3690fbf042",  # Leonardo Phoenix 0.9
+}
+
+
+def normalize_visual_style_name(value: Any) -> str:
+    if not value:
+        return ""
+    text = str(value).strip().lower()
+    text = unicodedata.normalize("NFKD", text)
+    text = "".join(ch for ch in text if not unicodedata.combining(ch))
+    text = re.sub(r"\s+", " ", text)
+    return text
+
+
+def build_channel_visual_style_context(channel: dict | None) -> tuple[str, list[str]]:
+    if not channel:
+        return "", []
+
+    style_name = str(channel.get("visual_style_name") or "").strip()
+    style_prompt = str(channel.get("visual_style_prompt") or "").strip()
+    style_palette = str(channel.get("visual_style_palette") or "").strip()
+    style_notes = str(channel.get("visual_style_notes") or "").strip()
+
+    style_lines: list[str] = []
+    if style_name:
+        style_lines.append(f"Identidad visual del canal: {style_name}.")
+    if style_prompt:
+        style_lines.append(f"Guía de estilo: {style_prompt}.")
+    if style_palette:
+        style_lines.append(f"Paleta visual: {style_palette}.")
+    if style_notes:
+        style_lines.append(f"Notas del canal: {style_notes}.")
+
+    preset_id = LEONARDO_STYLE_PRESETS.get(normalize_visual_style_name(style_name)) if style_name else None
+    if preset_id:
+        style_lines.append("Aplica un preset visual coherente con la identidad del canal.")
+
+    if not style_lines:
+        return "", []
+
+    context = "\n".join([
+        "Mantén coherencia visual con el canal.",
+        *style_lines,
+    ])
+    return context, ([preset_id] if preset_id else [])
+
+
+def leonardo_model_supports_style_ids(model_ref: str | None) -> bool:
+    normalized = (model_ref or "").strip().lower()
+    if not normalized:
+        return False
+    if normalized in LEONARDO_STYLE_COMPATIBLE_MODELS:
+        return True
+    return any(token in normalized for token in ("flux", "lucid", "phoenix"))
 
 
 def flatten_transcript_text(value: Any) -> str | None:
@@ -1569,12 +1684,23 @@ async def api_generate_leonardo_image(req: LeonardoGenerateRequest, background_t
         raise HTTPException(status_code=400, detail="El prompt no puede estar vacío.")
 
     task_id = f"leo_{uuid.uuid4().hex[:12]}"
-    model_ref = (req.model_id or db.get_setting("LEONARDO_DEFAULT_MODEL_ID") or "").strip() or "leonardo"
+    channel = db.get_youtube_channel(int(req.channel_id)) if req.channel_id else None
+    channel_style_context, channel_style_ids = build_channel_visual_style_context(channel)
+    model_ref = (
+        req.model_id
+        or (channel.get("leonardo_default_model_id") if channel else None)
+        or db.get_setting("LEONARDO_DEFAULT_MODEL_ID")
+        or ""
+    ).strip() or "leonardo"
+    applied_style_ids = channel_style_ids if leonardo_model_supports_style_ids(model_ref) else []
+    effective_prompt = prompt
+    if channel_style_context:
+        effective_prompt = f"{prompt}\n\n{channel_style_context}"
     init_image_id = req.init_image_id
 
     db.add_ai_task(
         task_id,
-        prompt,
+        effective_prompt,
         req.niche,
         model_ref,
         channel_id=req.channel_id,
@@ -1591,8 +1717,9 @@ async def api_generate_leonardo_image(req: LeonardoGenerateRequest, background_t
                     init_image_id = uploaded.get("id")
 
         generation_id, raw_data = leonardo_manager.create_image_generation(
-            prompt,
-            model_id=req.model_id or db.get_setting("LEONARDO_DEFAULT_MODEL_ID"),
+            effective_prompt,
+            model_id=req.model_id or (channel.get("leonardo_default_model_id") if channel else None) or db.get_setting("LEONARDO_DEFAULT_MODEL_ID"),
+            style_ids=applied_style_ids,
             width=req.width or 1024,
             height=req.height or 1024,
             num_images=req.num_images or 1,
@@ -1627,7 +1754,13 @@ async def api_generate_leonardo_image(req: LeonardoGenerateRequest, background_t
             "Generación de Leonardo iniciada.",
             status="info",
             channel_id=req.channel_id,
-            details={"task_id": task_id, "generation_id": generation_id, "model": model_ref},
+            details={
+                "task_id": task_id,
+                "generation_id": generation_id,
+                "model": model_ref,
+                "style_name": channel.get("visual_style_name") if channel else None,
+                "style_ids_applied": bool(applied_style_ids),
+            },
         )
 
     background_tasks.add_task(process_leonardo_task_background, task_id, generation_id, req)
@@ -1867,6 +2000,13 @@ async def process_ai_task_background(task_id: str, api_key: str, req: AiGenerate
 async def process_leonardo_task_background(task_id: str, generation_id: str, req: LeonardoGenerateRequest):
     """Background loop to poll Leonardo and download the generated image."""
     start_time = time.time()
+    channel = db.get_youtube_channel(int(req.channel_id)) if req.channel_id else None
+    model_ref = (
+        req.model_id
+        or (channel.get("leonardo_default_model_id") if channel else None)
+        or db.get_setting("LEONARDO_DEFAULT_MODEL_ID")
+        or "leonardo"
+    )
     try:
         while time.time() - start_time < 600:  # 10 min max
             await asyncio.sleep(6)
@@ -1902,7 +2042,7 @@ async def process_leonardo_task_background(task_id: str, generation_id: str, req
                         image_url,
                         req.prompt,
                         req.niche,
-                        req.model_id or db.get_setting("LEONARDO_DEFAULT_MODEL_ID") or "leonardo",
+                        model_ref,
                         req.channel_id,
                     )
                     db.update_ai_task(task_id, "completed", result_url=image_url, media_id=result["media_id"])

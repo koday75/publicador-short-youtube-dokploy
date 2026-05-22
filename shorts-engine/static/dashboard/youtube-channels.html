@@ -349,6 +349,29 @@
                         <label for="google_client_secret">Google Client Secret</label>
                         <input id="google_client_secret" type="password" placeholder="Pega el secreto de este canal">
                     </div>
+                    <div class="oauth-note" style="grid-column: 1 / -1;">
+                        <strong>Identidad visual del canal:</strong> estos datos se usarán automáticamente por Leonardo para mantener el estilo del canal en fondos, miniaturas y variaciones de imágenes.
+                    </div>
+                    <div class="field">
+                        <label for="visual_style_name">Nombre del estilo visual</label>
+                        <input id="visual_style_name" type="text" placeholder="Cinemático / Moody / Minimalista">
+                    </div>
+                    <div class="field">
+                        <label for="leonardo_default_model_id">Modelo Leonardo por defecto</label>
+                        <input id="leonardo_default_model_id" type="text" placeholder="Opcional">
+                    </div>
+                    <div class="field full">
+                        <label for="visual_style_palette">Paleta visual</label>
+                        <input id="visual_style_palette" type="text" placeholder="Negros, dorados, rojos, neón suave...">
+                    </div>
+                    <div class="field full">
+                        <label for="visual_style_prompt">Guía de estilo para Leonardo</label>
+                        <textarea id="visual_style_prompt" placeholder="Describe aquí la estética visual que debe respetar Leonardo: iluminación, encuadre, textura, sensación, etc."></textarea>
+                    </div>
+                    <div class="field full">
+                        <label for="visual_style_notes">Notas del estilo</label>
+                        <textarea id="visual_style_notes" placeholder="Restricciones, detalles obligatorios o elementos que quieras evitar."></textarea>
+                    </div>
                     <div class="field full">
                         <label for="default_tags">Etiquetas por defecto</label>
                         <textarea id="default_tags" placeholder="terror, curiosidades, shorts, viral"></textarea>
@@ -568,6 +591,11 @@
                 secretField.value = channel?.google_client_secret || '';
                 secretField.placeholder = 'Pega el secreto de este canal';
             }
+            document.getElementById('visual_style_name').value = channel?.visual_style_name || '';
+            document.getElementById('visual_style_prompt').value = channel?.visual_style_prompt || '';
+            document.getElementById('visual_style_palette').value = channel?.visual_style_palette || '';
+            document.getElementById('visual_style_notes').value = channel?.visual_style_notes || '';
+            document.getElementById('leonardo_default_model_id').value = channel?.leonardo_default_model_id || '';
             document.getElementById('default_tags').value = Array.isArray(channel?.default_tags) ? channel.default_tags.join(', ') : (channel?.default_tags || '');
             document.getElementById('notify_subscribers').checked = Boolean(channel?.notify_subscribers);
             document.getElementById('connect-btn').textContent = channel && channel.connection_status === 'connected'
@@ -624,6 +652,11 @@
             const google_redirect_uri = document.getElementById('google_redirect_uri').value.trim() || `${window.location.origin}/api/youtube/oauth/callback`;
             const google_client_id = document.getElementById('google_client_id').value.trim();
             const google_client_secret = document.getElementById('google_client_secret').value.trim();
+            const visual_style_name = document.getElementById('visual_style_name').value.trim();
+            const visual_style_prompt = document.getElementById('visual_style_prompt').value.trim();
+            const visual_style_palette = document.getElementById('visual_style_palette').value.trim();
+            const visual_style_notes = document.getElementById('visual_style_notes').value.trim();
+            const leonardo_default_model_id = document.getElementById('leonardo_default_model_id').value.trim();
             const default_tags = parseTags(document.getElementById('default_tags').value);
             const notify_subscribers = document.getElementById('notify_subscribers').checked;
             const status = document.getElementById('status').value;
@@ -648,6 +681,11 @@
                 google_client_id,
                 google_client_secret,
                 google_redirect_uri,
+                visual_style_name,
+                visual_style_prompt,
+                visual_style_palette,
+                visual_style_notes,
+                leonardo_default_model_id,
                 notify_subscribers,
                 status,
             };

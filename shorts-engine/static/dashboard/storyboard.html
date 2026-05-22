@@ -546,6 +546,7 @@
                         <div id="leonardo-reference-note" class="ai-reference-note">
                             Si la escena ya tiene una imagen seleccionada, Leonardo puede usarla como referencia visual para mantener coherencia.
                         </div>
+                        <div id="leonardo-channel-style-note" class="ai-reference-note" style="display:none;"></div>
                         <div class="ai-provider-actions">
                             <button id="btn-do-leonardo-gen" class="badge" style="background: var(--primary); color: #fff; border:none; cursor:pointer;" onclick="executeLeonardoGeneration()">Generar con Leonardo</button>
                         </div>
@@ -650,22 +651,24 @@
 
         async function loadChannelContext() {
             const channelId = getChannelIdFromQuery();
+            currentChannelContext = null;
             if (!channelId) return;
             try {
                 const res = await fetch(`/api/youtube/channels/${channelId}`);
                 if (!res.ok) return;
                 const channel = await res.json();
+                applyChannelLeonardoDefaults(channel);
                 document.getElementById('manual-job-title').dataset.channelId = String(channelId);
                 document.getElementById('channel-shell').style.display = 'block';
                 document.getElementById('channel-breadcrumb-name').textContent = channel.internal_name || `Canal ${channelId}`;
                 document.getElementById('tab-overview').href = `/channels/${channelId}`;
                 document.getElementById('tab-storyboard').href = `/storyboard?channel_id=${channelId}`;
-            document.getElementById('tab-gallery').href = `/gallery?channel_id=${channelId}`;
-            document.getElementById('tab-jobs').href = `/jobs?channel_id=${channelId}`;
-            document.getElementById('tab-ai-tasks').href = `/ai-tasks?channel_id=${channelId}`;
-            document.getElementById('tab-scripts').href = `/guiones?channel_id=${channelId}`;
-            document.getElementById('tab-history').href = `/channels/${channelId}/history`;
-            document.getElementById('tab-settings').href = `/youtube-channels?channel_id=${channelId}`;
+                document.getElementById('tab-gallery').href = `/gallery?channel_id=${channelId}`;
+                document.getElementById('tab-jobs').href = `/jobs?channel_id=${channelId}`;
+                document.getElementById('tab-ai-tasks').href = `/ai-tasks?channel_id=${channelId}`;
+                document.getElementById('tab-scripts').href = `/guiones?channel_id=${channelId}`;
+                document.getElementById('tab-history').href = `/channels/${channelId}/history`;
+                document.getElementById('tab-settings').href = `/youtube-channels?channel_id=${channelId}`;
             } catch (e) {}
         }
         let galleryData = [];
@@ -1177,6 +1180,7 @@
             galleryData = data.items || [];
             if (document.getElementById('aiModal')?.classList.contains('active') && currentAiSceneId) {
                 updateLeonardoReferenceNote(currentAiSceneId);
+                updateLeonardoChannelStyleNote(currentChannelContext);
             }
 
             if (musicSelect) {
@@ -1414,6 +1418,7 @@
         }
 
         let currentAiSceneId = null;
+        let currentChannelContext = null;
         let leonardoStatusTimer = null;
 
         function stopLeonardoStatusTimer() {
@@ -1449,6 +1454,41 @@
             }
         }
 
+        function updateLeonardoChannelStyleNote(channel) {
+            const note = document.getElementById('leonardo-channel-style-note');
+            const modelInput = document.getElementById('leonardo-model-id');
+            if (!note) return;
+
+            const styleName = String(channel?.visual_style_name || '').trim();
+            const stylePrompt = String(channel?.visual_style_prompt || '').trim();
+            const stylePalette = String(channel?.visual_style_palette || '').trim();
+            const styleNotes = String(channel?.visual_style_notes || '').trim();
+            const defaultModel = String(channel?.leonardo_default_model_id || '').trim();
+
+            if (!styleName && !stylePrompt && !stylePalette && !styleNotes && !defaultModel) {
+                note.style.display = 'none';
+                note.textContent = '';
+                return;
+            }
+
+            const pieces = [];
+            if (styleName) pieces.push(`Estilo del canal: ${styleName}`);
+            if (stylePalette) pieces.push(`Paleta: ${stylePalette}`);
+            if (styleNotes) pieces.push(`Notas: ${styleNotes}`);
+            if (defaultModel) pieces.push(`Modelo por defecto: ${defaultModel}`);
+            note.textContent = pieces.join(' · ');
+            note.style.display = 'block';
+
+            if (modelInput && !modelInput.value.trim() && defaultModel) {
+                modelInput.value = defaultModel;
+            }
+        }
+
+        function applyChannelLeonardoDefaults(channel) {
+            currentChannelContext = channel || null;
+            updateLeonardoChannelStyleNote(channel);
+        }
+
         function openAiModal(sceneId) {
             currentAiSceneId = sceneId;
             document.getElementById('aiModal').classList.add('active');
@@ -1456,6 +1496,7 @@
             document.getElementById('ai-status').innerText = "";
             document.getElementById('leonardo-status').innerText = "";
             updateLeonardoReferenceNote(sceneId);
+            updateLeonardoChannelStyleNote(currentChannelContext);
         }
 
         function closeAiModal() {
@@ -1678,7 +1719,7 @@
             const sceneId = currentAiSceneId;
             const useReference = document.getElementById('leonardo-use-reference')?.checked;
             const sourceMediaFilename = useReference ? getSceneMediaFilename(sceneId) : '';
-            const modelId = document.getElementById('leonardo-model-id').value.trim();
+            const modelId = document.getElementById('leonardo-model-id').value.trim() || String(currentChannelContext?.leonardo_default_model_id || '').trim();
             const width = parseInt(document.getElementById('leonardo-width').value || '1024', 10);
             const height = parseInt(document.getElementById('leonardo-height').value || '1024', 10);
             const numImages = parseInt(document.getElementById('leonardo-num-images').value || '1', 10);
