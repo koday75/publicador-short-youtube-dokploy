@@ -370,8 +370,22 @@
     </div>
 
     <script>
-        const params = new URLSearchParams(window.location.search);
-        const channelId = params.get('channel_id');
+        function getChannelIdFromLocation() {
+            const params = new URLSearchParams(window.location.search);
+            const queryChannelId = params.get('channel_id');
+            if (queryChannelId && !Number.isNaN(parseInt(queryChannelId, 10))) {
+                return parseInt(queryChannelId, 10);
+            }
+            const parts = window.location.pathname.split('/').filter(Boolean);
+            const idx = parts.indexOf('channels');
+            if (idx >= 0 && parts[idx + 1]) {
+                const value = parseInt(parts[idx + 1], 10);
+                return Number.isFinite(value) ? value : null;
+            }
+            return null;
+        }
+
+        const channelId = getChannelIdFromLocation();
         const state = { period: 'day', metric: 'score', data: null };
 
         function formatNumber(value) {
