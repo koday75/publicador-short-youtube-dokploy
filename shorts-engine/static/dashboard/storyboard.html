@@ -1595,6 +1595,15 @@
             return `${cost.toFixed(2)} créditos`;
         }
 
+        function escapeHtml(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
         function populateLeonardoModelSelects() {
             const imageSelect = document.getElementById('leonardo-model-id');
             const videoSelect = document.getElementById('leonardo-video-model');
@@ -1671,8 +1680,8 @@
                     ? null
                     : Number(rawBalance);
                 creditDisplay.textContent = Number.isFinite(balance)
-                    ? `Crédito restante: ${balance.toFixed(2)} ${leonardoModelCatalog.credit_unit || 'credits'}`
-                    : 'Crédito restante: no configurado';
+                    ? `Crédito restante: ${balance.toFixed(2)} ${leonardoModelCatalog.credit_unit || 'créditos'}`
+                    : 'Crédito restante: configúralo en Ajustes de sistema';
             }
         }
 
