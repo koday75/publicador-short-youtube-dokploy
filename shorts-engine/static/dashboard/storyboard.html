@@ -329,6 +329,7 @@
             grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
             gap: 1rem;
             margin-top: 0.75rem;
+            align-items: start;
         }
         .ai-panel {
             border: 1px solid var(--border-color);
@@ -337,6 +338,8 @@
             padding: 1rem;
             display: grid;
             gap: 0.85rem;
+            align-self: start;
+            min-height: 0;
         }
         .ai-panel h4 {
             margin: 0;
@@ -367,6 +370,15 @@
         .ai-field select,
         .ai-field textarea {
             width: 100%;
+            background: rgba(0,0,0,0.35);
+            color: #fff;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 0.55rem 0.7rem;
+            box-sizing: border-box;
+        }
+        .ai-field select {
+            min-height: 40px;
         }
         .ai-provider-actions {
             display: flex;
@@ -521,7 +533,9 @@
                         <div class="ai-form-grid">
                             <div class="ai-field">
                                 <label for="leonardo-model-id">Modelo de imagen</label>
-                                <select id="leonardo-model-id" onchange="updateLeonardoCostLabels()"></select>
+                                <select id="leonardo-model-id" onchange="updateLeonardoCostLabels()">
+                                    <option value="" selected>Cargando modelos...</option>
+                                </select>
                                 <div id="leonardo-model-cost" class="ai-reference-note" style="margin-top: 0.4rem; min-height: 0;"></div>
                             </div>
                             <div class="ai-field">
@@ -530,7 +544,7 @@
                             </div>
                             <div class="ai-field">
                                 <label for="leonardo-height">Alto</label>
-                                <input type="number" id="leonardo-height" min="256" max="2048" step="64" value="1024">
+                                <input type="number" id="leonardo-height" min="256" max="2048" step="64" value="1792">
                             </div>
                             <div class="ai-field">
                                 <label for="leonardo-num-images">Imágenes</label>
@@ -559,7 +573,9 @@
                         <div class="ai-form-grid">
                             <div class="ai-field">
                                 <label for="leonardo-video-model">Modelo vídeo</label>
-                                <select id="leonardo-video-model" onchange="updateLeonardoCostLabels()"></select>
+                                <select id="leonardo-video-model" onchange="updateLeonardoCostLabels()">
+                                    <option value="MOTION2" selected>MOTION2</option>
+                                </select>
                                 <div id="leonardo-video-model-cost" class="ai-reference-note" style="margin-top: 0.4rem; min-height: 0;"></div>
                             </div>
                             <div class="ai-field">
@@ -569,6 +585,14 @@
                                     <option value="RESOLUTION_720" selected>720p</option>
                                     <option value="RESOLUTION_1080">1080p</option>
                                 </select>
+                            </div>
+                            <div class="ai-field">
+                                <label for="leonardo-video-width">Ancho</label>
+                                <input type="number" id="leonardo-video-width" min="256" max="2048" step="64" value="1024">
+                            </div>
+                            <div class="ai-field">
+                                <label for="leonardo-video-height">Alto</label>
+                                <input type="number" id="leonardo-video-height" min="256" max="2048" step="64" value="1792">
                             </div>
                             <div class="ai-field">
                                 <label for="leonardo-video-duration">Duración (segundos)</label>
@@ -1604,10 +1628,16 @@
                     ? currentImageModel
                     : imageModels[0].id;
             }
+            if (!imageSelect.value && imageModels.length === 0) {
+                imageSelect.value = '';
+            }
             if (!videoSelect.value && videoModels.length) {
                 videoSelect.value = currentVideoModel && videoModels.some((m) => m.id === currentVideoModel)
                     ? currentVideoModel
                     : videoModels[0].id;
+            }
+            if (!videoSelect.value && videoModels.length === 0) {
+                videoSelect.value = 'MOTION2';
             }
 
             updateLeonardoCostLabels();
@@ -1653,9 +1683,27 @@
                     throw new Error((await res.json().catch(() => ({}))).detail || 'No se pudieron cargar los modelos de Leonardo.');
                 }
                 const data = await res.json();
+                const fallbackImageModels = [
+                    { id: '7b592283-e8a7-4c5a-9ba6-d18c31f258b9', name: 'Lucid Origin', estimated_cost: 0.95 },
+                    { id: '05ce0082-2d80-4a2d-8653-4d1c85e2418e', name: 'Lucid Realism', estimated_cost: 0.95 },
+                    { id: 'de7d3faf-762f-48e0-b3b7-9d0ac3a3fcf3', name: 'Leonardo Phoenix 1.0', estimated_cost: 1.0 },
+                    { id: '6b645e3a-d64f-4341-a6d8-7a3690fbf042', name: 'Leonardo Phoenix 0.9', estimated_cost: 0.95 },
+                    { id: 'b2614463-296c-462a-9586-aafdb8f00e36', name: 'Flux Dev', estimated_cost: 0.95 },
+                    { id: '1dd50843-d653-4516-a8e3-f0238ee453ff', name: 'Flux Schnell', estimated_cost: 0.85 },
+                    { id: 'b24e16ff-06e3-43eb-8d33-4416c2d75876', name: 'Leonardo Lightning XL', estimated_cost: 0.85 },
+                    { id: 'aa77f04e-3eec-4034-9c07-d0f619684628', name: 'Leonardo Kino XL', estimated_cost: 0.95 },
+                ];
+                const fallbackVideoModels = [
+                    { id: 'MOTION2', name: 'Motion 2', estimated_cost: 3.0 },
+                    { id: 'MOTION2FAST', name: 'Motion 2 Fast', estimated_cost: 2.2 },
+                    { id: 'VEO3', name: 'Veo 3', estimated_cost: 4.8 },
+                    { id: 'VEO3FAST', name: 'Veo 3 Fast', estimated_cost: 4.2 },
+                    { id: 'KLING2_1', name: 'Kling 2.1 Pro', estimated_cost: 4.5 },
+                    { id: 'KLING2_5', name: 'Kling 2.5 Turbo', estimated_cost: 5.2 },
+                ];
                 leonardoModelCatalog = {
-                    image_models: Array.isArray(data.image_models) ? data.image_models : [],
-                    video_models: Array.isArray(data.video_models) ? data.video_models : [],
+                    image_models: Array.isArray(data.image_models) && data.image_models.length ? data.image_models : fallbackImageModels,
+                    video_models: Array.isArray(data.video_models) && data.video_models.length ? data.video_models : fallbackVideoModels,
                     credit_balance: typeof data.credit_balance === 'number' ? data.credit_balance : (data.credit_balance !== null && data.credit_balance !== undefined ? Number(data.credit_balance) : null),
                     credit_unit: data.credit_unit || 'credits',
                 };
@@ -1672,7 +1720,7 @@
                     { id: 'b24e16ff-06e3-43eb-8d33-4416c2d75876', name: 'Leonardo Lightning XL', estimated_cost: 0.85 },
                     { id: 'aa77f04e-3eec-4034-9c07-d0f619684628', name: 'Leonardo Kino XL', estimated_cost: 0.95 },
                 ];
-                leonardoModelCatalog.video_models = leonardoModelCatalog.video_models.length ? leonardoModelCatalog.video_models : [
+                leonardoModelCatalog.video_models = [
                     { id: 'MOTION2', name: 'Motion 2', estimated_cost: 3.0 },
                     { id: 'MOTION2FAST', name: 'Motion 2 Fast', estimated_cost: 2.2 },
                     { id: 'VEO3', name: 'Veo 3', estimated_cost: 4.8 },
@@ -1950,7 +1998,7 @@
             const sourceMediaFilename = useReference ? getSceneMediaFilename(sceneId) : '';
             const modelId = document.getElementById('leonardo-model-id').value.trim() || String(currentChannelContext?.leonardo_default_model_id || '').trim();
             const width = parseInt(document.getElementById('leonardo-width').value || '1024', 10);
-            const height = parseInt(document.getElementById('leonardo-height').value || '1024', 10);
+            const height = parseInt(document.getElementById('leonardo-height').value || '1792', 10);
             const numImages = parseInt(document.getElementById('leonardo-num-images').value || '1', 10);
             const negativePrompt = document.getElementById('leonardo-negative-prompt').value.trim();
             const currentJob = currentJobId || new URLSearchParams(window.location.search).get('job_id') || null;
@@ -1970,7 +2018,7 @@
                     job_id: currentJob,
                     model_id: modelId || null,
                     width: Number.isFinite(width) ? width : 1024,
-                    height: Number.isFinite(height) ? height : 1024,
+                    height: Number.isFinite(height) ? height : 1792,
                     num_images: Number.isFinite(numImages) ? numImages : 1,
                     negative_prompt: negativePrompt || null,
                     source_media_filename: sourceMediaFilename || null,
@@ -2069,6 +2117,8 @@
             const sourceItem = getSceneMediaItem(sceneId);
             const model = document.getElementById('leonardo-video-model').value.trim() || 'MOTION2';
             const resolution = document.getElementById('leonardo-video-resolution').value.trim() || 'RESOLUTION_720';
+            const width = parseInt(document.getElementById('leonardo-video-width').value || '1024', 10);
+            const height = parseInt(document.getElementById('leonardo-video-height').value || '1792', 10);
             const duration = parseInt(document.getElementById('leonardo-video-duration').value || '5', 10);
             const frameInterpolation = document.getElementById('leonardo-video-frame-interpolation')?.checked;
             const currentJob = currentJobId || new URLSearchParams(window.location.search).get('job_id') || null;
@@ -2090,6 +2140,8 @@
                     job_id: currentJob,
                     model,
                     resolution,
+                    width: Number.isFinite(width) ? width : 1024,
+                    height: Number.isFinite(height) ? height : 1792,
                     duration: Number.isFinite(duration) ? duration : 5,
                     frame_interpolation: frameInterpolation,
                     source_media_filename: sourceMediaFilename || null,

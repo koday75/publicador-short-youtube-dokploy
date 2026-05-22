@@ -1801,7 +1801,7 @@ def build_leonardo_model_catalog(channel_id: int | None = None) -> dict[str, lis
             "name": model.get("name") or model_id,
             "description": model.get("description") or "",
             "kind": "image",
-            "estimated_cost": estimate_leonardo_image_cost(model_id, 1024, 1024, 1),
+            "estimated_cost": estimate_leonardo_image_cost(model_id, 1024, 1792, 1),
         })
 
     if not image_models:
@@ -1811,7 +1811,7 @@ def build_leonardo_model_catalog(channel_id: int | None = None) -> dict[str, lis
                 "name": item["name"],
                 "description": "",
                 "kind": "image",
-                "estimated_cost": estimate_leonardo_image_cost(item["id"], 1024, 1024, 1),
+                "estimated_cost": estimate_leonardo_image_cost(item["id"], 1024, 1792, 1),
             }
             for item in LEONARDO_FALLBACK_IMAGE_MODELS
         ]
