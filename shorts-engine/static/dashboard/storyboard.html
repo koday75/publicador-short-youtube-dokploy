@@ -1790,6 +1790,13 @@
             }
         }
 
+        function stopRenderPolling() {
+            if (renderProgressTimer) {
+                clearTimeout(renderProgressTimer);
+                renderProgressTimer = null;
+            }
+        }
+
         function startEstimatedRenderProgress(sceneCount) {
             stopEstimatedRenderProgress();
             renderEstimateStartedAt = Date.now();
@@ -1815,10 +1822,7 @@
         }
 
         async function pollRenderProgress(jobId, channelId, btn, originalText) {
-            if (renderProgressTimer) {
-                clearTimeout(renderProgressTimer);
-                renderProgressTimer = null;
-            }
+            stopRenderPolling();
 
             if (!jobId) {
                 resetRenderButton(btn, originalText);
@@ -1840,19 +1844,30 @@
                 const scenesCount = Array.isArray(data.scenes) ? data.scenes.length : 0;
                 const titleText = data.title || currentJobTitle || jobId;
                 document.getElementById('renderProgressJob').textContent = titleText;
+                const isRenderFinished = status === 'rendered'
+                    || status === 'completed'
+                    || Boolean(data.video_url && status !== 'failed')
+                    || Boolean(data.finished_at && data.video_url);
 
-                if (status === 'rendered' || status === 'completed') {
+                if (isRenderFinished) {
+                    stopEstimatedRenderProgress();
+                    stopRenderPolling();
                     setRenderProgress(100, 'Vídeo listo', 'El render ha terminado correctamente. Abriendo los trabajos del canal...', 'Completado');
                     renderProgressClosable = true;
                     resetRenderButton(btn, originalText);
+                    const redirectUrl = channelId ? `/jobs?channel_id=${channelId}` : '/jobs';
                     setTimeout(() => {
-                        const redirectUrl = channelId ? `/jobs?channel_id=${channelId}` : '/jobs';
+                        closeRenderProgressModal(true);
+                    }, 650);
+                    setTimeout(() => {
                         window.location.href = redirectUrl;
                     }, 900);
                     return;
                 }
 
                 if (status === 'failed') {
+                    stopEstimatedRenderProgress();
+                    stopRenderPolling();
                     resetRenderButton(btn, originalText);
                     finishRenderProgressAsError(data.error_message || 'El render terminó con error. Revisa el trabajo e inténtalo de nuevo.');
                     return;
@@ -1870,6 +1885,7 @@
                     pollRenderProgress(jobId, channelId, btn, originalText);
                 }, 1400);
             } catch (error) {
+                stopRenderPolling();
                 resetRenderButton(btn, originalText);
                 finishRenderProgressAsError(error.message || 'No se pudo seguir el avance del render.');
             }
