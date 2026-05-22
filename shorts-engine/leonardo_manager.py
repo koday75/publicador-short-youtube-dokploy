@@ -106,7 +106,10 @@ class LeonardoManager:
             json=payload,
             timeout=60,
         )
-        res.raise_for_status()
+        try:
+            res.raise_for_status()
+        except requests.HTTPError as exc:
+            raise RuntimeError(f"Leonardo image generation error: {res.status_code} {res.text}") from exc
         data = res.json() or {}
         generation_id = self._extract_generation_id(data)
         if not generation_id:
@@ -256,7 +259,10 @@ class LeonardoManager:
             json=payload,
             timeout=60,
         )
-        res.raise_for_status()
+        try:
+            res.raise_for_status()
+        except requests.HTTPError as exc:
+            raise RuntimeError(f"Leonardo video generation error: {res.status_code} {res.text}") from exc
         data = res.json() or {}
         generation_id = self._extract_generation_id(data)
         if not generation_id:

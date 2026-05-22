@@ -1092,6 +1092,17 @@ def normalize_visual_style_name(value: Any) -> str:
     return text
 
 
+def normalize_leonardo_model_id(value: Any) -> str | None:
+    if not value:
+        return None
+    text = str(value).strip()
+    if not text:
+        return None
+    if re.fullmatch(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}", text):
+        return text
+    return None
+
+
 def build_channel_visual_style_context(channel: dict | None) -> tuple[str, list[str]]:
     if not channel:
         return "", []
@@ -1704,10 +1715,13 @@ async def api_generate_leonardo_image(req: LeonardoGenerateRequest, background_t
     task_id = f"leo_{uuid.uuid4().hex[:12]}"
     channel = db.get_youtube_channel(int(req.channel_id)) if req.channel_id else None
     channel_style_context, channel_style_ids = build_channel_visual_style_context(channel)
+    requested_model = normalize_leonardo_model_id(req.model_id)
+    channel_model = normalize_leonardo_model_id(channel.get("leonardo_default_model_id") if channel else None)
+    global_model = normalize_leonardo_model_id(db.get_setting("LEONARDO_DEFAULT_MODEL_ID"))
     model_ref = (
-        req.model_id
-        or (channel.get("leonardo_default_model_id") if channel else None)
-        or db.get_setting("LEONARDO_DEFAULT_MODEL_ID")
+        requested_model
+        or channel_model
+        or global_model
         or ""
     ).strip() or "leonardo"
     applied_style_ids = channel_style_ids if leonardo_model_supports_style_ids(model_ref) else []
@@ -1736,7 +1750,7 @@ async def api_generate_leonardo_image(req: LeonardoGenerateRequest, background_t
 
         generation_id, raw_data = leonardo_manager.create_image_generation(
             effective_prompt,
-            model_id=req.model_id or (channel.get("leonardo_default_model_id") if channel else None) or db.get_setting("LEONARDO_DEFAULT_MODEL_ID"),
+            model_id=requested_model or channel_model or global_model,
             style_ids=applied_style_ids,
             width=req.width or 1024,
             height=req.height or 1024,
@@ -2112,9 +2126,9 @@ async def process_leonardo_task_background(task_id: str, generation_id: str, req
     start_time = time.time()
     channel = db.get_youtube_channel(int(req.channel_id)) if req.channel_id else None
     model_ref = (
-        req.model_id
-        or (channel.get("leonardo_default_model_id") if channel else None)
-        or db.get_setting("LEONARDO_DEFAULT_MODEL_ID")
+        normalize_leonardo_model_id(req.model_id)
+        or normalize_leonardo_model_id(channel.get("leonardo_default_model_id") if channel else None)
+        or normalize_leonardo_model_id(db.get_setting("LEONARDO_DEFAULT_MODEL_ID"))
         or "leonardo"
     )
     try:
