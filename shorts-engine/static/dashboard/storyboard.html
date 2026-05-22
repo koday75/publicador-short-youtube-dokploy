@@ -1620,7 +1620,8 @@
                     const selected = currentImageModel && currentImageModel === model.id ? 'selected' : '';
                     const costText = formatLeonardoCost(model.estimated_cost);
                     const description = model.description ? ` - ${model.description}` : '';
-                    return `<option value="${escapeHtml(model.id)}" data-cost="${escapeHtml(String(model.estimated_cost ?? ''))}" ${selected}>${escapeHtml(model.name)} · ${costText}${description}</option>`;
+                    const supportsAlchemy = model.supports_alchemy === false ? 'false' : 'true';
+                    return `<option value="${escapeHtml(model.id)}" data-cost="${escapeHtml(String(model.estimated_cost ?? ''))}" data-supports-alchemy="${supportsAlchemy}" ${selected}>${escapeHtml(model.name)} · ${costText}${description}</option>`;
                 }).join('')
                 : '<option value="">Cargando modelos...</option>';
 
@@ -1628,7 +1629,7 @@
                 ? videoModels.map((model) => {
                     const selected = currentVideoModel && currentVideoModel === model.id ? 'selected' : '';
                     const costText = formatLeonardoCost(model.estimated_cost);
-                    return `<option value="${escapeHtml(model.id)}" data-cost="${escapeHtml(String(model.estimated_cost ?? ''))}" ${selected}>${escapeHtml(model.name)} · ${costText}</option>`;
+                    return `<option value="${escapeHtml(model.id)}" data-cost="${escapeHtml(String(model.estimated_cost ?? ''))}" data-supports-alchemy="false" ${selected}>${escapeHtml(model.name)} · ${costText}</option>`;
                 }).join('')
                 : '<option value="MOTION2" selected>MOTION2</option>';
 
@@ -2006,6 +2007,8 @@
             const useReference = document.getElementById('leonardo-use-reference')?.checked;
             const sourceMediaFilename = useReference ? getSceneMediaFilename(sceneId) : '';
             const modelId = document.getElementById('leonardo-model-id').value.trim() || String(currentChannelContext?.leonardo_default_model_id || '').trim();
+            const modelOption = document.getElementById('leonardo-model-id')?.selectedOptions?.[0];
+            const supportsAlchemy = modelOption?.dataset?.supportsAlchemy !== 'false';
             const width = parseInt(document.getElementById('leonardo-width').value || '864', 10);
             const height = parseInt(document.getElementById('leonardo-height').value || '1536', 10);
             const numImages = parseInt(document.getElementById('leonardo-num-images').value || '1', 10);
@@ -2031,6 +2034,7 @@
                     num_images: Number.isFinite(numImages) ? numImages : 1,
                     negative_prompt: negativePrompt || null,
                     source_media_filename: sourceMediaFilename || null,
+                    alchemy: supportsAlchemy,
                 };
 
                 const res = await fetch('/api/leonardo/generate', {

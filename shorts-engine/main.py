@@ -1108,6 +1108,21 @@ def normalize_leonardo_model_id(value: Any) -> str | None:
     return None
 
 
+LEONARDO_ALCHEMY_DISABLED_MODELS = {
+    "aa77f04e-3eec-4034-9c07-d0f619684628",  # Leonardo Kino XL
+}
+
+
+def leonardo_model_supports_alchemy(model_id: str | None, model_name: str | None = None) -> bool:
+    model_ref = (model_id or "").strip().lower()
+    name_ref = (model_name or "").strip().lower()
+    if model_ref in LEONARDO_ALCHEMY_DISABLED_MODELS:
+        return False
+    if "kino" in model_ref or "kino" in name_ref:
+        return False
+    return True
+
+
 LEONARDO_VIDEO_MODELS = [
     {"id": "MOTION2", "name": "Motion 2", "kind": "video"},
     {"id": "MOTION2FAST", "name": "Motion 2 Fast", "kind": "video"},
@@ -1826,6 +1841,7 @@ def build_leonardo_model_catalog(channel_id: int | None = None) -> dict[str, lis
             "name": model.get("name") or model_id,
             "description": model.get("description") or "",
             "kind": "image",
+            "supports_alchemy": leonardo_model_supports_alchemy(model_id, model.get("name")),
             "estimated_cost": estimate_leonardo_image_cost(model_id, 864, 1536, 1),
         })
 
@@ -1836,6 +1852,7 @@ def build_leonardo_model_catalog(channel_id: int | None = None) -> dict[str, lis
                 "name": item["name"],
                 "description": "",
                 "kind": "image",
+                "supports_alchemy": leonardo_model_supports_alchemy(item["id"], item["name"]),
                 "estimated_cost": estimate_leonardo_image_cost(item["id"], 864, 1536, 1),
             }
             for item in LEONARDO_FALLBACK_IMAGE_MODELS
@@ -1847,6 +1864,7 @@ def build_leonardo_model_catalog(channel_id: int | None = None) -> dict[str, lis
             "name": item["name"],
             "description": "Modelo oficial de vídeo de Leonardo.",
             "kind": "video",
+            "supports_alchemy": False,
             "estimated_cost": estimate_leonardo_video_cost(item["id"], "RESOLUTION_720", 5, True),
         }
         for item in LEONARDO_VIDEO_MODELS
@@ -1931,6 +1949,7 @@ async def api_generate_leonardo_image(req: LeonardoGenerateRequest, background_t
         or ""
     ).strip() or "leonardo"
     applied_style_ids = channel_style_ids if leonardo_model_supports_style_ids(model_ref) else []
+    supports_alchemy = leonardo_model_supports_alchemy(model_ref)
     effective_prompt = prompt
     if channel_style_context:
         effective_prompt = f"{prompt}\n\n{channel_style_context}"
@@ -1966,7 +1985,7 @@ async def api_generate_leonardo_image(req: LeonardoGenerateRequest, background_t
             negative_prompt=req.negative_prompt,
             seed=req.seed,
             public=bool(req.public),
-            alchemy=bool(req.alchemy),
+            alchemy=bool(req.alchemy) and supports_alchemy,
             enhance_prompt=bool(req.enhance_prompt),
             prompt_magic=req.prompt_magic,
             init_generation_image_id=req.init_generation_image_id,
