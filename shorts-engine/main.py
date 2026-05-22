@@ -108,7 +108,7 @@ async def render_dashboard_file(request: Request, filename: str):
     try:
         await get_current_user(request)
         with open(filename, "r", encoding="utf-8") as f:
-            return f.read()
+            return HTMLResponse(content=f.read(), media_type="text/html; charset=utf-8")
     except HTTPException:
         return RedirectResponse(url="/login")
 
@@ -116,7 +116,7 @@ async def render_dashboard_file(request: Request, filename: str):
 @app.get("/login", response_class=HTMLResponse)
 async def login_page():
     with open("static/dashboard/login.html", "r", encoding="utf-8") as f:
-        return f.read()
+        return HTMLResponse(content=f.read(), media_type="text/html; charset=utf-8")
 
 @app.get("/", response_class=HTMLResponse)
 async def root_redirect(request: Request):

@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -411,14 +411,14 @@
     <div class="container">
         <header style="display: flex; justify-content: space-between; align-items: flex-start;">
             <div style="flex: 1;">
-                <h1>ðŸŽ¬ Cinema Storyboard</h1>
+                <h1>🎬 Cinema Storyboard</h1>
                 <div style="margin-top: 5px;">
-                    <input type="text" id="manual-job-title" placeholder="ðŸ“ Escribe un tÃ­tulo para tu nuevo Short..." style="width: 100%; max-width: 500px; padding: 10px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: #fff; border-radius: 4px; font-size: 1rem;">
+                    <input type="text" id="manual-job-title" placeholder="📝 Escribe un título para tu nuevo Short..." style="width: 100%; max-width: 500px; padding: 10px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: #fff; border-radius: 4px; font-size: 1rem;">
                 </div>
             </div>
             <div style="display: flex; gap: 10px; align-items: flex-start;">
-                <button onclick="saveWork(event)" class="badge" style="background: rgba(88, 166, 255, 0.18); color: #58a6ff; border: 1px solid rgba(88, 166, 255, 0.35);">ðŸ’¾ GUARDAR TRABAJO</button>
-                <button onclick="renderMovie(event)" class="badge badge-processing">ðŸš€ RENDER FINAL</button>
+                <button onclick="saveWork(event)" class="badge" style="background: rgba(88, 166, 255, 0.18); color: #58a6ff; border: 1px solid rgba(88, 166, 255, 0.35);">💾 GUARDAR TRABAJO</button>
+                <button onclick="renderMovie(event)" class="badge badge-processing">🚀 RENDER FINAL</button>
             </div>
         </header>
 
@@ -444,17 +444,17 @@
         </section>
 
         <div class="card" style="margin-bottom: 2rem;">
-            <h3>ConfiguraciÃ³n Global</h3>
+            <h3>Configuración Global</h3>
             <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 1rem; align-items: end;">
                 <div>
-                    <label>MÃºsica de Fondo</label>
+                    <label>Música de Fondo</label>
                     <select id="global-music"><option value="">Ninguna</option></select>
                 </div>
                 <div>
-                    <label>Motor TTS ðŸ”Š</label>
+                    <label>Motor TTS 🔊</label>
                     <select id="tts-engine" style="width:100%;" onchange="onEngineChange()">
-                        <option value="gtts">ðŸŒ gTTS (Google, Gratis)</option>
-                        <option value="edge-tts">âš¡ Edge-TTS (Microsoft Neural)</option>
+                        <option value="gtts">🌐 gTTS (Google, Gratis)</option>
+                        <option value="edge-tts">⚡ Edge-TTS (Microsoft Neural)</option>
                     </select>
                 </div>
                 <div>
@@ -466,23 +466,23 @@
                     <select id="global-niche">
                         <option value="default">Default</option>
                         <option value="terror">Terror / Oscuro</option>
-                        <option value="curiosidades">Curiosidades / Ã‰pico</option>
+                        <option value="curiosidades">Curiosidades / Épico</option>
                     </select>
                 </div>
             </div>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem; align-items: center;">
                 <div id="speed-container">
-                    <label>âš¡ Velocidad de Habla: <span id="speed-label" style="color:var(--primary); font-weight:bold;">1.0x</span></label>
+                    <label>⚡ Velocidad de Habla: <span id="speed-label" style="color:var(--primary); font-weight:bold;">1.0x</span></label>
                     <input type="range" id="tts-speed" min="0.5" max="2.0" step="0.1" value="1.0"
                         style="width:100%; margin-top:5px;"
                         oninput="document.getElementById('speed-label').innerText=parseFloat(this.value).toFixed(1)+'x'">
                     <div style="display:flex; justify-content:space-between; font-size:0.7rem; color:var(--text-muted);">
-                        <span>0.5x Lento</span><span>1.0x Normal</span><span>2.0x RÃ¡pido</span>
+                        <span>0.5x Lento</span><span>1.0x Normal</span><span>2.0x Rápido</span>
                     </div>
                 </div>
                 <div id="voice-info-box" style="background:rgba(255,215,0,0.1); border:1px solid rgba(255,215,0,0.3); border-radius:8px; padding:10px; font-size:0.8rem; color:var(--text-muted);">
-                    ðŸ’¡ <strong>gTTS:</strong> Voz femenina fija de Google. Sin control de velocidad.<br>
-                    âš¡ <strong>Edge-TTS:</strong> Voces neurales Microsoft con gÃ©nero y velocidad ajustable.
+                    💡 <strong>gTTS:</strong> Voz femenina fija de Google. Sin control de velocidad.<br>
+                    ⚡ <strong>Edge-TTS:</strong> Voces neurales Microsoft con género y velocidad ajustable.
                 </div>
             </div>
         </div>
@@ -596,13 +596,13 @@
         <div id="mediaPickerModal" class="modal">
             <div class="modal-content" style="max-width: 900px;">
                 <span class="close-modal" onclick="closeMediaPickerModal()">&times;</span>
-                <h3>ðŸ–¼ï¸ Elegir imagen o vÃ­deo</h3>
+                <h3>🖼️ Elegir imagen o vídeo</h3>
                 <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem;">
-                    Selecciona un archivo de la galerÃ­a del canal o sube uno nuevo desde tu equipo.
+                    Selecciona un archivo de la galería del canal o sube uno nuevo desde tu equipo.
                 </p>
                 <div style="display:flex; gap:10px; align-items:center; margin-bottom: 1rem; flex-wrap: wrap;">
                     <button class="badge badge-processing" style="background: var(--accent); color: #000; border:none;" onclick="triggerSceneUpload()">+ Subir archivo</button>
-                    <button class="badge" style="background: rgba(88,166,255,0.15); color: #58a6ff; border:1px solid rgba(88,166,255,0.3);" onclick="reloadGalleryDataAndRefreshPicker()">â†» Recargar galerÃ­a</button>
+                    <button class="badge" style="background: rgba(88,166,255,0.15); color: #58a6ff; border:1px solid rgba(88,166,255,0.3);" onclick="reloadGalleryDataAndRefreshPicker()">↻ Recargar galería</button>
                     <span id="media-picker-context" style="color: var(--text-muted); font-size: 0.8rem;"></span>
                     <input type="file" id="scene-media-upload" accept="image/*,video/*" style="display:none" onchange="uploadSceneMedia(this)">
                 </div>
@@ -613,9 +613,9 @@
         <div id="saveSuccessModal" class="modal">
             <div class="modal-content" style="max-width: 420px; text-align:center;">
                 <span class="close-modal" onclick="closeSaveSuccessModal()">&times;</span>
-                <h3>âœ… Trabajo guardado</h3>
+                <h3>✅ Trabajo guardado</h3>
                 <p style="color:var(--text-muted); margin: 0.75rem 0 1rem;">
-                    El borrador se ha guardado correctamente. Puedes seguir creando el vÃ­deo sin salir de esta pantalla.
+                    El borrador se ha guardado correctamente. Puedes seguir creando el vídeo sin salir de esta pantalla.
                 </p>
                 <button class="badge badge-processing" onclick="closeSaveSuccessModal()">Seguir editando</button>
             </div>
@@ -624,18 +624,18 @@
         <div id="duplicateTitleModal" class="modal">
             <div class="modal-content" style="max-width: 440px; text-align:center;">
                 <span class="close-modal" onclick="closeDuplicateTitleModal()">&times;</span>
-                <h3>âš ï¸ TÃ­tulo repetido</h3>
+                <h3>⚠️ Título repetido</h3>
                 <p id="duplicateTitleMessage" style="color:var(--text-muted); margin: 0.75rem 0 1rem;"></p>
-                <button class="badge badge-processing" onclick="focusTitleField(); closeDuplicateTitleModal();">Cambiar tÃ­tulo</button>
+                <button class="badge badge-processing" onclick="focusTitleField(); closeDuplicateTitleModal();">Cambiar título</button>
             </div>
         </div>
 
         <div id="renderProgressModal" class="modal">
             <div class="modal-content" style="max-width: 520px;">
                 <span class="close-modal" id="renderProgressClose" onclick="closeRenderProgressModal()" style="display:none;">&times;</span>
-                <h3>Renderizando vÃ­deo</h3>
+                <h3>Renderizando vídeo</h3>
                 <p style="color:var(--text-muted); margin:0.45rem 0 0;">
-                    El vÃ­deo se estÃ¡ creando. AquÃ­ puedes ver el avance estimado del render.
+                    El vídeo se está creando. Aquí puedes ver el avance estimado del render.
                 </p>
                 <div class="render-progress-wrap">
                     <div class="render-progress-head">
@@ -661,10 +661,10 @@
         </div>
 
         <div id="timeline" class="timeline">
-            <!-- Escenas aquÃ­ -->
+            <!-- Escenas aquí -->
         </div>
 
-        <button class="btn-add" onclick="addScene()">+ AÃ‘ADIR NUEVA ESCENA</button>
+        <button class="btn-add" onclick="addScene()">+ AÑADIR NUEVA ESCENA</button>
     </div>
 
     <script>
@@ -721,21 +721,21 @@
         let renderProgressClosable = false;
 
         const GTTS_VOICES = [
-            { value: 'es', label: 'ðŸ‡ªðŸ‡¸ EspaÃ±ol (EspaÃ±a)' },
-            { value: 'com.mx', label: 'ðŸ‡²ðŸ‡½ EspaÃ±ol (MÃ©xico)' },
-            { value: 'us', label: 'ðŸ‡ºðŸ‡¸ EspaÃ±ol (EE.UU.)' },
-            { value: 'co.uk', label: 'ðŸ‡¬ðŸ‡§ English (UK)' },
+            { value: 'es', label: '🇪🇸 Español (España)' },
+            { value: 'com.mx', label: '🇲🇽 Español (México)' },
+            { value: 'us', label: '🇺🇸 Español (EE.UU.)' },
+            { value: 'co.uk', label: '🇬🇧 English (UK)' },
         ];
 
         const EDGE_VOICES = [
-            { value: 'es-ES-AlvaroNeural',  label: 'ðŸ‡ªðŸ‡¸ Ãlvaro (Masculino)' },
-            { value: 'es-ES-ElviraNeural',  label: 'ðŸ‡ªðŸ‡¸ Elvira (Femenino)' },
-            { value: 'es-MX-JorgeNeural',   label: 'ðŸ‡²ðŸ‡½ Jorge (Masculino)' },
-            { value: 'es-MX-DaliaNeural',   label: 'ðŸ‡²ðŸ‡½ Dalia (Femenino)' },
-            { value: 'es-AR-TomasNeural',   label: 'ðŸ‡¦ðŸ‡· TomÃ¡s (Masculino)' },
-            { value: 'es-AR-ElenaNeural',   label: 'ðŸ‡¦ðŸ‡· Elena (Femenino)' },
-            { value: 'es-CO-GonzaloNeural', label: 'ðŸ‡¨ðŸ‡´ Gonzalo (Masculino)' },
-            { value: 'es-CO-SalomeNeural',  label: 'ðŸ‡¨ðŸ‡´ SalomÃ© (Femenino)' },
+            { value: 'es-ES-AlvaroNeural',  label: '🇪🇸 Álvaro (Masculino)' },
+            { value: 'es-ES-ElviraNeural',  label: '🇪🇸 Elvira (Femenino)' },
+            { value: 'es-MX-JorgeNeural',   label: '🇲🇽 Jorge (Masculino)' },
+            { value: 'es-MX-DaliaNeural',   label: '🇲🇽 Dalia (Femenino)' },
+            { value: 'es-AR-TomasNeural',   label: '🇦🇷 Tomás (Masculino)' },
+            { value: 'es-AR-ElenaNeural',   label: '🇦🇷 Elena (Femenino)' },
+            { value: 'es-CO-GonzaloNeural', label: '🇨🇴 Gonzalo (Masculino)' },
+            { value: 'es-CO-SalomeNeural',  label: '🇨🇴 Salomé (Femenino)' },
         ];
 
         function onEngineChange() {
@@ -748,7 +748,7 @@
             voiceSelect.innerHTML = voices.map(v => `<option value="${v.value}">${v.label}</option>`).join('');
             speedContainer.style.opacity = engine === 'edge-tts' ? '1' : '0.4';
             document.getElementById('tts-speed').disabled = engine !== 'edge-tts';
-            voiceLabel.innerText = engine === 'edge-tts' ? 'Voz Neural âš¡' : 'Acento gTTS';
+            voiceLabel.innerText = engine === 'edge-tts' ? 'Voz Neural ⚡' : 'Acento gTTS';
         }
 
         function syncSceneEffectLabel(sceneId, kind) {
@@ -821,7 +821,7 @@
                             document.getElementById('global-music').value = job.music_filename;
                             syncGlobalMusicSelection(job.music_filename, true);
                         }
-                        // Guardar tÃ­tulo para reenviarlo al renderizar
+                        // Guardar título para reenviarlo al renderizar
                         if(job.title) {
                             currentJobTitle = job.title;
                             document.getElementById('manual-job-title').value = job.title;
@@ -926,33 +926,33 @@
                     <textarea placeholder="Guion de esta escena..." id="text-${id}"></textarea>
                     <div style="margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
                          <div style="display: flex; gap: 5px;">
-                            <button onclick="moveScene(this, -1)" class="badge" title="Mover arriba">â†‘</button>
-                            <button onclick="moveScene(this, 1)" class="badge" title="Mover abajo">â†“</button>
+                            <button onclick="moveScene(this, -1)" class="badge" title="Mover arriba">↑</button>
+                            <button onclick="moveScene(this, 1)" class="badge" title="Mover abajo">↓</button>
                         </div>
                         <button class="btn-remove" onclick="removeScene(${id})">Eliminar Escena</button>
                     </div>
                 </div>
                 <div class="controls">
                     <div class="media-picker">
-                        <label>Imagen/VÃ­deo de Fondo</label>
+                        <label>Imagen/Vídeo de Fondo</label>
                         <div style="display: flex; gap: 5px;">
-                            <button type="button" class="media-picker-button" onclick="openMediaPicker(${id})" title="Elegir imagen o vÃ­deo de la galerÃ­a">
+                            <button type="button" class="media-picker-button" onclick="openMediaPicker(${id})" title="Elegir imagen o vídeo de la galería">
                                 + Imagen
                                 <span id="media-label-${id}">Sin archivo seleccionado</span>
                             </button>
-                            <button class="badge" style="padding: 0 10px; background: #333; border: 1px solid var(--border-color); cursor: pointer;" onclick="openAiModal(${id})" title="Generar con IA">âœ¨</button>
+                            <button class="badge" style="padding: 0 10px; background: #333; border: 1px solid var(--border-color); cursor: pointer;" onclick="openAiModal(${id})" title="Generar con IA">✨</button>
                         </div>
                         <input type="hidden" id="media-${id}" value="">
                     </div>
                     <div class="media-picker">
-                        <label>PosiciÃ³n SubtÃ­tulo</label>
+                        <label>Posición Subtítulo</label>
                         <div class="pos-grid" id="pos-grid-${id}">
                             <div class="pos-btn" onclick="setPos(event, ${id}, 2)" title="Arriba"></div>
                             <div class="pos-btn active" onclick="setPos(event, ${id}, 5)" title="Centro"></div>
                             <div class="pos-btn" onclick="setPos(event, ${id}, 8)" title="Abajo"></div>
                         </div>
                         <input type="hidden" id="pos-${id}" value="5">
-                        <label style="margin-top:5px; display:block;">TamaÃ±o: <span id="size-val-${id}">48</span>px</label>
+                        <label style="margin-top:5px; display:block;">Tamaño: <span id="size-val-${id}">48</span>px</label>
                         <input type="range" id="size-${id}" min="20" max="100" value="48" oninput="document.getElementById('size-val-${id}').innerText=this.value">
                         <label class="text-toggle">
                             <input type="checkbox" id="show-text-${id}" checked>
@@ -973,7 +973,7 @@
                                 </select>
                             </div>
                             <div class="scene-field">
-                                <label for="scene-transition-in-duration-${id}">DuraciÃ³n entrada</label>
+                                <label for="scene-transition-in-duration-${id}">Duración entrada</label>
                                 <input type="range" id="scene-transition-in-duration-${id}" min="0" max="3" step="0.1" value="0.8" oninput="syncSceneEffectLabel(${id}, 'scene-transition-in-duration')">
                                 <div class="volume-value" id="scene-transition-in-duration-label-${id}">0.8s</div>
                             </div>
@@ -985,7 +985,7 @@
                                 </select>
                             </div>
                             <div class="scene-field">
-                                <label for="scene-transition-out-duration-${id}">DuraciÃ³n salida</label>
+                                <label for="scene-transition-out-duration-${id}">Duración salida</label>
                                 <input type="range" id="scene-transition-out-duration-${id}" min="0" max="3" step="0.1" value="0.8" oninput="syncSceneEffectLabel(${id}, 'scene-transition-out-duration')">
                                 <div class="volume-value" id="scene-transition-out-duration-label-${id}">0.8s</div>
                             </div>
@@ -1022,7 +1022,7 @@
                     updateMediaLabel(id);
                 }
                 
-                // Cargar tamaÃ±o
+                // Cargar tamaño
                 if(sceneData.subtitle_size) {
                     document.getElementById(`size-${id}`).value = sceneData.subtitle_size;
                     document.getElementById(`size-val-${id}`).innerText = sceneData.subtitle_size;
@@ -1033,12 +1033,12 @@
                     showTextField.checked = sceneData.show_text !== false;
                 }
                 
-                // Cargar posiciÃ³n
+                // Cargar posición
                 if(sceneData.subtitle_pos) {
-                    // Simular clic en el botÃ³n correcto para actualizar visualmente la grid
+                    // Simular clic en el botón correcto para actualizar visualmente la grid
                     const posGrid = document.getElementById(`pos-grid-${id}`);
                     const buttons = posGrid.querySelectorAll('.pos-btn');
-                    // 2=Arriba (Ã­ndice 0), 5=Centro (Ã­ndice 1), 8=Abajo (Ã­ndice 2)
+                    // 2=Arriba (índice 0), 5=Centro (índice 1), 8=Abajo (índice 2)
                     let targetIndex = 1;
                     if(sceneData.subtitle_pos === 2) targetIndex = 0;
                     if(sceneData.subtitle_pos === 8) targetIndex = 2;
@@ -1079,7 +1079,7 @@
             updateSceneNumbers();
         }
 
-        // FunciÃ³n para mover escenas
+        // Función para mover escenas
         function moveScene(btn, direction) {
             const card = btn.closest('.scene-card');
             const timeline = document.getElementById('timeline');
@@ -1093,7 +1093,7 @@
             updateSceneNumbers();
         }
         
-        // Actualizar nÃºmeros de escena despuÃ©s de mover o borrar
+        // Actualizar números de escena después de mover o borrar
         function updateSceneNumbers() {
             const cards = document.querySelectorAll('.scene-card');
             cards.forEach((card, idx) => {
@@ -1111,7 +1111,7 @@
                 label.textContent = item ? item.original_name : (val || 'Sin archivo seleccionado');
             }
             if (!val) {
-                preview.innerHTML = '<div style="text-align:center; padding: 10px; color:var(--text-muted);">Selecciona una imagen o vÃ­deo</div>';
+                preview.innerHTML = '<div style="text-align:center; padding: 10px; color:var(--text-muted);">Selecciona una imagen o vídeo</div>';
                 return;
             }
             if(item) {
@@ -1169,12 +1169,12 @@
             const context = document.getElementById('media-picker-context');
             const channelId = getChannelIdFromQuery();
             if (context) {
-                context.textContent = channelId ? `Canal ${channelId}` : 'GalerÃ­a global';
+                context.textContent = channelId ? `Canal ${channelId}` : 'Galería global';
             }
             const items = galleryData.filter(item => !item.file_type || !item.file_type.includes('audio'));
             if (!grid) return;
             if (!items.length) {
-                grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; color:var(--text-muted); padding:2rem;">No hay imÃ¡genes ni vÃ­deos en la galerÃ­a de este canal.</div>';
+                grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; color:var(--text-muted); padding:2rem;">No hay imágenes ni vídeos en la galería de este canal.</div>';
                 return;
             }
             const currentValue = currentMediaSceneId ? document.getElementById(`media-${currentMediaSceneId}`)?.value : '';
@@ -1252,7 +1252,7 @@
             const exists = Array.from(musicSelect.options).some(opt => opt.value === nextValue);
             if (!exists) {
                 const label = nextValue.split('/').pop();
-                const option = new Option(`ðŸŽµ ${label}`, nextValue, true, true);
+                const option = new Option(`🎵 ${label}`, nextValue, true, true);
                 musicSelect.add(option, 1);
             } else {
                 musicSelect.value = nextValue;
@@ -1358,9 +1358,9 @@
 
         async function saveWork(event) {
             const { scenes, requestData, overrideJobId, manualTitle } = buildStoryboardRequestData();
-            if (scenes.length === 0) return alert("AÃ±ade al menos una escena");
+            if (scenes.length === 0) return alert("Añade al menos una escena");
             if (!overrideJobId && !manualTitle) {
-                return alert("âš ï¸ Por favor, escribe un tÃ­tulo descriptivo para guardar este trabajo.");
+                return alert("⚠️ Por favor, escribe un título descriptivo para guardar este trabajo.");
             }
 
             const btn = event.target;
@@ -1395,7 +1395,7 @@
                         errorMsg = typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail, null, 2);
                     }
                     if (String(errorMsg).includes('TITULO_DUPLICADO')) {
-                        openDuplicateTitleModal('Ya existe un trabajo con ese tÃ­tulo en este canal. Elige otro nombre para continuar.');
+                        openDuplicateTitleModal('Ya existe un trabajo con ese título en este canal. Elige otro nombre para continuar.');
                     } else {
                         alert("Error: " + errorMsg);
                     }
@@ -1408,9 +1408,9 @@
 
         async function renderMovie(event) {
             const { scenes, requestData, overrideJobId, manualTitle } = buildStoryboardRequestData();
-            if(scenes.length === 0) return alert("AÃ±ade al menos una escena");
+            if(scenes.length === 0) return alert("Añade al menos una escena");
             if (!overrideJobId && !manualTitle) {
-                return alert("âš ï¸ Por favor, escribe un tÃ­tulo descriptivo para la creaciÃ³n manual de tu Short.");
+                return alert("⚠️ Por favor, escribe un título descriptivo para la creación manual de tu Short.");
             }
 
             const btn = event?.target;
@@ -1452,14 +1452,14 @@
                     errorMsg = typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail, null, 2);
                 }
                 if (String(errorMsg).includes('TITULO_DUPLICADO')) {
-                    openDuplicateTitleModal('Ya existe un trabajo con ese tÃ­tulo en este canal. Elige otro nombre para continuar.');
+                    openDuplicateTitleModal('Ya existe un trabajo con ese título en este canal. Elige otro nombre para continuar.');
                 } else {
                     alert("Error: " + errorMsg);
                 }
                 stopEstimatedRenderProgress();
                 closeRenderProgressModal(true);
                 if (btn) {
-                    btn.innerText = originalText || "ðŸš€ RENDER FINAL";
+                    btn.innerText = originalText || "🚀 RENDER FINAL";
                     btn.disabled = false;
                 }
             }
@@ -1842,7 +1842,7 @@
                 document.getElementById('renderProgressJob').textContent = titleText;
 
                 if (status === 'rendered' || status === 'completed') {
-                    setRenderProgress(100, 'VÃ­deo listo', 'El render ha terminado correctamente. Abriendo los trabajos del canal...', 'Completado');
+                    setRenderProgress(100, 'Vídeo listo', 'El render ha terminado correctamente. Abriendo los trabajos del canal...', 'Completado');
                     renderProgressClosable = true;
                     resetRenderButton(btn, originalText);
                     setTimeout(() => {
@@ -1854,15 +1854,15 @@
 
                 if (status === 'failed') {
                     resetRenderButton(btn, originalText);
-                    finishRenderProgressAsError(data.error_message || 'El render terminÃ³ con error. Revisa el trabajo e intÃ©ntalo de nuevo.');
+                    finishRenderProgressAsError(data.error_message || 'El render terminó con error. Revisa el trabajo e inténtalo de nuevo.');
                     return;
                 }
 
                 const humanStatus = status === 'processing' ? 'Procesando' : (status === 'draft' ? 'Preparado' : 'En cola');
                 setRenderProgress(
                     renderProgressValue,
-                    'Creando vÃ­deo...',
-                    `Estamos generando la voz, montando las escenas y ensamblando el vÃ­deo final. Tiempo estimado: ${estimateRenderDurationLabel(scenesCount)}.`,
+                    'Creando vídeo...',
+                    `Estamos generando la voz, montando las escenas y ensamblando el vídeo final. Tiempo estimado: ${estimateRenderDurationLabel(scenesCount)}.`,
                     humanStatus
                 );
 
@@ -1893,7 +1893,7 @@
 
             btn.disabled = true;
             btn.innerText = "GENERANDO...";
-            status.innerText = "â³ Kie.ai estÃ¡ creando tu imagen (esto tarda 15-30s)...";
+            status.innerText = "⏳ Kie.ai está creando tu imagen (esto tarda 15-30s)...";
 
             try {
                 const res = await fetch('/api/ai/generate', {
@@ -1906,17 +1906,17 @@
                     const data = await res.json();
                     closeAiModal();
                     const channelId = getChannelIdFromQuery();
-                    if(confirm("Tarea de IA iniciada con Ã©xito. Â¿Deseas ir a los registros de IA de este canal para ver el progreso?")) {
+                    if(confirm("Tarea de IA iniciada con éxito. ¿Deseas ir a los registros de IA de este canal para ver el progreso?")) {
                         window.location.href = channelId ? `/ai-tasks?channel_id=${channelId}` : "/ai-tasks";
                     } else {
-                        alert("La imagen se estÃ¡ generando en segundo plano. AparecerÃ¡ en la galerÃ­a cuando estÃ© lista.");
+                        alert("La imagen se está generando en segundo plano. Aparecerá en la galería cuando esté lista.");
                     }
                 } else {
                     const error = await res.json();
                     alert("Error IA: " + (error.detail || "Error desconocido"));
                 }
             } catch(e) {
-                alert("Error de conexiÃ³n");
+                alert("Error de conexión");
             } finally {
                 btn.disabled = false;
                 btn.innerText = "Generar con Kie.ai";
