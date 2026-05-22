@@ -483,6 +483,7 @@
                 <a id="tab-ai-tasks" class="channel-tab" href="#">Registros IA</a>
                 <a id="tab-scripts" class="channel-tab" href="#">Guiones</a>
                 <a id="tab-history" class="channel-tab" href="#">Historial</a>
+                <a id="tab-ranking" class="channel-tab" href="#">Ranking</a>
                 <a id="tab-settings" class="channel-tab" href="#">Ajustes</a>
             </div>
         </section>
@@ -633,6 +634,11 @@
                         <a id="link-jobs" class="primary-link" href="/jobs">Abrir trabajos</a>
                     </div>
                     <div class="section-card">
+                        <h3>Ranking</h3>
+                        <p>Estadísticas diarias, semanales y mensuales de vistas, likes y comentarios.</p>
+                        <a id="link-ranking" class="primary-link" href="/channels/0/ranking">Ver ranking</a>
+                    </div>
+                    <div class="section-card">
                         <h3>Historial de publicación</h3>
                         <p>Vista centralizada del historial del canal con el contexto correcto.</p>
                         <a id="link-history" class="secondary-link" href="/channels/0/history">Abrir historial</a>
@@ -749,11 +755,12 @@
         let currentSelectedComment = null;
 
         function setLinks(channelId) {
-            document.getElementById('link-storyboard').href = `/storyboard?channel_id=${channelId}`;
-            document.getElementById('link-gallery').href = `/gallery?channel_id=${channelId}`;
-            document.getElementById('link-jobs').href = `/jobs?channel_id=${channelId}`;
-            document.getElementById('link-history').href = `/channels/${channelId}/history`;
-            document.getElementById('link-settings').href = `/youtube-channels?channel_id=${channelId}`;
+                document.getElementById('link-storyboard').href = `/storyboard?channel_id=${channelId}`;
+                document.getElementById('link-gallery').href = `/gallery?channel_id=${channelId}`;
+                document.getElementById('link-jobs').href = `/jobs?channel_id=${channelId}`;
+                document.getElementById('link-ranking').href = `/channels/${channelId}/ranking`;
+                document.getElementById('link-history').href = `/channels/${channelId}/history`;
+                document.getElementById('link-settings').href = `/youtube-channels?channel_id=${channelId}`;
             document.getElementById('edit-channel-link').href = `/youtube-channels?channel_id=${channelId}`;
             document.getElementById('channel-settings-link').href = `/youtube-channels?channel_id=${channelId}`;
             document.getElementById('jobs-link').href = `/jobs?channel_id=${channelId}`;
@@ -769,6 +776,7 @@
                 document.getElementById('tab-ai-tasks').href = `/ai-tasks?channel_id=${channelId}`;
                 document.getElementById('tab-scripts').href = `/guiones?channel_id=${channelId}`;
                 document.getElementById('tab-history').href = `/channels/${channelId}/history`;
+                document.getElementById('tab-ranking').href = `/channels/${channelId}/ranking`;
                 document.getElementById('tab-settings').href = `/youtube-channels?channel_id=${channelId}`;
         }
 

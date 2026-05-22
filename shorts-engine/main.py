@@ -142,6 +142,10 @@ async def channel_workspace_page(channel_id: int, request: Request):
 async def channel_history_page(channel_id: int, request: Request):
     return await render_dashboard_file(request, "static/dashboard/channel-history.html")
 
+@app.get("/channels/{channel_id}/ranking", response_class=HTMLResponse)
+async def channel_ranking_page(channel_id: int, request: Request):
+    return await render_dashboard_file(request, "static/dashboard/ranking.html")
+
 @app.get("/jobs", response_class=HTMLResponse)
 async def jobs_page(request: Request):
     return await render_dashboard_file(request, "static/dashboard/jobs.html")
@@ -611,6 +615,19 @@ async def api_get_youtube_channel_overview(channel_id: int, user: str = Depends(
         "comment_videos": comment_videos,
     }
 
+@app.get("/api/youtube/channels/{channel_id}/ranking")
+async def api_get_youtube_channel_ranking(
+    channel_id: int,
+    period: str = Query("month", description="day, week, month, quarter, year"),
+    metric: str = Query("score", description="score, views, likes, comments, engagement"),
+    refresh: bool = Query(False, description="Forzar sincronización con YouTube antes de devolver el ranking"),
+    user: str = Depends(get_current_user),
+):
+    channel = db.get_youtube_channel(channel_id)
+    if not channel:
+        raise HTTPException(status_code=404, detail="Canal no encontrado")
+    return build_channel_ranking_payload(channel_id=channel_id, period=period, metric=metric, refresh=refresh)
+
 @app.put("/api/youtube/channels/{channel_id}")
 async def api_update_youtube_channel(channel_id: int, req: YouTubeChannelUpdateRequest, user: str = Depends(get_current_user)):
     existing = db.get_youtube_channel(channel_id)
@@ -1043,6 +1060,149 @@ def serialize_youtube_channel(channel: dict | None) -> dict | None:
         safe["google_client_secret"] = "********"
     safe["default_tags"] = normalize_tags_input(safe.get("default_tags"))
     return safe
+
+
+def get_ranking_period_bounds(period: str | None) -> tuple[str, str, str]:
+    normalized = (period or "month").strip().lower()
+    today = datetime.now(timezone.utc).date()
+    if normalized == "day":
+        start_date = today
+    elif normalized == "week":
+        start_date = today - timedelta(days=6)
+    elif normalized == "quarter":
+        start_date = today - timedelta(days=89)
+    elif normalized == "year":
+        start_date = today - timedelta(days=364)
+    else:
+        normalized = "month"
+        start_date = today - timedelta(days=29)
+    return normalized, start_date.isoformat(), today.isoformat()
+
+
+def refresh_channel_ranking_snapshots(channel_id: int) -> dict[str, Any]:
+    published_jobs = [
+        job for job in db.get_recent_jobs(limit=1000, channel_id=channel_id)
+        if str(job.get("youtube_video_id") or "").strip()
+    ]
+    video_ids = [str(job.get("youtube_video_id") or "").strip() for job in published_jobs if str(job.get("youtube_video_id") or "").strip()]
+    if not video_ids:
+        return {"refreshed": 0, "jobs": 0}
+
+    stats_map = youtube_manager.get_video_statistics(channel_id, video_ids)
+    snapshot_date = datetime.now(timezone.utc).date().isoformat()
+    refreshed = 0
+    for job in published_jobs:
+        video_id = str(job.get("youtube_video_id") or "").strip()
+        if not video_id:
+            continue
+        stats = stats_map.get(video_id, {})
+        db.upsert_channel_ranking_snapshot(
+            channel_id=channel_id,
+            job_id=str(job.get("job_id") or "").strip(),
+            youtube_video_id=video_id,
+            snapshot_date=snapshot_date,
+            view_count=stats.get("view_count") or 0,
+            like_count=stats.get("like_count") or 0,
+            comment_count=stats.get("comment_count") or 0,
+        )
+        refreshed += 1
+
+    return {"refreshed": refreshed, "jobs": len(published_jobs)}
+
+
+def build_channel_ranking_payload(channel_id: int, period: str | None = None, metric: str | None = None, refresh: bool = False) -> dict[str, Any]:
+    normalized_period, start_date, end_date = get_ranking_period_bounds(period)
+    normalized_metric = (metric or "score").strip().lower()
+    if normalized_metric not in {"score", "views", "likes", "comments", "engagement"}:
+        normalized_metric = "score"
+
+    refresh_info = {"refreshed": 0, "jobs": 0}
+    today = datetime.now(timezone.utc).date().isoformat()
+    has_today_snapshots = bool(db.get_channel_ranking_snapshots(channel_id, start_date=today, end_date=today, latest_only=False))
+    if refresh or not has_today_snapshots:
+        try:
+            refresh_info = refresh_channel_ranking_snapshots(channel_id)
+        except Exception as exc:
+            logger.debug(f"No se pudieron refrescar los snapshots de ranking para el canal {channel_id}: {exc}")
+
+    items = db.get_channel_ranking_snapshots(channel_id, start_date=start_date, end_date=end_date, latest_only=True)
+    daily_series = db.get_channel_ranking_daily_series(channel_id, start_date=start_date, end_date=end_date)
+
+    ranked_items = []
+    for row in items:
+        views = int(row.get("view_count") or 0)
+        likes = int(row.get("like_count") or 0)
+        comments = int(row.get("comment_count") or 0)
+        engagement_score = int(row.get("engagement_score") or (views + likes * 5 + comments * 10))
+        engagement_rate = round(((likes + comments) / views) * 100 if views else 0.0, 2)
+        ranked_items.append({
+            "job_id": row.get("job_id"),
+            "youtube_video_id": row.get("youtube_video_id"),
+            "title": row.get("job_title") or row.get("job_text") or row.get("job_id"),
+            "text": row.get("job_text"),
+            "niche": row.get("job_niche"),
+            "job_status": row.get("job_status"),
+            "video_url": row.get("youtube_video_url"),
+            "thumbnail_url": row.get("thumbnail_url"),
+            "youtube_published_at": row.get("youtube_published_at"),
+            "job_created_at": row.get("job_created_at"),
+            "snapshot_date": row.get("snapshot_date"),
+            "views": views,
+            "likes": likes,
+            "comments": comments,
+            "engagement_score": engagement_score,
+            "engagement_rate": engagement_rate,
+        })
+
+    ranked_items.sort(key=lambda row: (
+        -(row["engagement_score"] if normalized_metric == "score" else (
+            row["views"] if normalized_metric == "views" else (
+                row["likes"] if normalized_metric == "likes" else (
+                    row["comments"] if normalized_metric == "comments" else row["engagement_rate"]
+                )
+            )
+        )),
+        -row["views"],
+        -row["likes"],
+        -row["comments"],
+    ))
+
+    summary = {
+        "total_views": sum(item["views"] for item in ranked_items),
+        "total_likes": sum(item["likes"] for item in ranked_items),
+        "total_comments": sum(item["comments"] for item in ranked_items),
+        "total_engagement_score": sum(item["engagement_score"] for item in ranked_items),
+        "job_count": len(ranked_items),
+        "top_job": ranked_items[0] if ranked_items else None,
+        "average_views": round(sum(item["views"] for item in ranked_items) / len(ranked_items), 2) if ranked_items else 0,
+        "average_engagement_rate": round(sum(item["engagement_rate"] for item in ranked_items) / len(ranked_items), 2) if ranked_items else 0,
+    }
+
+    daily_totals = []
+    for row in daily_series:
+        views = int(row.get("view_count") or 0)
+        likes = int(row.get("like_count") or 0)
+        comments = int(row.get("comment_count") or 0)
+        engagement_score = int(row.get("engagement_score") or (views + likes * 5 + comments * 10))
+        daily_totals.append({
+            "date": row.get("snapshot_date"),
+            "views": views,
+            "likes": likes,
+            "comments": comments,
+            "engagement_score": engagement_score,
+        })
+
+    return {
+        "channel": serialize_youtube_channel(db.get_youtube_channel(channel_id)),
+        "period": normalized_period,
+        "metric": normalized_metric,
+        "start_date": start_date,
+        "end_date": end_date,
+        "summary": summary,
+        "items": ranked_items,
+        "daily_series": daily_totals,
+        "refresh": refresh_info,
+    }
 
 
 LEONARDO_STYLE_PRESETS = {

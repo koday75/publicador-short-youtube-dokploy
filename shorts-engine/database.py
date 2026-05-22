@@ -2,6 +2,7 @@ import sqlite3
 import os
 import json
 from datetime import datetime
+from typing import Any
 
 class JobDatabase:
     def __init__(self, db_path="storage/jobs.db"):
@@ -339,6 +340,29 @@ class JobDatabase:
 
             try:
                 self._ensure_column(conn, "youtube_oauth_states", "redirect_uri", "TEXT")
+            except Exception:
+                pass
+
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS channel_ranking_snapshots (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    channel_id INTEGER NOT NULL,
+                    job_id TEXT NOT NULL,
+                    youtube_video_id TEXT,
+                    snapshot_date TEXT NOT NULL,
+                    view_count INTEGER DEFAULT 0,
+                    like_count INTEGER DEFAULT 0,
+                    comment_count INTEGER DEFAULT 0,
+                    engagement_score INTEGER DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(channel_id, job_id, snapshot_date)
+                )
+            """)
+            try:
+                conn.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_channel_ranking_snapshots_channel_date ON channel_ranking_snapshots(channel_id, snapshot_date)"
+                )
             except Exception:
                 pass
 
@@ -1160,6 +1184,145 @@ class JobDatabase:
             query += " ORDER BY created_at DESC LIMIT 1"
             row = conn.execute(query, params).fetchone()
             return dict(row) if row else None
+
+    def upsert_channel_ranking_snapshot(
+        self,
+        channel_id: int,
+        job_id: str,
+        snapshot_date: str,
+        youtube_video_id: str | None = None,
+        view_count: int | None = 0,
+        like_count: int | None = 0,
+        comment_count: int | None = 0,
+    ):
+        view_count = int(view_count or 0)
+        like_count = int(like_count or 0)
+        comment_count = int(comment_count or 0)
+        engagement_score = view_count + (like_count * 5) + (comment_count * 10)
+        with self._get_connection() as conn:
+            conn.execute(
+                """
+                INSERT INTO channel_ranking_snapshots (
+                    channel_id, job_id, youtube_video_id, snapshot_date,
+                    view_count, like_count, comment_count, engagement_score,
+                    updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                ON CONFLICT(channel_id, job_id, snapshot_date) DO UPDATE SET
+                    youtube_video_id = excluded.youtube_video_id,
+                    view_count = excluded.view_count,
+                    like_count = excluded.like_count,
+                    comment_count = excluded.comment_count,
+                    engagement_score = excluded.engagement_score,
+                    updated_at = CURRENT_TIMESTAMP
+                """,
+                (
+                    channel_id,
+                    job_id,
+                    youtube_video_id,
+                    snapshot_date,
+                    view_count,
+                    like_count,
+                    comment_count,
+                    engagement_score,
+                ),
+            )
+            conn.commit()
+            return {
+                "channel_id": channel_id,
+                "job_id": job_id,
+                "youtube_video_id": youtube_video_id,
+                "snapshot_date": snapshot_date,
+                "view_count": view_count,
+                "like_count": like_count,
+                "comment_count": comment_count,
+                "engagement_score": engagement_score,
+            }
+
+    def get_channel_ranking_snapshots(
+        self,
+        channel_id: int,
+        start_date: str | None = None,
+        end_date: str | None = None,
+        latest_only: bool = False,
+    ):
+        with self._get_connection() as conn:
+            conn.row_factory = sqlite3.Row
+            params: list[Any] = [channel_id]
+            if latest_only:
+                query = """
+                    SELECT s.*, j.title AS job_title, j.text AS job_text, j.niche AS job_niche,
+                           j.youtube_video_url, j.youtube_published_at, j.thumbnail_url,
+                           j.created_at AS job_created_at, j.finished_at AS job_finished_at,
+                           j.status AS job_status
+                    FROM channel_ranking_snapshots s
+                    LEFT JOIN jobs j ON j.job_id = s.job_id
+                    INNER JOIN (
+                        SELECT job_id, MAX(snapshot_date) AS snapshot_date
+                        FROM channel_ranking_snapshots
+                        WHERE channel_id = ?
+                """
+                if start_date:
+                    query += " AND snapshot_date >= ?"
+                    params.append(start_date)
+                if end_date:
+                    query += " AND snapshot_date <= ?"
+                    params.append(end_date)
+                query += """
+                        GROUP BY job_id
+                    ) latest ON latest.job_id = s.job_id AND latest.snapshot_date = s.snapshot_date
+                    WHERE s.channel_id = ?
+                """
+                params.append(channel_id)
+                if start_date:
+                    query += " AND s.snapshot_date >= ?"
+                    params.append(start_date)
+                if end_date:
+                    query += " AND s.snapshot_date <= ?"
+                    params.append(end_date)
+                query += " ORDER BY s.engagement_score DESC, s.view_count DESC, s.like_count DESC, s.comment_count DESC, s.snapshot_date DESC, s.id DESC"
+            else:
+                query = """
+                    SELECT s.*, j.title AS job_title, j.text AS job_text, j.niche AS job_niche,
+                           j.youtube_video_url, j.youtube_published_at, j.thumbnail_url,
+                           j.created_at AS job_created_at, j.finished_at AS job_finished_at,
+                           j.status AS job_status
+                    FROM channel_ranking_snapshots s
+                    LEFT JOIN jobs j ON j.job_id = s.job_id
+                    WHERE s.channel_id = ?
+                """
+                if start_date:
+                    query += " AND s.snapshot_date >= ?"
+                    params.append(start_date)
+                if end_date:
+                    query += " AND s.snapshot_date <= ?"
+                    params.append(end_date)
+                query += " ORDER BY s.snapshot_date DESC, s.engagement_score DESC, s.view_count DESC, s.like_count DESC, s.comment_count DESC, s.id DESC"
+            rows = conn.execute(query, params).fetchall()
+            return [dict(row) for row in rows]
+
+    def get_channel_ranking_daily_series(self, channel_id: int, start_date: str | None = None, end_date: str | None = None):
+        with self._get_connection() as conn:
+            conn.row_factory = sqlite3.Row
+            query = """
+                SELECT
+                    snapshot_date,
+                    SUM(view_count) AS view_count,
+                    SUM(like_count) AS like_count,
+                    SUM(comment_count) AS comment_count,
+                    SUM(engagement_score) AS engagement_score
+                FROM channel_ranking_snapshots
+                WHERE channel_id = ?
+            """
+            params: list[Any] = [channel_id]
+            if start_date:
+                query += " AND snapshot_date >= ?"
+                params.append(start_date)
+            if end_date:
+                query += " AND snapshot_date <= ?"
+                params.append(end_date)
+            query += " GROUP BY snapshot_date ORDER BY snapshot_date ASC"
+            rows = conn.execute(query, params).fetchall()
+            return [dict(row) for row in rows]
 
     def get_channel_overview(self, channel_id: int):
         channel = self.get_youtube_channel(channel_id)

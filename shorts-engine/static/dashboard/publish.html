@@ -272,6 +272,7 @@
                 <a id="tab-ai-tasks" class="channel-tab" href="#">Registros IA</a>
                 <a id="tab-scripts" class="channel-tab" href="#">Guiones</a>
                 <a id="tab-history" class="channel-tab" href="#">Historial</a>
+                <a id="tab-ranking" class="channel-tab" href="#">Ranking</a>
                 <a id="tab-settings" class="channel-tab" href="#">Ajustes</a>
             </div>
         </section>
@@ -480,6 +481,7 @@
             document.getElementById('tab-ai-tasks').href = `/ai-tasks?channel_id=${channelId}`;
             document.getElementById('tab-scripts').href = `/guiones?channel_id=${channelId}`;
             document.getElementById('tab-history').href = `/channels/${channelId}/history`;
+                document.getElementById('tab-ranking').href = `/channels/${channelId}/ranking`;
             document.getElementById('tab-settings').href = `/youtube-channels?channel_id=${channelId}`;
             document.getElementById('channel-name').textContent = channel.internal_name || '-';
         }

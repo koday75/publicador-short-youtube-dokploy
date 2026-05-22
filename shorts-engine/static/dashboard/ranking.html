@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ranking - Shorts Engine</title>
+    <link rel="stylesheet" href="/assets/style.css">
+    <link rel="icon" href="/icono.ico" type="image/x-icon">
+    <style>
+        .ranking-topbar {
+            display: flex;
+            justify-content: space-between;
+            gap: 1rem;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+        }
+        .ranking-actions {
+            display: flex;
+            gap: 0.65rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .ranking-chip, .ranking-btn, .ranking-select {
+            border-radius: 999px;
+            border: 1px solid var(--border-color);
+            background: rgba(255,255,255,0.04);
+            color: #fff;
+        }
+        .ranking-chip {
+            padding: 0.55rem 0.9rem;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 0.9rem;
+        }
+        .ranking-chip.active {
+            background: rgba(143, 92, 255, 0.22);
+            border-color: rgba(143, 92, 255, 0.5);
+            color: #d8c8ff;
+        }
+        .ranking-btn {
+            padding: 0.6rem 1rem;
+            cursor: pointer;
+            font-weight: 700;
+        }
+        .ranking-select {
+            padding: 0.6rem 0.9rem;
+            min-width: 180px;
+        }
+        .ranking-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        .ranking-card {
+            border: 1px solid rgba(255,255,255,0.08);
+            background: linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.015));
+            border-radius: 18px;
+            padding: 1rem;
+            min-height: 120px;
+        }
+        .ranking-card h3 {
+            margin: 0 0 0.35rem;
+            font-size: 0.95rem;
+            color: #d6d8e0;
+        }
+        .ranking-value {
+            font-size: 2rem;
+            font-weight: 800;
+            line-height: 1.05;
+            margin: 0.2rem 0 0.35rem;
+        }
+        .ranking-sub {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+        .ranking-panel {
+            border: 1px solid rgba(88, 166, 255, 0.16);
+            background: rgba(88, 166, 255, 0.05);
+            border-radius: 18px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        .chart-wrap {
+            width: 100%;
+            overflow: hidden;
+        }
+        .chart-svg {
+            width: 100%;
+            height: 280px;
+            display: block;
+        }
+        .table-wrap {
+            overflow-x: auto;
+        }
+        .ranking-table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 900px;
+        }
+        .ranking-table th,
+        .ranking-table td {
+            padding: 0.85rem 0.9rem;
+            text-align: left;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            vertical-align: top;
+        }
+        .ranking-table th {
+            color: #aab2c5;
+            font-size: 0.82rem;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+        .ranking-row-title {
+            font-weight: 800;
+            color: #fff;
+        }
+        .ranking-row-meta {
+            color: var(--text-muted);
+            font-size: 0.84rem;
+            margin-top: 0.15rem;
+        }
+        .metric-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            padding: 0.3rem 0.55rem;
+            border-radius: 999px;
+            font-weight: 700;
+            font-size: 0.8rem;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.08);
+            white-space: nowrap;
+        }
+        .metric-pill.views { color: #58a6ff; border-color: rgba(88,166,255,0.22); background: rgba(88,166,255,0.08); }
+        .metric-pill.likes { color: #3fb950; border-color: rgba(63,185,80,0.22); background: rgba(63,185,80,0.08); }
+        .metric-pill.comments { color: #b088f9; border-color: rgba(176,136,249,0.22); background: rgba(176,136,249,0.08); }
+        .empty-state {
+            padding: 2rem 1rem;
+            text-align: center;
+            color: var(--text-muted);
+            border: 1px dashed rgba(255,255,255,0.12);
+            border-radius: 16px;
+            background: rgba(255,255,255,0.02);
+        }
+        @media (max-width: 900px) {
+            .ranking-topbar {
+                flex-direction: column;
+            }
+            .ranking-actions {
+                width: 100%;
+            }
+            .ranking-select,
+            .ranking-btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-shell">
+        <header class="page-header">
+            <div>
+                <h1 id="page-title">📊 Ranking del canal</h1>
+                <p id="page-subtitle" class="page-subtitle">Analítica diaria, semanal y mensual de los trabajos publicados.</p>
+            </div>
+            <div class="page-header-actions">
+                <a id="back-channel-link" class="btn btn-secondary" href="#">← Volver al canal</a>
+                <a id="edit-channel-link" class="btn btn-primary" href="#">Editar canal</a>
+            </div>
+        </header>
+
+        <section class="channel-shell">
+            <div class="channel-breadcrumb">
+                <a href="/channels">Canales</a>
+                <span>›</span>
+                <span id="breadcrumb-channel">@canal</span>
+                <span>›</span>
+                <strong>Ranking</strong>
+            </div>
+            <div class="channel-tabs">
+                <a id="tab-overview" class="channel-tab" href="#">Resumen</a>
+                <a id="tab-storyboard" class="channel-tab" href="#">Crear vídeos</a>
+                <a id="tab-gallery" class="channel-tab" href="#">Galería</a>
+                <a id="tab-jobs" class="channel-tab" href="#">Trabajos</a>
+                <a id="tab-ai-tasks" class="channel-tab" href="#">Registros IA</a>
+                <a id="tab-scripts" class="channel-tab" href="#">Guiones</a>
+                <a id="tab-history" class="channel-tab" href="#">Historial</a>
+                <a id="tab-ranking" class="channel-tab active" href="#">Ranking</a>
+                <a id="tab-settings" class="channel-tab" href="#">Ajustes</a>
+            </div>
+        </section>
+
+        <section class="ranking-topbar">
+            <div>
+                <div class="ranking-actions">
+                    <button class="ranking-chip active" data-period="day">Hoy</button>
+                    <button class="ranking-chip" data-period="week">7 días</button>
+                    <button class="ranking-chip" data-period="month">30 días</button>
+                    <button class="ranking-chip" data-period="quarter">Trimestre</button>
+                    <button class="ranking-chip" data-period="year">Año</button>
+                </div>
+            </div>
+            <div class="ranking-actions">
+                <select id="metric-select" class="ranking-select">
+                    <option value="score">Ranking combinado</option>
+                    <option value="views">Vistas</option>
+                    <option value="likes">Likes</option>
+                    <option value="comments">Comentarios</option>
+                    <option value="engagement">Engagement</option>
+                </select>
+                <button id="refresh-btn" class="ranking-btn">↻ Actualizar</button>
+            </div>
+        </section>
+
+        <section class="ranking-grid" id="summary-cards">
+            <article class="ranking-card">
+                <h3>Vistas totales</h3>
+                <div class="ranking-value" id="summary-views">0</div>
+                <div class="ranking-sub">Suma de los trabajos del periodo.</div>
+            </article>
+            <article class="ranking-card">
+                <h3>Likes totales</h3>
+                <div class="ranking-value" id="summary-likes">0</div>
+                <div class="ranking-sub">Reacción positiva acumulada.</div>
+            </article>
+            <article class="ranking-card">
+                <h3>Comentarios</h3>
+                <div class="ranking-value" id="summary-comments">0</div>
+                <div class="ranking-sub">Interacción conversacional del periodo.</div>
+            </article>
+            <article class="ranking-card">
+                <h3>Mejor trabajo</h3>
+                <div class="ranking-value" style="font-size: 1.1rem;" id="summary-top">—</div>
+                <div class="ranking-sub" id="summary-top-sub">Aún no hay datos suficientes.</div>
+            </article>
+        </section>
+
+        <section class="ranking-panel">
+            <div class="ranking-topbar" style="margin-bottom: 0.75rem;">
+                <div>
+                    <h2 style="margin: 0 0 0.2rem;">Evolución diaria</h2>
+                    <div class="page-subtitle" id="chart-subtitle">Comparativa del periodo seleccionado.</div>
+                </div>
+                <div class="ranking-sub" id="sync-info">Sincronización pendiente.</div>
+            </div>
+            <div class="chart-wrap">
+                <svg id="ranking-chart" class="chart-svg" viewBox="0 0 1000 280" preserveAspectRatio="none" aria-label="Gráfico de ranking"></svg>
+            </div>
+        </section>
+
+        <section class="ranking-panel">
+            <div class="ranking-topbar" style="margin-bottom: 0.75rem;">
+                <div>
+                    <h2 style="margin: 0 0 0.2rem;">Top trabajos</h2>
+                    <div class="page-subtitle">Ordenados por la métrica seleccionada.</div>
+                </div>
+                <div class="ranking-sub" id="items-count">0 trabajos</div>
+            </div>
+            <div class="table-wrap">
+                <table class="ranking-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Trabajo</th>
+                            <th>Vistas</th>
+                            <th>Likes</th>
+                            <th>Comentarios</th>
+                            <th>Score</th>
+                            <th>Engagement</th>
+                            <th>Fecha</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ranking-table-body">
+                        <tr>
+                            <td colspan="8">
+                                <div class="empty-state">Cargando ranking...</div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        const params = new URLSearchParams(window.location.search);
+        const channelId = params.get('channel_id');
+        const state = { period: 'day', metric: 'score', data: null };
+
+        function formatNumber(value) {
+            return new Intl.NumberFormat('es-ES').format(Number(value || 0));
+        }
+
+        function escapeHtml(value) {
+            return String(value ?? '').replace(/[&<>"']/g, (ch) => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;'
+            })[ch]);
+        }
+
+        function metricLabel(metric) {
+            if (metric === 'views') return 'Vistas';
+            if (metric === 'likes') return 'Likes';
+            if (metric === 'comments') return 'Comentarios';
+            if (metric === 'engagement') return 'Engagement';
+            return 'Score';
+        }
+
+        function renderChart(points) {
+            const svg = document.getElementById('ranking-chart');
+            if (!points.length) {
+                svg.innerHTML = '<text x="50%" y="50%" text-anchor="middle" fill="#8f96a8" font-size="20">No hay datos para este periodo.</text>';
+                return;
+            }
+            const metricKey = metricToKey(state.metric);
+            const width = 1000;
+            const height = 280;
+            const padding = 30;
+            const maxValue = Math.max(...points.map((item) => Math.max(Number(item[metricKey] || 0), 1)));
+            const plotWidth = width - padding * 2;
+            const plotHeight = height - padding * 2;
+            const step = points.length > 1 ? plotWidth / (points.length - 1) : plotWidth;
+
+            const path = [];
+            points.forEach((point, index) => {
+                const x = padding + step * index;
+                const y = height - padding - (Number(point[metricKey] || 0) / maxValue) * plotHeight;
+                path.push(`${index === 0 ? 'M' : 'L'} ${x.toFixed(2)} ${y.toFixed(2)}`);
+            });
+
+            const dots = points.map((point, index) => {
+                const x = padding + step * index;
+                const y = height - padding - (Number(point[metricKey] || 0) / maxValue) * plotHeight;
+                return `<circle cx="${x.toFixed(2)}" cy="${y.toFixed(2)}" r="4.5" fill="${metricColor(state.metric)}" stroke="#0d1117" stroke-width="2">
+                    <title>${escapeHtml(point.date)} · ${metricLabel(state.metric)}: ${formatNumber(point[metricKey])}</title>
+                </circle>`;
+            }).join('');
+
+            const labels = points.map((point, index) => {
+                const x = padding + step * index;
+                return `<text x="${x.toFixed(2)}" y="${height - 8}" text-anchor="middle" fill="#8f96a8" font-size="11">${escapeHtml(point.date.slice(5))}</text>`;
+            }).join('');
+
+            svg.innerHTML = `
+                <defs>
+                    <linearGradient id="viewsGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stop-color="#58a6ff" stop-opacity="0.65"/>
+                        <stop offset="100%" stop-color="#58a6ff" stop-opacity="0.08"/>
+                    </linearGradient>
+                    <linearGradient id="likesGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stop-color="#3fb950" stop-opacity="0.65"/>
+                        <stop offset="100%" stop-color="#3fb950" stop-opacity="0.08"/>
+                    </linearGradient>
+                    <linearGradient id="commentsGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stop-color="#b088f9" stop-opacity="0.65"/>
+                        <stop offset="100%" stop-color="#b088f9" stop-opacity="0.08"/>
+                    </linearGradient>
+                </defs>
+                <rect x="0" y="0" width="1000" height="280" rx="18" fill="rgba(255,255,255,0.01)"></rect>
+                <g stroke="rgba(255,255,255,0.06)" stroke-width="1">
+                    <line x1="${padding}" y1="${padding}" x2="${width - padding}" y2="${padding}" />
+                    <line x1="${padding}" y1="${height / 2}" x2="${width - padding}" y2="${height / 2}" />
+                    <line x1="${padding}" y1="${height - padding}" x2="${width - padding}" y2="${height - padding}" />
+                </g>
+                <path d="${path.join(' ')}" fill="none" stroke="${metricColor(state.metric)}" stroke-width="3"/>
+                ${dots}
+                ${labels}
+            `;
+        }
+
+        function metricColor(metric) {
+            if (metric === 'views') return '#58a6ff';
+            if (metric === 'likes') return '#3fb950';
+            if (metric === 'comments') return '#b088f9';
+            return '#58a6ff';
+        }
+
+        function metricToKey(metric) {
+            if (metric === 'views') return 'views';
+            if (metric === 'likes') return 'likes';
+            if (metric === 'comments') return 'comments';
+            return 'engagement_score';
+        }
+
+        function renderSummary(data) {
+            document.getElementById('summary-views').textContent = formatNumber(data.summary.total_views);
+            document.getElementById('summary-likes').textContent = formatNumber(data.summary.total_likes);
+            document.getElementById('summary-comments').textContent = formatNumber(data.summary.total_comments);
+            const top = data.summary.top_job;
+            document.getElementById('summary-top').textContent = top ? (top.title || top.job_id || '—') : '—';
+            document.getElementById('summary-top-sub').textContent = top
+                ? `${formatNumber(top.views)} vistas · ${formatNumber(top.likes)} likes · ${formatNumber(top.comments)} comentarios`
+                : 'Aún no hay datos suficientes.';
+            document.getElementById('items-count').textContent = `${data.items.length} trabajos`;
+            document.getElementById('sync-info').textContent = data.refresh && data.refresh.refreshed > 0
+                ? `Sincronizados ${data.refresh.refreshed} vídeos hoy`
+                : 'Datos locales cargados';
+            document.getElementById('chart-subtitle').textContent = `${data.period === 'day' ? 'Hoy' : data.period === 'week' ? 'Últimos 7 días' : data.period === 'month' ? 'Últimos 30 días' : data.period === 'quarter' ? 'Trimestre' : 'Año'} · ${metricLabel(state.metric)}`;
+        }
+
+        function renderTable(items) {
+            const tbody = document.getElementById('ranking-table-body');
+            if (!items.length) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="8">
+                            <div class="empty-state">No hay trabajos con estadísticas para este periodo.</div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            tbody.innerHTML = items.map((item, index) => `
+                <tr>
+                    <td>${index + 1}</td>
+                    <td>
+                        <div class="ranking-row-title">${escapeHtml(item.title || item.job_id || 'Sin título')}</div>
+                        <div class="ranking-row-meta">
+                            ${escapeHtml(item.niche || 'general')} · ${escapeHtml(item.snapshot_date || '')}
+                        </div>
+                    </td>
+                    <td><span class="metric-pill views">👁 ${formatNumber(item.views)}</span></td>
+                    <td><span class="metric-pill likes">❤ ${formatNumber(item.likes)}</span></td>
+                    <td><span class="metric-pill comments">💬 ${formatNumber(item.comments)}</span></td>
+                    <td>${formatNumber(item.engagement_score)}</td>
+                    <td>${item.engagement_rate.toFixed(2)}%</td>
+                    <td>${escapeHtml(item.youtube_published_at || item.job_created_at || item.snapshot_date || '')}</td>
+                </tr>
+            `).join('');
+        }
+
+        async function loadRanking(forceRefresh = false) {
+            if (!channelId) {
+                document.getElementById('ranking-table-body').innerHTML = `
+                    <tr><td colspan="8"><div class="empty-state">Falta el identificador del canal.</div></td></tr>
+                `;
+                return;
+            }
+            document.getElementById('ranking-table-body').innerHTML = `
+                <tr><td colspan="8"><div class="empty-state">Cargando ranking...</div></td></tr>
+            `;
+            try {
+                const response = await fetch(`/api/youtube/channels/${channelId}/ranking?period=${encodeURIComponent(state.period)}&metric=${encodeURIComponent(state.metric)}${forceRefresh ? '&refresh=1' : ''}`);
+                if (!response.ok) {
+                    const payload = await response.json().catch(() => ({}));
+                    throw new Error(payload.detail || 'No se pudo cargar el ranking');
+                }
+                const data = await response.json();
+                state.data = data;
+                const channel = data.channel || {};
+                document.title = `${channel.internal_name || channel.youtube_channel_title || 'Canal'} · Ranking - Shorts Engine`;
+                document.getElementById('page-title').textContent = `📊 Ranking de ${channel.internal_name || channel.youtube_channel_title || 'Canal'}`;
+                document.getElementById('page-subtitle').textContent = `Periodos de rendimiento para ${channel.youtube_channel_title || channel.internal_name || 'este canal'}.`;
+                document.getElementById('breadcrumb-channel').textContent = channel.internal_name ? `@${channel.internal_name}` : (channel.youtube_channel_title || '@canal');
+                document.getElementById('back-channel-link').href = `/channels/${channelId}`;
+                document.getElementById('edit-channel-link').href = `/youtube-channels?channel_id=${channelId}`;
+                document.getElementById('tab-overview').href = `/channels/${channelId}`;
+                document.getElementById('tab-storyboard').href = `/storyboard?channel_id=${channelId}`;
+                document.getElementById('tab-gallery').href = `/gallery?channel_id=${channelId}`;
+                document.getElementById('tab-jobs').href = `/jobs?channel_id=${channelId}`;
+                document.getElementById('tab-ai-tasks').href = `/ai-tasks?channel_id=${channelId}`;
+                document.getElementById('tab-scripts').href = `/guiones?channel_id=${channelId}`;
+                document.getElementById('tab-history').href = `/channels/${channelId}/history`;
+                document.getElementById('tab-ranking').href = `/channels/${channelId}/ranking`;
+                document.getElementById('tab-settings').href = `/youtube-channels?channel_id=${channelId}`;
+                renderSummary(data);
+                renderChart(data.daily_series || []);
+                renderTable(data.items || []);
+            } catch (error) {
+                document.getElementById('ranking-table-body').innerHTML = `
+                    <tr><td colspan="8"><div class="empty-state">${escapeHtml(error.message || 'Error al cargar el ranking')}</div></td></tr>
+                `;
+            }
+        }
+
+        document.querySelectorAll('.ranking-chip').forEach((button) => {
+            button.addEventListener('click', () => {
+                document.querySelectorAll('.ranking-chip').forEach((item) => item.classList.remove('active'));
+                button.classList.add('active');
+                state.period = button.dataset.period || 'month';
+                loadRanking();
+            });
+        });
+
+        document.getElementById('metric-select').addEventListener('change', (event) => {
+            state.metric = event.target.value || 'score';
+            loadRanking();
+        });
+
+        document.getElementById('refresh-btn').addEventListener('click', () => loadRanking(true));
+
+        loadRanking();
+    </script>
+</body>
+</html>
