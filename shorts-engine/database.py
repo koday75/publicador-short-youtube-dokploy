@@ -1251,7 +1251,7 @@ class JobDatabase:
             if latest_only:
                 query = """
                     SELECT s.*, j.title AS job_title, j.text AS job_text, j.niche AS job_niche,
-                           j.youtube_video_url, j.youtube_published_at, j.thumbnail_url,
+                           j.youtube_video_url, j.youtube_published_at,
                            j.created_at AS job_created_at, j.finished_at AS job_finished_at,
                            j.status AS job_status
                     FROM channel_ranking_snapshots s
@@ -1283,7 +1283,7 @@ class JobDatabase:
             else:
                 query = """
                     SELECT s.*, j.title AS job_title, j.text AS job_text, j.niche AS job_niche,
-                           j.youtube_video_url, j.youtube_published_at, j.thumbnail_url,
+                           j.youtube_video_url, j.youtube_published_at,
                            j.created_at AS job_created_at, j.finished_at AS job_finished_at,
                            j.status AS job_status
                     FROM channel_ranking_snapshots s

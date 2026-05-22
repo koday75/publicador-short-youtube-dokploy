@@ -537,6 +537,22 @@
             `).join('');
         }
 
+        function setChannelLinks(channel = {}) {
+            if (!channelId) return;
+            document.getElementById('breadcrumb-channel').textContent = channel.internal_name ? `@${channel.internal_name}` : (channel.youtube_channel_title || `Canal ${channelId}`);
+            document.getElementById('back-channel-link').href = `/channels/${channelId}`;
+            document.getElementById('edit-channel-link').href = `/youtube-channels?channel_id=${channelId}`;
+            document.getElementById('tab-overview').href = `/channels/${channelId}`;
+            document.getElementById('tab-storyboard').href = `/storyboard?channel_id=${channelId}`;
+            document.getElementById('tab-gallery').href = `/gallery?channel_id=${channelId}`;
+            document.getElementById('tab-jobs').href = `/jobs?channel_id=${channelId}`;
+            document.getElementById('tab-ai-tasks').href = `/ai-tasks?channel_id=${channelId}`;
+            document.getElementById('tab-scripts').href = `/guiones?channel_id=${channelId}`;
+            document.getElementById('tab-history').href = `/channels/${channelId}/history`;
+            document.getElementById('tab-ranking').href = `/channels/${channelId}/ranking`;
+            document.getElementById('tab-settings').href = `/youtube-channels?channel_id=${channelId}`;
+        }
+
         async function loadRanking(forceRefresh = false) {
             if (!channelId) {
                 document.getElementById('ranking-table-body').innerHTML = `
@@ -559,18 +575,7 @@
                 document.title = `${channel.internal_name || channel.youtube_channel_title || 'Canal'} · Ranking - Shorts Engine`;
                 document.getElementById('page-title').textContent = `📊 Ranking de ${channel.internal_name || channel.youtube_channel_title || 'Canal'}`;
                 document.getElementById('page-subtitle').textContent = `Periodos de rendimiento para ${channel.youtube_channel_title || channel.internal_name || 'este canal'}.`;
-                document.getElementById('breadcrumb-channel').textContent = channel.internal_name ? `@${channel.internal_name}` : (channel.youtube_channel_title || '@canal');
-                document.getElementById('back-channel-link').href = `/channels/${channelId}`;
-                document.getElementById('edit-channel-link').href = `/youtube-channels?channel_id=${channelId}`;
-                document.getElementById('tab-overview').href = `/channels/${channelId}`;
-                document.getElementById('tab-storyboard').href = `/storyboard?channel_id=${channelId}`;
-                document.getElementById('tab-gallery').href = `/gallery?channel_id=${channelId}`;
-                document.getElementById('tab-jobs').href = `/jobs?channel_id=${channelId}`;
-                document.getElementById('tab-ai-tasks').href = `/ai-tasks?channel_id=${channelId}`;
-                document.getElementById('tab-scripts').href = `/guiones?channel_id=${channelId}`;
-                document.getElementById('tab-history').href = `/channels/${channelId}/history`;
-                document.getElementById('tab-ranking').href = `/channels/${channelId}/ranking`;
-                document.getElementById('tab-settings').href = `/youtube-channels?channel_id=${channelId}`;
+                setChannelLinks(channel);
                 renderSummary(data);
                 renderChart(data.daily_series || []);
                 renderTable(data.items || []);
@@ -615,6 +620,7 @@
                     loadRanking();
                 });
             }
+            setChannelLinks();
             loadRanking();
         });
     </script>
