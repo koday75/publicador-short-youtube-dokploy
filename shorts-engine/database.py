@@ -184,9 +184,11 @@ class JobDatabase:
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     task_id TEXT UNIQUE,
                     channel_id INTEGER,
+                    provider TEXT,
                     prompt TEXT,
                     niche TEXT,
                     model TEXT,
+                    external_id TEXT,
                     status TEXT, -- pending, processing, completed, failed
                     result_url TEXT,
                     media_id INTEGER,
@@ -251,6 +253,8 @@ class JobDatabase:
                 # Add batch_id and channel_id to ai_tasks if missing
                 self._ensure_column(conn, "ai_tasks", "batch_id", "TEXT")
                 self._ensure_column(conn, "ai_tasks", "channel_id", "INTEGER")
+                self._ensure_column(conn, "ai_tasks", "provider", "TEXT")
+                self._ensure_column(conn, "ai_tasks", "external_id", "TEXT")
                 self._ensure_column(conn, "job_logs", "channel_id", "INTEGER")
                 self._ensure_column(conn, "job_logs", "details_json", "TEXT")
                 self._ensure_column(conn, "job_logs", "scene_id", "TEXT")
@@ -883,11 +887,11 @@ class JobDatabase:
                 
             conn.commit()
 
-    def add_ai_task(self, task_id, prompt, niche, model, batch_id=None, channel_id=None):
+    def add_ai_task(self, task_id, prompt, niche, model, batch_id=None, channel_id=None, provider=None, external_id=None):
         with self._get_connection() as conn:
             conn.execute(
-                "INSERT INTO ai_tasks (task_id, channel_id, prompt, niche, model, status, batch_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                (task_id, channel_id, prompt, niche, model, "processing", batch_id)
+                "INSERT INTO ai_tasks (task_id, channel_id, provider, prompt, niche, model, external_id, status, batch_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (task_id, channel_id, provider, prompt, niche, model, external_id, "processing", batch_id)
             )
             conn.commit()
 
@@ -957,8 +961,8 @@ class JobDatabase:
                 query += " AND channel_id = ?"
                 params.append(channel_id)
             if search:
-                query += " AND (prompt LIKE ? OR task_id LIKE ?)"
-                params.extend([f"%{search}%", f"%{search}%"])
+                query += " AND (prompt LIKE ? OR task_id LIKE ? OR provider LIKE ? OR model LIKE ?)"
+                params.extend([f"%{search}%", f"%{search}%", f"%{search}%", f"%{search}%"])
             
             query += " ORDER BY created_at DESC LIMIT ? OFFSET ?"
             params.extend([limit, offset])
@@ -974,8 +978,8 @@ class JobDatabase:
                 query += " AND channel_id = ?"
                 params.append(channel_id)
             if search:
-                query += " AND (prompt LIKE ? OR task_id LIKE ?)"
-                params.extend([f"%{search}%", f"%{search}%"])
+                query += " AND (prompt LIKE ? OR task_id LIKE ? OR provider LIKE ? OR model LIKE ?)"
+                params.extend([f"%{search}%", f"%{search}%", f"%{search}%", f"%{search}%"])
             return conn.execute(query, params).fetchone()[0]
 
     def delete_ai_task(self, task_id: str) -> bool:

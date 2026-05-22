@@ -18,6 +18,7 @@ from pydantic import BaseModel
 from typing import Any, List, Optional, Union
 from database import JobDatabase
 from ai_manager import AIManager
+from leonardo_manager import LeonardoManager
 from elevenlabs_manager import ElevenLabsManager
 from video_editor import VideoEditor
 from kie_manager import KieAiManager
@@ -66,6 +67,7 @@ tts_manager = ElevenLabsManager()
 video_editor = VideoEditor()
 kie_manager = KieAiManager(db)
 apify_manager = ApifyManager(db)
+leonardo_manager = LeonardoManager(db)
 youtube_manager = YouTubeChannelService(db)
 
 # Directory for storage
@@ -378,6 +380,26 @@ class AiScenePrompt(BaseModel):
     niche: str = "general"
     model: Optional[str] = None
 
+class LeonardoGenerateRequest(BaseModel):
+    prompt: str
+    channel_id: Optional[int] = None
+    job_id: Optional[str] = None
+    niche: str = "general"
+    model_id: Optional[str] = None
+    width: Optional[int] = 1024
+    height: Optional[int] = 1024
+    num_images: Optional[int] = 1
+    negative_prompt: Optional[str] = None
+    seed: Optional[int] = None
+    public: Optional[bool] = False
+    alchemy: Optional[bool] = True
+    enhance_prompt: Optional[bool] = True
+    prompt_magic: Optional[bool] = None
+    init_generation_image_id: Optional[str] = None
+    init_image_id: Optional[str] = None
+    init_strength: Optional[float] = None
+    transparency: Optional[str] = None
+
 class AiBatchGenerateRequest(BaseModel):
     scenes: List[AiScenePrompt]
     draft_mode: bool = False
@@ -432,6 +454,7 @@ async def get_settings(session=Depends(get_current_user)):
     
     # Proveedores API
     for prov in ["GROQ", "OPENAI", "DEEPSEEK", "OPENROUTER",
+                 "LEONARDO_API_KEY",
                  "KIE_API_KEY_1", "KIE_API_KEY_2", "KIE_API_KEY_3", "KIE_API_KEY_4", "KIE_API_KEY_5",
                  "APIFY_API_KEY_1", "APIFY_API_KEY_2", "APIFY_API_KEY_3", "APIFY_API_KEY_4"]:
         val = db.get_setting(prov)
@@ -1440,6 +1463,7 @@ async def api_get_settings(user: str = Depends(get_current_user)):
     for p in [
         "KIE_API_KEY_1", "KIE_API_KEY_2", "KIE_API_KEY_3", "KIE_API_KEY_4", "KIE_API_KEY_5",
         "APIFY_API_KEY_1", "APIFY_API_KEY_2", "APIFY_API_KEY_3", "APIFY_API_KEY_4",
+        "LEONARDO_API_KEY",
     ]:
         if p in settings:
             settings[p] = settings[p]
@@ -1533,6 +1557,85 @@ async def api_generate_image(req: AiGenerateRequest, background_tasks: Backgroun
     except Exception as e:
         logger.error(f"Ai Generate Start Error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/leonardo/generate")
+async def api_generate_leonardo_image(req: LeonardoGenerateRequest, background_tasks: BackgroundTasks, user: str = Depends(get_current_user)):
+    if not leonardo_manager.is_configured():
+        raise HTTPException(status_code=400, detail="LEONARDO_API_KEY no está configurada.")
+
+    prompt = (req.prompt or "").strip()
+    if not prompt:
+        raise HTTPException(status_code=400, detail="El prompt no puede estar vacío.")
+
+    task_id = f"leo_{uuid.uuid4().hex[:12]}"
+    model_ref = (req.model_id or db.get_setting("LEONARDO_DEFAULT_MODEL_ID") or "").strip() or "leonardo"
+
+    db.add_ai_task(
+        task_id,
+        prompt,
+        req.niche,
+        model_ref,
+        channel_id=req.channel_id,
+        provider="leonardo",
+    )
+
+    try:
+        generation_id, raw_data = leonardo_manager.create_image_generation(
+            prompt,
+            model_id=req.model_id or db.get_setting("LEONARDO_DEFAULT_MODEL_ID"),
+            width=req.width or 1024,
+            height=req.height or 1024,
+            num_images=req.num_images or 1,
+            negative_prompt=req.negative_prompt,
+            seed=req.seed,
+            public=bool(req.public),
+            alchemy=bool(req.alchemy),
+            enhance_prompt=bool(req.enhance_prompt),
+            prompt_magic=req.prompt_magic,
+            init_generation_image_id=req.init_generation_image_id,
+            init_image_id=req.init_image_id,
+            init_strength=req.init_strength,
+            transparency=req.transparency,
+            channel_id=req.channel_id,
+            job_id=req.job_id,
+        )
+    except Exception as exc:
+        db.update_ai_task(task_id, "failed", error_message=str(exc))
+        raise HTTPException(status_code=500, detail=str(exc))
+
+    with db._get_connection() as conn:
+        conn.execute(
+            "UPDATE ai_tasks SET provider = ?, external_id = ?, model = ? WHERE task_id = ?",
+            ("leonardo", generation_id, model_ref, task_id),
+        )
+        conn.commit()
+
+    if req.job_id:
+        log_job_event(
+            req.job_id,
+            "leonardo_generation_started",
+            "Generación de Leonardo iniciada.",
+            status="info",
+            channel_id=req.channel_id,
+            details={"task_id": task_id, "generation_id": generation_id, "model": model_ref},
+        )
+
+    background_tasks.add_task(process_leonardo_task_background, task_id, generation_id, req)
+    return {"status": "processing", "task_id": task_id, "generation_id": generation_id, "provider": "leonardo"}
+
+@app.get("/api/leonardo/generations/{generation_id}")
+async def api_get_leonardo_generation(generation_id: str, user: str = Depends(get_current_user)):
+    try:
+        status, data = leonardo_manager.poll_generation_once(generation_id)
+        generation = data.get("generations_by_pk") or data.get("generation") or {}
+        return {
+            "generation_id": generation_id,
+            "status": status,
+            "generated_images": generation.get("generated_images") or [],
+            "raw": data,
+        }
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
 
 @app.get("/api/ai/tasks")
 async def api_get_ai_tasks(page: int = 1, limit: int = 25, search: str = None, channel_id: int = None, user: str = Depends(get_current_user)):
@@ -1749,6 +1852,86 @@ async def process_ai_task_background(task_id: str, api_key: str, req: AiGenerate
         db.update_ai_task(task_id, "failed", error_message="Tiempo de espera excedido (5 min)")
     except Exception as e:
         logger.error(f"Error in process_ai_task_background: {str(e)}")
+        db.update_ai_task(task_id, "failed", error_message=str(e))
+
+async def process_leonardo_task_background(task_id: str, generation_id: str, req: LeonardoGenerateRequest):
+    """Background loop to poll Leonardo and download the generated image."""
+    start_time = time.time()
+    try:
+        while time.time() - start_time < 600:  # 10 min max
+            await asyncio.sleep(6)
+            status, data = leonardo_manager.poll_generation_once(generation_id)
+            generation = data.get("generations_by_pk") or data.get("generation") or {}
+            image_url = leonardo_manager.extract_generated_image_url(data)
+            logger.info("Leonardo task polling: %s -> status=%s", task_id, status)
+
+            if status in {"FAILED", "FAIL", "ERROR"}:
+                error_msg = (
+                    generation.get("failureReason")
+                    or generation.get("failure_reason")
+                    or data.get("error")
+                    or data.get("message")
+                    or "Error desconocido en Leonardo"
+                )
+                db.update_ai_task(task_id, "failed", error_message=str(error_msg))
+                if req.job_id:
+                    log_job_event(
+                        req.job_id,
+                        "leonardo_generation_failed",
+                        "La generación de Leonardo falló.",
+                        status="error",
+                        channel_id=req.channel_id,
+                        error_message=str(error_msg),
+                        details={"task_id": task_id, "generation_id": generation_id},
+                    )
+                return
+
+            if status in {"COMPLETE", "COMPLETED", "SUCCESS"} and image_url:
+                try:
+                    result = leonardo_manager.download_generated_image(
+                        image_url,
+                        req.prompt,
+                        req.niche,
+                        req.model_id or db.get_setting("LEONARDO_DEFAULT_MODEL_ID") or "leonardo",
+                        req.channel_id,
+                    )
+                    db.update_ai_task(task_id, "completed", result_url=image_url, media_id=result["media_id"])
+                    if req.job_id:
+                        log_job_event(
+                            req.job_id,
+                            "leonardo_generation_completed",
+                            "Imagen de Leonardo descargada y guardada en la galería.",
+                            status="success",
+                            channel_id=req.channel_id,
+                            details={
+                                "task_id": task_id,
+                                "generation_id": generation_id,
+                                "media_id": result["media_id"],
+                                "filename": result["filename"],
+                            },
+                        )
+                    return
+                except Exception as download_err:
+                    logger.error("Leonardo task %s: error descargando imagen: %s", task_id, download_err)
+                    db.update_ai_task(task_id, "failed", error_message=f"Error descargando imagen: {download_err}")
+                    return
+
+            if status in {"COMPLETE", "COMPLETED", "SUCCESS"} and not image_url:
+                logger.info("Leonardo task %s completada sin URL todavía; continuamos esperando.", task_id)
+
+        db.update_ai_task(task_id, "failed", error_message="Tiempo de espera excedido (10 min)")
+        if req.job_id:
+            log_job_event(
+                req.job_id,
+                "leonardo_generation_timeout",
+                "Tiempo de espera excedido en Leonardo.",
+                status="error",
+                channel_id=req.channel_id,
+                error_message="Tiempo de espera excedido (10 min)",
+                details={"task_id": task_id, "generation_id": generation_id},
+            )
+    except Exception as e:
+        logger.error("Error in process_leonardo_task_background: %s", str(e))
         db.update_ai_task(task_id, "failed", error_message=str(e))
 
 @app.get("/api/ai/assets/search")

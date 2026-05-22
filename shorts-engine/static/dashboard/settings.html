@@ -178,12 +178,21 @@
                 .replace(/'/g, '&#39;');
         }
 
+        function prettyProviderName(provider) {
+            if (provider === 'LEONARDO_API_KEY') return 'Leonardo';
+            if (provider === 'OPENROUTER') return 'OpenRouter';
+            if (provider === 'DEEPSEEK') return 'DeepSeek';
+            if (provider === 'OPENAI') return 'OpenAI';
+            if (provider === 'GROQ') return 'Groq';
+            return provider.replace(/_API_KEY$/i, '').replace(/_/g, ' ');
+        }
+
         function renderKeyCard(provider, isConfigured, statusText, statusColor) {
             const fieldPlaceholder = isConfigured ? '************' : 'Pega tu API key aqu\u00ed';
             return `
                 <div class="setting-card">
                     <div style="display:flex; justify-content:space-between; align-items:center; gap:0.75rem;">
-                        <h4>${escapeHtml(provider)}</h4>
+                        <h4>${escapeHtml(prettyProviderName(provider))}</h4>
                         <small style="color:${statusColor}">${escapeHtml(statusText)}</small>
                     </div>
                     <div class="field">
@@ -250,6 +259,7 @@
                     'OPENAI',
                     'DEEPSEEK',
                     'OPENROUTER',
+                    'LEONARDO_API_KEY',
                     'KIE_API_KEY_1',
                     'KIE_API_KEY_2',
                     'KIE_API_KEY_3',
