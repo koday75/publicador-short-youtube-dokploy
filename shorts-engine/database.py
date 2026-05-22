@@ -423,6 +423,20 @@ class JobDatabase:
             conn.commit()
             return media_id
 
+    def get_media_by_filename(self, filename: str, channel_id: int | None = None):
+        if not filename:
+            return None
+        with self._get_connection() as conn:
+            conn.row_factory = sqlite3.Row
+            query = "SELECT * FROM media WHERE filename = ?"
+            params = [filename]
+            if channel_id is not None:
+                query += " AND channel_id = ?"
+                params.append(channel_id)
+            cursor = conn.execute(query, params)
+            row = cursor.fetchone()
+            return dict(row) if row else None
+
     # Generic Config Settings Methods
     def get_setting(self, key_name: str, default=None):
         with self._get_connection() as conn:

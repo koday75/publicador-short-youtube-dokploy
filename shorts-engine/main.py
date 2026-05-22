@@ -399,6 +399,7 @@ class LeonardoGenerateRequest(BaseModel):
     init_image_id: Optional[str] = None
     init_strength: Optional[float] = None
     transparency: Optional[str] = None
+    source_media_filename: Optional[str] = None
 
 class AiBatchGenerateRequest(BaseModel):
     scenes: List[AiScenePrompt]
@@ -1569,6 +1570,7 @@ async def api_generate_leonardo_image(req: LeonardoGenerateRequest, background_t
 
     task_id = f"leo_{uuid.uuid4().hex[:12]}"
     model_ref = (req.model_id or db.get_setting("LEONARDO_DEFAULT_MODEL_ID") or "").strip() or "leonardo"
+    init_image_id = req.init_image_id
 
     db.add_ai_task(
         task_id,
@@ -1580,6 +1582,14 @@ async def api_generate_leonardo_image(req: LeonardoGenerateRequest, background_t
     )
 
     try:
+        if not init_image_id and req.source_media_filename:
+            media = db.get_media_by_filename(req.source_media_filename, channel_id=req.channel_id)
+            if media and media.get("file_path") and os.path.exists(str(media["file_path"])):
+                media_type = str(media.get("file_type") or "").lower()
+                if media_type.startswith("image"):
+                    uploaded = leonardo_manager.upload_init_image(str(media["file_path"]))
+                    init_image_id = uploaded.get("id")
+
         generation_id, raw_data = leonardo_manager.create_image_generation(
             prompt,
             model_id=req.model_id or db.get_setting("LEONARDO_DEFAULT_MODEL_ID"),
@@ -1593,7 +1603,7 @@ async def api_generate_leonardo_image(req: LeonardoGenerateRequest, background_t
             enhance_prompt=bool(req.enhance_prompt),
             prompt_magic=req.prompt_magic,
             init_generation_image_id=req.init_generation_image_id,
-            init_image_id=req.init_image_id,
+            init_image_id=init_image_id,
             init_strength=req.init_strength,
             transparency=req.transparency,
             channel_id=req.channel_id,

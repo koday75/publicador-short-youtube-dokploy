@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -321,6 +321,68 @@
             font-size: 0.95rem;
             overflow-wrap: anywhere;
         }
+        .ai-modal-content {
+            max-width: 980px;
+        }
+        .ai-modal-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+            gap: 1rem;
+            margin-top: 0.75rem;
+        }
+        .ai-panel {
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            background: rgba(255,255,255,0.03);
+            padding: 1rem;
+            display: grid;
+            gap: 0.85rem;
+        }
+        .ai-panel h4 {
+            margin: 0;
+            font-size: 1rem;
+        }
+        .ai-panel p {
+            margin: 0;
+            color: var(--text-muted);
+            font-size: 0.82rem;
+            line-height: 1.45;
+        }
+        .ai-form-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 0.75rem;
+        }
+        .ai-field {
+            display: grid;
+            gap: 0.35rem;
+        }
+        .ai-field label {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .ai-field input,
+        .ai-field select,
+        .ai-field textarea {
+            width: 100%;
+        }
+        .ai-provider-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.65rem;
+            align-items: center;
+        }
+        .ai-reference-note {
+            border: 1px solid rgba(88, 166, 255, 0.22);
+            background: rgba(88, 166, 255, 0.08);
+            border-radius: 10px;
+            padding: 0.75rem;
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            line-height: 1.45;
+        }
         @media (max-width: 1100px) {
             .scene-card {
                 grid-template-columns: 56px 1fr;
@@ -338,6 +400,10 @@
                 width: 100%;
                 max-width: 220px;
             }
+            .ai-modal-grid,
+            .ai-form-grid {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
@@ -345,14 +411,14 @@
     <div class="container">
         <header style="display: flex; justify-content: space-between; align-items: flex-start;">
             <div style="flex: 1;">
-                <h1>🎬 Cinema Storyboard</h1>
+                <h1>ðŸŽ¬ Cinema Storyboard</h1>
                 <div style="margin-top: 5px;">
-                    <input type="text" id="manual-job-title" placeholder="📝 Escribe un título para tu nuevo Short..." style="width: 100%; max-width: 500px; padding: 10px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: #fff; border-radius: 4px; font-size: 1rem;">
+                    <input type="text" id="manual-job-title" placeholder="ðŸ“ Escribe un tÃ­tulo para tu nuevo Short..." style="width: 100%; max-width: 500px; padding: 10px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: #fff; border-radius: 4px; font-size: 1rem;">
                 </div>
             </div>
             <div style="display: flex; gap: 10px; align-items: flex-start;">
-                <button onclick="saveWork(event)" class="badge" style="background: rgba(88, 166, 255, 0.18); color: #58a6ff; border: 1px solid rgba(88, 166, 255, 0.35);">💾 GUARDAR TRABAJO</button>
-                <button onclick="renderMovie(event)" class="badge badge-processing">🚀 RENDER FINAL</button>
+                <button onclick="saveWork(event)" class="badge" style="background: rgba(88, 166, 255, 0.18); color: #58a6ff; border: 1px solid rgba(88, 166, 255, 0.35);">ðŸ’¾ GUARDAR TRABAJO</button>
+                <button onclick="renderMovie(event)" class="badge badge-processing">ðŸš€ RENDER FINAL</button>
             </div>
         </header>
 
@@ -378,17 +444,17 @@
         </section>
 
         <div class="card" style="margin-bottom: 2rem;">
-            <h3>Configuración Global</h3>
+            <h3>ConfiguraciÃ³n Global</h3>
             <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 1rem; align-items: end;">
                 <div>
-                    <label>Música de Fondo</label>
+                    <label>MÃºsica de Fondo</label>
                     <select id="global-music"><option value="">Ninguna</option></select>
                 </div>
                 <div>
-                    <label>Motor TTS 🔊</label>
+                    <label>Motor TTS ðŸ”Š</label>
                     <select id="tts-engine" style="width:100%;" onchange="onEngineChange()">
-                        <option value="gtts">🌐 gTTS (Google, Gratis)</option>
-                        <option value="edge-tts">⚡ Edge-TTS (Microsoft Neural)</option>
+                        <option value="gtts">ðŸŒ gTTS (Google, Gratis)</option>
+                        <option value="edge-tts">âš¡ Edge-TTS (Microsoft Neural)</option>
                     </select>
                 </div>
                 <div>
@@ -400,59 +466,105 @@
                     <select id="global-niche">
                         <option value="default">Default</option>
                         <option value="terror">Terror / Oscuro</option>
-                        <option value="curiosidades">Curiosidades / Épico</option>
+                        <option value="curiosidades">Curiosidades / Ã‰pico</option>
                     </select>
                 </div>
             </div>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem; align-items: center;">
                 <div id="speed-container">
-                    <label>⚡ Velocidad de Habla: <span id="speed-label" style="color:var(--primary); font-weight:bold;">1.0x</span></label>
+                    <label>âš¡ Velocidad de Habla: <span id="speed-label" style="color:var(--primary); font-weight:bold;">1.0x</span></label>
                     <input type="range" id="tts-speed" min="0.5" max="2.0" step="0.1" value="1.0"
                         style="width:100%; margin-top:5px;"
                         oninput="document.getElementById('speed-label').innerText=parseFloat(this.value).toFixed(1)+'x'">
                     <div style="display:flex; justify-content:space-between; font-size:0.7rem; color:var(--text-muted);">
-                        <span>0.5x Lento</span><span>1.0x Normal</span><span>2.0x Rápido</span>
+                        <span>0.5x Lento</span><span>1.0x Normal</span><span>2.0x RÃ¡pido</span>
                     </div>
                 </div>
                 <div id="voice-info-box" style="background:rgba(255,215,0,0.1); border:1px solid rgba(255,215,0,0.3); border-radius:8px; padding:10px; font-size:0.8rem; color:var(--text-muted);">
-                    💡 <strong>gTTS:</strong> Voz femenina fija de Google. Sin control de velocidad.<br>
-                    ⚡ <strong>Edge-TTS:</strong> Voces neurales Microsoft con género y velocidad ajustable.
+                    ðŸ’¡ <strong>gTTS:</strong> Voz femenina fija de Google. Sin control de velocidad.<br>
+                    âš¡ <strong>Edge-TTS:</strong> Voces neurales Microsoft con gÃ©nero y velocidad ajustable.
                 </div>
             </div>
         </div>
 
         <!-- AI Generation Modal -->
         <div id="aiModal" class="modal">
-            <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-content ai-modal-content">
                 <span class="close-modal" onclick="closeAiModal()">&times;</span>
-                <h3>✨ Generar Imagen con IA</h3>
-                <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem;">
-                    Describe la imagen que deseas. Se guardará automáticamente en tu galería.
+                <h3>✨ Generación visual para la escena</h3>
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.85rem;">
+                    Crea una imagen nueva con Kie.ai o genera una variante más controlada con Leonardo. Todo quedará guardado en la galería del canal.
                 </p>
-                <textarea id="ai-prompt" placeholder="Ej: Un bosque oscuro con niebla espesa, estilo cinematográfico, 8k..." style="height: 80px; margin-bottom: 10px;"></textarea>
-                <div style="display: flex; gap: 10px;">
-                    <select id="ai-niche-tag" style="flex: 1;">
-                        <option value="terror">Nicho: Terror</option>
-                        <option value="curiosidades">Nicho: Curiosidades</option>
-                        <option value="misterio">Nicho: Misterio</option>
-                        <option value="general">Nicho: General</option>
-                    </select>
-                    <button id="btn-do-ai-gen" class="badge" style="background: var(--accent); color: #000; border:none; cursor:pointer;" onclick="executeAiGeneration()">GENERAR</button>
+                <textarea id="ai-prompt" placeholder="Ej: Un bosque oscuro con niebla espesa, estilo cinematográfico, 8k..." style="height: 96px; margin-bottom: 10px;"></textarea>
+                <div class="ai-modal-grid">
+                    <div class="ai-panel">
+                        <h4>Kie.ai</h4>
+                        <p>Ideal para crear una imagen rápida a partir del prompt que escribas.</p>
+                        <div class="ai-field">
+                            <label for="ai-niche-tag">Nicho</label>
+                            <select id="ai-niche-tag">
+                                <option value="terror">Terror</option>
+                                <option value="curiosidades">Curiosidades</option>
+                                <option value="misterio">Misterio</option>
+                                <option value="general">General</option>
+                            </select>
+                        </div>
+                        <div class="ai-provider-actions">
+                            <button id="btn-do-ai-gen" class="badge" style="background: var(--accent); color: #000; border:none; cursor:pointer;" onclick="executeAiGeneration()">Generar con Kie.ai</button>
+                        </div>
+                        <div id="ai-status" style="margin-top: 0.15rem; font-size: 0.8rem; min-height: 20px; color: var(--text-muted);"></div>
+                    </div>
+                    <div class="ai-panel">
+                        <h4>Leonardo</h4>
+                        <p>Perfecto para fondos, miniaturas y variaciones más pulidas. Se guardará automáticamente en la galería del canal.</p>
+                        <div class="ai-form-grid">
+                            <div class="ai-field">
+                                <label for="leonardo-model-id">Modelo</label>
+                                <input type="text" id="leonardo-model-id" placeholder="Opcional">
+                            </div>
+                            <div class="ai-field">
+                                <label for="leonardo-width">Ancho</label>
+                                <input type="number" id="leonardo-width" min="256" max="2048" step="64" value="1024">
+                            </div>
+                            <div class="ai-field">
+                                <label for="leonardo-height">Alto</label>
+                                <input type="number" id="leonardo-height" min="256" max="2048" step="64" value="1024">
+                            </div>
+                            <div class="ai-field">
+                                <label for="leonardo-num-images">Imágenes</label>
+                                <input type="number" id="leonardo-num-images" min="1" max="4" step="1" value="1">
+                            </div>
+                            <div class="ai-field" style="grid-column: 1 / -1;">
+                                <label for="leonardo-negative-prompt">Prompt negativo</label>
+                                <textarea id="leonardo-negative-prompt" placeholder="Opcional. Qué quieres evitar en la imagen." style="height: 72px; margin: 0;"></textarea>
+                            </div>
+                        </div>
+                        <label class="text-toggle" style="margin-top: 0.2rem;">
+                            <input type="checkbox" id="leonardo-use-reference">
+                            Usar la imagen actual de la escena como referencia
+                        </label>
+                        <div id="leonardo-reference-note" class="ai-reference-note">
+                            Si la escena ya tiene una imagen seleccionada, Leonardo puede usarla como referencia visual para mantener coherencia.
+                        </div>
+                        <div class="ai-provider-actions">
+                            <button id="btn-do-leonardo-gen" class="badge" style="background: var(--primary); color: #fff; border:none; cursor:pointer;" onclick="executeLeonardoGeneration()">Generar con Leonardo</button>
+                        </div>
+                        <div id="leonardo-status" style="margin-top: 0.15rem; font-size: 0.8rem; min-height: 20px; color: var(--text-muted);"></div>
+                    </div>
                 </div>
-                <div id="ai-status" style="margin-top: 10px; font-size: 0.8rem; text-align: center; min-height: 20px;"></div>
             </div>
         </div>
 
         <div id="mediaPickerModal" class="modal">
             <div class="modal-content" style="max-width: 900px;">
                 <span class="close-modal" onclick="closeMediaPickerModal()">&times;</span>
-                <h3>🖼️ Elegir imagen o vídeo</h3>
+                <h3>ðŸ–¼ï¸ Elegir imagen o vÃ­deo</h3>
                 <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem;">
-                    Selecciona un archivo de la galería del canal o sube uno nuevo desde tu equipo.
+                    Selecciona un archivo de la galerÃ­a del canal o sube uno nuevo desde tu equipo.
                 </p>
                 <div style="display:flex; gap:10px; align-items:center; margin-bottom: 1rem; flex-wrap: wrap;">
                     <button class="badge badge-processing" style="background: var(--accent); color: #000; border:none;" onclick="triggerSceneUpload()">+ Subir archivo</button>
-                    <button class="badge" style="background: rgba(88,166,255,0.15); color: #58a6ff; border:1px solid rgba(88,166,255,0.3);" onclick="reloadGalleryDataAndRefreshPicker()">↻ Recargar galería</button>
+                    <button class="badge" style="background: rgba(88,166,255,0.15); color: #58a6ff; border:1px solid rgba(88,166,255,0.3);" onclick="reloadGalleryDataAndRefreshPicker()">â†» Recargar galerÃ­a</button>
                     <span id="media-picker-context" style="color: var(--text-muted); font-size: 0.8rem;"></span>
                     <input type="file" id="scene-media-upload" accept="image/*,video/*" style="display:none" onchange="uploadSceneMedia(this)">
                 </div>
@@ -463,9 +575,9 @@
         <div id="saveSuccessModal" class="modal">
             <div class="modal-content" style="max-width: 420px; text-align:center;">
                 <span class="close-modal" onclick="closeSaveSuccessModal()">&times;</span>
-                <h3>✅ Trabajo guardado</h3>
+                <h3>âœ… Trabajo guardado</h3>
                 <p style="color:var(--text-muted); margin: 0.75rem 0 1rem;">
-                    El borrador se ha guardado correctamente. Puedes seguir creando el vídeo sin salir de esta pantalla.
+                    El borrador se ha guardado correctamente. Puedes seguir creando el vÃ­deo sin salir de esta pantalla.
                 </p>
                 <button class="badge badge-processing" onclick="closeSaveSuccessModal()">Seguir editando</button>
             </div>
@@ -474,18 +586,18 @@
         <div id="duplicateTitleModal" class="modal">
             <div class="modal-content" style="max-width: 440px; text-align:center;">
                 <span class="close-modal" onclick="closeDuplicateTitleModal()">&times;</span>
-                <h3>⚠️ Título repetido</h3>
+                <h3>âš ï¸ TÃ­tulo repetido</h3>
                 <p id="duplicateTitleMessage" style="color:var(--text-muted); margin: 0.75rem 0 1rem;"></p>
-                <button class="badge badge-processing" onclick="focusTitleField(); closeDuplicateTitleModal();">Cambiar título</button>
+                <button class="badge badge-processing" onclick="focusTitleField(); closeDuplicateTitleModal();">Cambiar tÃ­tulo</button>
             </div>
         </div>
 
         <div id="renderProgressModal" class="modal">
             <div class="modal-content" style="max-width: 520px;">
                 <span class="close-modal" id="renderProgressClose" onclick="closeRenderProgressModal()" style="display:none;">&times;</span>
-                <h3>Renderizando vídeo</h3>
+                <h3>Renderizando vÃ­deo</h3>
                 <p style="color:var(--text-muted); margin:0.45rem 0 0;">
-                    El vídeo se está creando. Aquí puedes ver el avance estimado del render.
+                    El vÃ­deo se estÃ¡ creando. AquÃ­ puedes ver el avance estimado del render.
                 </p>
                 <div class="render-progress-wrap">
                     <div class="render-progress-head">
@@ -511,10 +623,10 @@
         </div>
 
         <div id="timeline" class="timeline">
-            <!-- Escenas aquí -->
+            <!-- Escenas aquÃ­ -->
         </div>
 
-        <button class="btn-add" onclick="addScene()">+ AÑADIR NUEVA ESCENA</button>
+        <button class="btn-add" onclick="addScene()">+ AÃ‘ADIR NUEVA ESCENA</button>
     </div>
 
     <script>
@@ -567,21 +679,21 @@
         let renderProgressClosable = false;
 
         const GTTS_VOICES = [
-            { value: 'es', label: '🇪🇸 Español (España)' },
-            { value: 'com.mx', label: '🇲🇽 Español (México)' },
-            { value: 'us', label: '🇺🇸 Español (EE.UU.)' },
-            { value: 'co.uk', label: '🇬🇧 English (UK)' },
+            { value: 'es', label: 'ðŸ‡ªðŸ‡¸ EspaÃ±ol (EspaÃ±a)' },
+            { value: 'com.mx', label: 'ðŸ‡²ðŸ‡½ EspaÃ±ol (MÃ©xico)' },
+            { value: 'us', label: 'ðŸ‡ºðŸ‡¸ EspaÃ±ol (EE.UU.)' },
+            { value: 'co.uk', label: 'ðŸ‡¬ðŸ‡§ English (UK)' },
         ];
 
         const EDGE_VOICES = [
-            { value: 'es-ES-AlvaroNeural',  label: '🇪🇸 Álvaro (Masculino)' },
-            { value: 'es-ES-ElviraNeural',  label: '🇪🇸 Elvira (Femenino)' },
-            { value: 'es-MX-JorgeNeural',   label: '🇲🇽 Jorge (Masculino)' },
-            { value: 'es-MX-DaliaNeural',   label: '🇲🇽 Dalia (Femenino)' },
-            { value: 'es-AR-TomasNeural',   label: '🇦🇷 Tomás (Masculino)' },
-            { value: 'es-AR-ElenaNeural',   label: '🇦🇷 Elena (Femenino)' },
-            { value: 'es-CO-GonzaloNeural', label: '🇨🇴 Gonzalo (Masculino)' },
-            { value: 'es-CO-SalomeNeural',  label: '🇨🇴 Salomé (Femenino)' },
+            { value: 'es-ES-AlvaroNeural',  label: 'ðŸ‡ªðŸ‡¸ Ãlvaro (Masculino)' },
+            { value: 'es-ES-ElviraNeural',  label: 'ðŸ‡ªðŸ‡¸ Elvira (Femenino)' },
+            { value: 'es-MX-JorgeNeural',   label: 'ðŸ‡²ðŸ‡½ Jorge (Masculino)' },
+            { value: 'es-MX-DaliaNeural',   label: 'ðŸ‡²ðŸ‡½ Dalia (Femenino)' },
+            { value: 'es-AR-TomasNeural',   label: 'ðŸ‡¦ðŸ‡· TomÃ¡s (Masculino)' },
+            { value: 'es-AR-ElenaNeural',   label: 'ðŸ‡¦ðŸ‡· Elena (Femenino)' },
+            { value: 'es-CO-GonzaloNeural', label: 'ðŸ‡¨ðŸ‡´ Gonzalo (Masculino)' },
+            { value: 'es-CO-SalomeNeural',  label: 'ðŸ‡¨ðŸ‡´ SalomÃ© (Femenino)' },
         ];
 
         function onEngineChange() {
@@ -594,7 +706,7 @@
             voiceSelect.innerHTML = voices.map(v => `<option value="${v.value}">${v.label}</option>`).join('');
             speedContainer.style.opacity = engine === 'edge-tts' ? '1' : '0.4';
             document.getElementById('tts-speed').disabled = engine !== 'edge-tts';
-            voiceLabel.innerText = engine === 'edge-tts' ? 'Voz Neural ⚡' : 'Acento gTTS';
+            voiceLabel.innerText = engine === 'edge-tts' ? 'Voz Neural âš¡' : 'Acento gTTS';
         }
 
         function syncSceneEffectLabel(sceneId, kind) {
@@ -667,7 +779,7 @@
                             document.getElementById('global-music').value = job.music_filename;
                             syncGlobalMusicSelection(job.music_filename, true);
                         }
-                        // Guardar título para reenviarlo al renderizar
+                        // Guardar tÃ­tulo para reenviarlo al renderizar
                         if(job.title) {
                             currentJobTitle = job.title;
                             document.getElementById('manual-job-title').value = job.title;
@@ -772,33 +884,33 @@
                     <textarea placeholder="Guion de esta escena..." id="text-${id}"></textarea>
                     <div style="margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
                          <div style="display: flex; gap: 5px;">
-                            <button onclick="moveScene(this, -1)" class="badge" title="Mover arriba">↑</button>
-                            <button onclick="moveScene(this, 1)" class="badge" title="Mover abajo">↓</button>
+                            <button onclick="moveScene(this, -1)" class="badge" title="Mover arriba">â†‘</button>
+                            <button onclick="moveScene(this, 1)" class="badge" title="Mover abajo">â†“</button>
                         </div>
                         <button class="btn-remove" onclick="removeScene(${id})">Eliminar Escena</button>
                     </div>
                 </div>
                 <div class="controls">
                     <div class="media-picker">
-                        <label>Imagen/Vídeo de Fondo</label>
+                        <label>Imagen/VÃ­deo de Fondo</label>
                         <div style="display: flex; gap: 5px;">
-                            <button type="button" class="media-picker-button" onclick="openMediaPicker(${id})" title="Elegir imagen o vídeo de la galería">
+                            <button type="button" class="media-picker-button" onclick="openMediaPicker(${id})" title="Elegir imagen o vÃ­deo de la galerÃ­a">
                                 + Imagen
                                 <span id="media-label-${id}">Sin archivo seleccionado</span>
                             </button>
-                            <button class="badge" style="padding: 0 10px; background: #333; border: 1px solid var(--border-color); cursor: pointer;" onclick="openAiModal(${id})" title="Generar con IA">✨</button>
+                            <button class="badge" style="padding: 0 10px; background: #333; border: 1px solid var(--border-color); cursor: pointer;" onclick="openAiModal(${id})" title="Generar con IA">âœ¨</button>
                         </div>
                         <input type="hidden" id="media-${id}" value="">
                     </div>
                     <div class="media-picker">
-                        <label>Posición Subtítulo</label>
+                        <label>PosiciÃ³n SubtÃ­tulo</label>
                         <div class="pos-grid" id="pos-grid-${id}">
                             <div class="pos-btn" onclick="setPos(event, ${id}, 2)" title="Arriba"></div>
                             <div class="pos-btn active" onclick="setPos(event, ${id}, 5)" title="Centro"></div>
                             <div class="pos-btn" onclick="setPos(event, ${id}, 8)" title="Abajo"></div>
                         </div>
                         <input type="hidden" id="pos-${id}" value="5">
-                        <label style="margin-top:5px; display:block;">Tamaño: <span id="size-val-${id}">48</span>px</label>
+                        <label style="margin-top:5px; display:block;">TamaÃ±o: <span id="size-val-${id}">48</span>px</label>
                         <input type="range" id="size-${id}" min="20" max="100" value="48" oninput="document.getElementById('size-val-${id}').innerText=this.value">
                         <label class="text-toggle">
                             <input type="checkbox" id="show-text-${id}" checked>
@@ -819,7 +931,7 @@
                                 </select>
                             </div>
                             <div class="scene-field">
-                                <label for="scene-transition-in-duration-${id}">Duración entrada</label>
+                                <label for="scene-transition-in-duration-${id}">DuraciÃ³n entrada</label>
                                 <input type="range" id="scene-transition-in-duration-${id}" min="0" max="3" step="0.1" value="0.8" oninput="syncSceneEffectLabel(${id}, 'scene-transition-in-duration')">
                                 <div class="volume-value" id="scene-transition-in-duration-label-${id}">0.8s</div>
                             </div>
@@ -831,7 +943,7 @@
                                 </select>
                             </div>
                             <div class="scene-field">
-                                <label for="scene-transition-out-duration-${id}">Duración salida</label>
+                                <label for="scene-transition-out-duration-${id}">DuraciÃ³n salida</label>
                                 <input type="range" id="scene-transition-out-duration-${id}" min="0" max="3" step="0.1" value="0.8" oninput="syncSceneEffectLabel(${id}, 'scene-transition-out-duration')">
                                 <div class="volume-value" id="scene-transition-out-duration-label-${id}">0.8s</div>
                             </div>
@@ -868,7 +980,7 @@
                     updateMediaLabel(id);
                 }
                 
-                // Cargar tamaño
+                // Cargar tamaÃ±o
                 if(sceneData.subtitle_size) {
                     document.getElementById(`size-${id}`).value = sceneData.subtitle_size;
                     document.getElementById(`size-val-${id}`).innerText = sceneData.subtitle_size;
@@ -879,12 +991,12 @@
                     showTextField.checked = sceneData.show_text !== false;
                 }
                 
-                // Cargar posición
+                // Cargar posiciÃ³n
                 if(sceneData.subtitle_pos) {
-                    // Simular clic en el botón correcto para actualizar visualmente la grid
+                    // Simular clic en el botÃ³n correcto para actualizar visualmente la grid
                     const posGrid = document.getElementById(`pos-grid-${id}`);
                     const buttons = posGrid.querySelectorAll('.pos-btn');
-                    // 2=Arriba (índice 0), 5=Centro (índice 1), 8=Abajo (índice 2)
+                    // 2=Arriba (Ã­ndice 0), 5=Centro (Ã­ndice 1), 8=Abajo (Ã­ndice 2)
                     let targetIndex = 1;
                     if(sceneData.subtitle_pos === 2) targetIndex = 0;
                     if(sceneData.subtitle_pos === 8) targetIndex = 2;
@@ -925,7 +1037,7 @@
             updateSceneNumbers();
         }
 
-        // Función para mover escenas
+        // FunciÃ³n para mover escenas
         function moveScene(btn, direction) {
             const card = btn.closest('.scene-card');
             const timeline = document.getElementById('timeline');
@@ -939,7 +1051,7 @@
             updateSceneNumbers();
         }
         
-        // Actualizar números de escena después de mover o borrar
+        // Actualizar nÃºmeros de escena despuÃ©s de mover o borrar
         function updateSceneNumbers() {
             const cards = document.querySelectorAll('.scene-card');
             cards.forEach((card, idx) => {
@@ -957,7 +1069,7 @@
                 label.textContent = item ? item.original_name : (val || 'Sin archivo seleccionado');
             }
             if (!val) {
-                preview.innerHTML = '<div style="text-align:center; padding: 10px; color:var(--text-muted);">Selecciona una imagen o vídeo</div>';
+                preview.innerHTML = '<div style="text-align:center; padding: 10px; color:var(--text-muted);">Selecciona una imagen o vÃ­deo</div>';
                 return;
             }
             if(item) {
@@ -1007,12 +1119,12 @@
             const context = document.getElementById('media-picker-context');
             const channelId = getChannelIdFromQuery();
             if (context) {
-                context.textContent = channelId ? `Canal ${channelId}` : 'Galería global';
+                context.textContent = channelId ? `Canal ${channelId}` : 'GalerÃ­a global';
             }
             const items = galleryData.filter(item => !item.file_type || !item.file_type.includes('audio'));
             if (!grid) return;
             if (!items.length) {
-                grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; color:var(--text-muted); padding:2rem;">No hay imágenes ni vídeos en la galería de este canal.</div>';
+                grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; color:var(--text-muted); padding:2rem;">No hay imÃ¡genes ni vÃ­deos en la galerÃ­a de este canal.</div>';
                 return;
             }
             const currentValue = currentMediaSceneId ? document.getElementById(`media-${currentMediaSceneId}`)?.value : '';
@@ -1063,6 +1175,9 @@
             const res = await fetch(channelId ? `/api/gallery?limit=1000&channel_id=${channelId}` : '/api/gallery?limit=1000');
             const data = await res.json();
             galleryData = data.items || [];
+            if (document.getElementById('aiModal')?.classList.contains('active') && currentAiSceneId) {
+                updateLeonardoReferenceNote(currentAiSceneId);
+            }
 
             if (musicSelect) {
                 musicSelect.innerHTML = '<option value="">Ninguna</option>';
@@ -1085,7 +1200,7 @@
             const exists = Array.from(musicSelect.options).some(opt => opt.value === nextValue);
             if (!exists) {
                 const label = nextValue.split('/').pop();
-                const option = new Option(`🎵 ${label}`, nextValue, true, true);
+                const option = new Option(`ðŸŽµ ${label}`, nextValue, true, true);
                 musicSelect.add(option, 1);
             } else {
                 musicSelect.value = nextValue;
@@ -1191,9 +1306,9 @@
 
         async function saveWork(event) {
             const { scenes, requestData, overrideJobId, manualTitle } = buildStoryboardRequestData();
-            if (scenes.length === 0) return alert("Añade al menos una escena");
+            if (scenes.length === 0) return alert("AÃ±ade al menos una escena");
             if (!overrideJobId && !manualTitle) {
-                return alert("⚠️ Por favor, escribe un título descriptivo para guardar este trabajo.");
+                return alert("âš ï¸ Por favor, escribe un tÃ­tulo descriptivo para guardar este trabajo.");
             }
 
             const btn = event.target;
@@ -1228,7 +1343,7 @@
                         errorMsg = typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail, null, 2);
                     }
                     if (String(errorMsg).includes('TITULO_DUPLICADO')) {
-                        openDuplicateTitleModal('Ya existe un trabajo con ese título en este canal. Elige otro nombre para continuar.');
+                        openDuplicateTitleModal('Ya existe un trabajo con ese tÃ­tulo en este canal. Elige otro nombre para continuar.');
                     } else {
                         alert("Error: " + errorMsg);
                     }
@@ -1241,9 +1356,9 @@
 
         async function renderMovie(event) {
             const { scenes, requestData, overrideJobId, manualTitle } = buildStoryboardRequestData();
-            if(scenes.length === 0) return alert("Añade al menos una escena");
+            if(scenes.length === 0) return alert("AÃ±ade al menos una escena");
             if (!overrideJobId && !manualTitle) {
-                return alert("⚠️ Por favor, escribe un título descriptivo para la creación manual de tu Short.");
+                return alert("âš ï¸ Por favor, escribe un tÃ­tulo descriptivo para la creaciÃ³n manual de tu Short.");
             }
 
             const btn = event?.target;
@@ -1285,29 +1400,67 @@
                     errorMsg = typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail, null, 2);
                 }
                 if (String(errorMsg).includes('TITULO_DUPLICADO')) {
-                    openDuplicateTitleModal('Ya existe un trabajo con ese título en este canal. Elige otro nombre para continuar.');
+                    openDuplicateTitleModal('Ya existe un trabajo con ese tÃ­tulo en este canal. Elige otro nombre para continuar.');
                 } else {
                     alert("Error: " + errorMsg);
                 }
                 stopEstimatedRenderProgress();
                 closeRenderProgressModal(true);
                 if (btn) {
-                    btn.innerText = originalText || "🚀 RENDER FINAL";
+                    btn.innerText = originalText || "ðŸš€ RENDER FINAL";
                     btn.disabled = false;
                 }
             }
         }
 
         let currentAiSceneId = null;
+        let leonardoStatusTimer = null;
+
+        function stopLeonardoStatusTimer() {
+            if (leonardoStatusTimer) {
+                clearTimeout(leonardoStatusTimer);
+                leonardoStatusTimer = null;
+            }
+        }
+
+        function getSceneMediaFilename(sceneId) {
+            if (!sceneId) return '';
+            const input = document.getElementById(`media-${sceneId}`);
+            return (input?.value || '').trim();
+        }
+
+        function updateLeonardoReferenceNote(sceneId) {
+            const note = document.getElementById('leonardo-reference-note');
+            const checkbox = document.getElementById('leonardo-use-reference');
+            if (!note || !checkbox) return;
+
+            const filename = getSceneMediaFilename(sceneId);
+            const item = galleryData.find(m => m.filename === filename);
+            const isImage = !!(item && item.file_type && item.file_type.includes('image'));
+
+            if (isImage) {
+                note.textContent = `Referencia actual: ${item.original_name}. Leonardo puede usar esta imagen para mantener coherencia visual en la escena.`;
+                checkbox.disabled = false;
+                checkbox.checked = true;
+            } else {
+                note.textContent = 'Si la escena ya tiene una imagen seleccionada, Leonardo puede usarla como referencia visual para mantener coherencia.';
+                checkbox.disabled = true;
+                checkbox.checked = false;
+            }
+        }
+
         function openAiModal(sceneId) {
             currentAiSceneId = sceneId;
             document.getElementById('aiModal').classList.add('active');
             document.getElementById('ai-prompt').focus();
             document.getElementById('ai-status').innerText = "";
+            document.getElementById('leonardo-status').innerText = "";
+            updateLeonardoReferenceNote(sceneId);
         }
 
         function closeAiModal() {
             document.getElementById('aiModal').classList.remove('active');
+            stopLeonardoStatusTimer();
         }
 
         function closeSaveSuccessModal() {
@@ -1435,7 +1588,7 @@
                 document.getElementById('renderProgressJob').textContent = titleText;
 
                 if (status === 'rendered' || status === 'completed') {
-                    setRenderProgress(100, 'Vídeo listo', 'El render ha terminado correctamente. Abriendo los trabajos del canal...', 'Completado');
+                    setRenderProgress(100, 'VÃ­deo listo', 'El render ha terminado correctamente. Abriendo los trabajos del canal...', 'Completado');
                     renderProgressClosable = true;
                     resetRenderButton(btn, originalText);
                     setTimeout(() => {
@@ -1447,15 +1600,15 @@
 
                 if (status === 'failed') {
                     resetRenderButton(btn, originalText);
-                    finishRenderProgressAsError(data.error_message || 'El render terminó con error. Revisa el trabajo e inténtalo de nuevo.');
+                    finishRenderProgressAsError(data.error_message || 'El render terminÃ³ con error. Revisa el trabajo e intÃ©ntalo de nuevo.');
                     return;
                 }
 
                 const humanStatus = status === 'processing' ? 'Procesando' : (status === 'draft' ? 'Preparado' : 'En cola');
                 setRenderProgress(
                     renderProgressValue,
-                    'Creando vídeo...',
-                    `Estamos generando la voz, montando las escenas y ensamblando el vídeo final. Tiempo estimado: ${estimateRenderDurationLabel(scenesCount)}.`,
+                    'Creando vÃ­deo...',
+                    `Estamos generando la voz, montando las escenas y ensamblando el vÃ­deo final. Tiempo estimado: ${estimateRenderDurationLabel(scenesCount)}.`,
                     humanStatus
                 );
 
@@ -1486,7 +1639,7 @@
 
             btn.disabled = true;
             btn.innerText = "GENERANDO...";
-            status.innerText = "⏳ Kie.ai está creando tu imagen (esto tarda 15-30s)...";
+            status.innerText = "â³ Kie.ai estÃ¡ creando tu imagen (esto tarda 15-30s)...";
 
             try {
                 const res = await fetch('/api/ai/generate', {
@@ -1499,23 +1652,141 @@
                     const data = await res.json();
                     closeAiModal();
                     const channelId = getChannelIdFromQuery();
-                    if(confirm("Tarea de IA iniciada con éxito. ¿Deseas ir a los registros de IA de este canal para ver el progreso?")) {
+                    if(confirm("Tarea de IA iniciada con Ã©xito. Â¿Deseas ir a los registros de IA de este canal para ver el progreso?")) {
                         window.location.href = channelId ? `/ai-tasks?channel_id=${channelId}` : "/ai-tasks";
                     } else {
-                        alert("La imagen se está generando en segundo plano. Aparecerá en la galería cuando esté lista.");
+                        alert("La imagen se estÃ¡ generando en segundo plano. AparecerÃ¡ en la galerÃ­a cuando estÃ© lista.");
                     }
                 } else {
                     const error = await res.json();
                     alert("Error IA: " + (error.detail || "Error desconocido"));
                 }
             } catch(e) {
-                alert("Error de conexión");
+                alert("Error de conexiÃ³n");
             } finally {
                 btn.disabled = false;
-                btn.innerText = "GENERAR";
+                btn.innerText = "Generar con Kie.ai";
             }
         }
 
+        async function executeLeonardoGeneration() {
+            const prompt = document.getElementById('ai-prompt').value.trim();
+            const niche = document.getElementById('ai-niche-tag').value;
+            const btn = document.getElementById('btn-do-leonardo-gen');
+            const status = document.getElementById('leonardo-status');
+            const channelId = getChannelIdFromQuery();
+            const sceneId = currentAiSceneId;
+            const useReference = document.getElementById('leonardo-use-reference')?.checked;
+            const sourceMediaFilename = useReference ? getSceneMediaFilename(sceneId) : '';
+            const modelId = document.getElementById('leonardo-model-id').value.trim();
+            const width = parseInt(document.getElementById('leonardo-width').value || '1024', 10);
+            const height = parseInt(document.getElementById('leonardo-height').value || '1024', 10);
+            const numImages = parseInt(document.getElementById('leonardo-num-images').value || '1', 10);
+            const negativePrompt = document.getElementById('leonardo-negative-prompt').value.trim();
+            const currentJob = currentJobId || new URLSearchParams(window.location.search).get('job_id') || null;
+
+            if (!prompt) return alert("Escribe un prompt");
+
+            btn.disabled = true;
+            btn.innerText = "GENERANDO...";
+            status.innerText = "⏳ Enviando la imagen a Leonardo...";
+            stopLeonardoStatusTimer();
+
+            try {
+                const payload = {
+                    prompt,
+                    niche,
+                    channel_id: channelId,
+                    job_id: currentJob,
+                    model_id: modelId || null,
+                    width: Number.isFinite(width) ? width : 1024,
+                    height: Number.isFinite(height) ? height : 1024,
+                    num_images: Number.isFinite(numImages) ? numImages : 1,
+                    negative_prompt: negativePrompt || null,
+                    source_media_filename: sourceMediaFilename || null,
+                };
+
+                const res = await fetch('/api/leonardo/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) {
+                    throw new Error(data.detail || 'Error desconocido');
+                }
+
+                const taskId = data.task_id;
+                const generationId = data.generation_id;
+                status.innerText = `✨ Leonardo ha recibido la petición${generationId ? ` · ${generationId}` : ''}. La imagen se guardará automáticamente en la galería.`;
+
+                const pollLeonardoTask = async () => {
+                    try {
+                        const taskRes = await fetch(channelId
+                            ? `/api/ai/tasks?search=${encodeURIComponent(taskId)}&channel_id=${encodeURIComponent(channelId)}`
+                            : `/api/ai/tasks?search=${encodeURIComponent(taskId)}`);
+                        const taskData = await taskRes.json().catch(() => ({}));
+                        const task = (taskData.tasks || []).find(item => item.task_id === taskId) || (taskData.tasks || [])[0];
+
+                        if (!task) {
+                            status.innerText = 'La tarea se ha enviado. Esperando a que el servidor la registre...';
+                            leonardoStatusTimer = setTimeout(pollLeonardoTask, 2500);
+                            return;
+                        }
+
+                        const taskStatus = String(task.status || '').toLowerCase();
+                        if (taskStatus === 'completed') {
+                            stopLeonardoStatusTimer();
+                            await reloadGalleryData();
+                            if (document.getElementById('mediaPickerModal')?.classList.contains('active')) {
+                                refreshMediaPicker();
+                            }
+                            if (sceneId && task.result_url) {
+                                const filename = String(task.result_url).split('/').pop();
+                                if (filename) {
+                                    const mediaField = document.getElementById(`media-${sceneId}`);
+                                    if (mediaField) {
+                                        mediaField.value = filename;
+                                        updateMediaLabel(sceneId);
+                                        updatePreview(sceneId);
+                                    }
+                                }
+                            }
+                            status.innerText = '✅ Imagen creada y guardada en la galería del canal.';
+                            btn.disabled = false;
+                            btn.innerText = 'Generar con Leonardo';
+                            return;
+                        }
+
+                        if (taskStatus === 'failed') {
+                            stopLeonardoStatusTimer();
+                            const errorMessage = task.error_message || 'La generación de Leonardo ha fallado.';
+                            status.innerText = `⚠️ ${errorMessage}`;
+                            btn.disabled = false;
+                            btn.innerText = 'Generar con Leonardo';
+                            return;
+                        }
+
+                        status.innerText = generationId
+                            ? `Leonardo está generando la imagen (${generationId}). La guardaremos en la galería en cuanto termine.`
+                            : 'Leonardo está generando la imagen. La guardaremos en la galería en cuanto termine.';
+                        leonardoStatusTimer = setTimeout(pollLeonardoTask, 2500);
+                    } catch (pollError) {
+                        status.innerText = 'No se pudo consultar el estado ahora mismo. La generación seguirá en segundo plano.';
+                        leonardoStatusTimer = setTimeout(pollLeonardoTask, 5000);
+                    }
+                };
+
+                leonardoStatusTimer = setTimeout(pollLeonardoTask, 1200);
+            } catch (e) {
+                stopLeonardoStatusTimer();
+                status.innerText = '';
+                alert("Error Leonardo: " + (e.message || "Error desconocido"));
+                btn.disabled = false;
+                btn.innerText = 'Generar con Leonardo';
+            }
+        }
         document.getElementById('renderProgressModal').addEventListener('click', (event) => {
             if (event.target && event.target.id === 'renderProgressModal' && renderProgressClosable) {
                 closeRenderProgressModal(true);
