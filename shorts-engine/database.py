@@ -255,6 +255,8 @@ class JobDatabase:
                 self._ensure_column(conn, "ai_tasks", "channel_id", "INTEGER")
                 self._ensure_column(conn, "ai_tasks", "provider", "TEXT")
                 self._ensure_column(conn, "ai_tasks", "external_id", "TEXT")
+                self._ensure_column(conn, "ai_tasks", "cost_amount", "REAL")
+                self._ensure_column(conn, "ai_tasks", "cost_unit", "TEXT")
                 self._ensure_column(conn, "job_logs", "channel_id", "INTEGER")
                 self._ensure_column(conn, "job_logs", "details_json", "TEXT")
                 self._ensure_column(conn, "job_logs", "scene_id", "TEXT")
@@ -461,6 +463,50 @@ class JobDatabase:
             conn.execute(
                 "INSERT OR REPLACE INTO settings (key_name, key_value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)",
                 (key_name, key_value)
+            )
+            conn.commit()
+
+    def get_numeric_setting(self, key_name: str, default=None):
+        raw = self.get_setting(key_name, None)
+        if raw is None:
+            return default
+        try:
+            return float(str(raw).strip())
+        except Exception:
+            return default
+
+    def set_numeric_setting(self, key_name: str, value):
+        if value is None:
+            self.set_setting(key_name, "")
+            return
+        try:
+            number = float(value)
+            self.set_setting(key_name, f"{number:.4f}".rstrip("0").rstrip("."))
+        except Exception:
+            self.set_setting(key_name, str(value))
+
+    def get_leonardo_credit_balance(self, default=None):
+        return self.get_numeric_setting("LEONARDO_CREDIT_BALANCE", default)
+
+    def set_leonardo_credit_balance(self, balance):
+        self.set_numeric_setting("LEONARDO_CREDIT_BALANCE", balance)
+
+    def adjust_leonardo_credit_balance(self, delta):
+        current = self.get_leonardo_credit_balance(None)
+        if current is None:
+            return None
+        try:
+            updated = max(0.0, float(current) + float(delta))
+        except Exception:
+            return current
+        self.set_leonardo_credit_balance(updated)
+        return updated
+
+    def update_ai_task_cost(self, task_id: str, cost_amount=None, cost_unit: str | None = None):
+        with self._get_connection() as conn:
+            conn.execute(
+                "UPDATE ai_tasks SET cost_amount = ?, cost_unit = ? WHERE task_id = ?",
+                (cost_amount, cost_unit, task_id),
             )
             conn.commit()
 

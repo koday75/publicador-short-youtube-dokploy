@@ -420,6 +420,10 @@ class LeonardoVideoGenerateRequest(BaseModel):
     prompt_enhance_instruction: Optional[str] = None
     source_media_filename: Optional[str] = None
 
+
+class LeonardoCreditUpdateRequest(BaseModel):
+    balance: float
+
 class AiBatchGenerateRequest(BaseModel):
     scenes: List[AiScenePrompt]
     draft_mode: bool = False
@@ -496,6 +500,7 @@ async def get_settings(session=Depends(get_current_user)):
     keys["APIFY_CURRENT_KEY_INDEX"] = db.get_setting("APIFY_CURRENT_KEY_INDEX", "1")
     keys["DEFAULT_MUSIC_VOLUME"] = db.get_setting("DEFAULT_MUSIC_VOLUME")
     keys["DEFAULT_VOICE_VOLUME"] = db.get_setting("DEFAULT_VOICE_VOLUME")
+    keys["LEONARDO_CREDIT_BALANCE"] = db.get_setting("LEONARDO_CREDIT_BALANCE")
 
     return keys
 
@@ -1103,6 +1108,73 @@ def normalize_leonardo_model_id(value: Any) -> str | None:
     return None
 
 
+LEONARDO_VIDEO_MODELS = [
+    {"id": "MOTION2", "name": "Motion 2", "kind": "video"},
+    {"id": "MOTION2FAST", "name": "Motion 2 Fast", "kind": "video"},
+    {"id": "VEO3", "name": "Veo 3", "kind": "video"},
+    {"id": "VEO3FAST", "name": "Veo 3 Fast", "kind": "video"},
+    {"id": "KLING2_1", "name": "Kling 2.1 Pro", "kind": "video"},
+    {"id": "KLING2_5", "name": "Kling 2.5 Turbo", "kind": "video"},
+]
+
+LEONARDO_FALLBACK_IMAGE_MODELS = [
+    {"id": "7b592283-e8a7-4c5a-9ba6-d18c31f258b9", "name": "Lucid Origin", "kind": "image"},
+    {"id": "05ce0082-2d80-4a2d-8653-4d1c85e2418e", "name": "Lucid Realism", "kind": "image"},
+    {"id": "de7d3faf-762f-48e0-b3b7-9d0ac3a3fcf3", "name": "Leonardo Phoenix 1.0", "kind": "image"},
+    {"id": "6b645e3a-d64f-4341-a6d8-7a3690fbf042", "name": "Leonardo Phoenix 0.9", "kind": "image"},
+    {"id": "b2614463-296c-462a-9586-aafdb8f00e36", "name": "Flux Dev", "kind": "image"},
+    {"id": "1dd50843-d653-4516-a8e3-f0238ee453ff", "name": "Flux Schnell", "kind": "image"},
+    {"id": "b24e16ff-06e3-43eb-8d33-4416c2d75876", "name": "Leonardo Lightning XL", "kind": "image"},
+    {"id": "aa77f04e-3eec-4034-9c07-d0f619684628", "name": "Leonardo Kino XL", "kind": "image"},
+]
+
+
+def estimate_leonardo_image_cost(model_id: str | None, width: int | None, height: int | None, num_images: int | None, has_reference: bool = False, has_transparency: bool = False) -> float:
+    model_ref = (model_id or "").strip().lower()
+    base = 1.0
+    if any(token in model_ref for token in ("flux", "lucid", "phoenix")):
+        base = 0.95
+    elif any(token in model_ref for token in ("gpt", "nano banana", "seedream")):
+        base = 1.2
+    elif any(token in model_ref for token in ("xl", "sdxl", "lightning")):
+        base = 0.85
+    if width and height:
+        area = max(1.0, (int(width) * int(height)) / float(1024 * 1024))
+        base *= max(0.85, min(1.8, area))
+    if num_images:
+        base *= max(1.0, min(4.0, float(num_images)))
+    if has_reference:
+        base += 0.25
+    if has_transparency:
+        base += 0.15
+    return round(max(0.2, base), 2)
+
+
+def estimate_leonardo_video_cost(model: str | None, resolution: str | None, duration: int | None, frame_interpolation: bool = False) -> float:
+    model_ref = (model or "").strip().upper()
+    base_map = {
+        "MOTION2": 3.0,
+        "MOTION2FAST": 2.2,
+        "VEO3": 4.8,
+        "VEO3FAST": 4.2,
+        "KLING2_1": 4.5,
+        "KLING2_5": 5.2,
+    }
+    base = base_map.get(model_ref, 3.0)
+    duration_value = int(duration or 5)
+    if duration_value > 5:
+        base += 0.8
+    if duration_value > 8:
+        base += 0.8
+    if (resolution or "").upper() == "RESOLUTION_1080":
+        base += 0.75
+    elif (resolution or "").upper() == "RESOLUTION_480":
+        base -= 0.35
+    if frame_interpolation:
+        base += 0.35
+    return round(max(0.5, base), 2)
+
+
 def build_channel_visual_style_context(channel: dict | None) -> tuple[str, list[str]]:
     if not channel:
         return "", []
@@ -1584,6 +1656,7 @@ async def api_get_settings(user: str = Depends(get_current_user)):
         "DEFAULT_MUSIC_FILENAME",
         "KIE_CURRENT_KEY_INDEX",
         "APIFY_CURRENT_KEY_INDEX",
+        "LEONARDO_CREDIT_BALANCE",
     }
     
     with db._get_connection() as conn:
@@ -1657,6 +1730,31 @@ async def api_get_kie_credits(user: str = Depends(get_current_user)):
             })
     return {"keys": results}
 
+
+@app.get("/api/leonardo/models")
+async def api_get_leonardo_models(user: str = Depends(get_current_user)):
+    return build_leonardo_model_catalog()
+
+
+@app.get("/api/leonardo/credits")
+async def api_get_leonardo_credits(user: str = Depends(get_current_user)):
+    balance = db.get_leonardo_credit_balance(None)
+    return {
+        "configured": balance is not None,
+        "balance": balance,
+        "unit": "credits",
+    }
+
+
+@app.post("/api/leonardo/credits")
+async def api_set_leonardo_credits(req: LeonardoCreditUpdateRequest, user: str = Depends(get_current_user)):
+    db.set_leonardo_credit_balance(req.balance)
+    return {
+        "status": "success",
+        "balance": db.get_leonardo_credit_balance(None),
+        "unit": "credits",
+    }
+
 @app.get("/api/templates")
 async def api_get_templates(user: str = Depends(get_current_user)):
     return db.get_templates()
@@ -1678,6 +1776,89 @@ async def api_optimize_text(req: OptimizeRequest, user: str = Depends(get_curren
         return {"optimized_text": optimized}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+def build_leonardo_model_catalog(channel_id: int | None = None) -> dict[str, list[dict]]:
+    try:
+        platform_models = leonardo_manager.list_platform_models()
+    except Exception as exc:
+        logger.warning("No se pudieron cargar los modelos públicos de Leonardo: %s", exc)
+        platform_models = []
+
+    image_models = []
+    seen_ids: set[str] = set()
+    for model in platform_models:
+        if not isinstance(model, dict):
+            continue
+        model_id = str(model.get("id") or "").strip()
+        if not model_id or model_id in seen_ids:
+            continue
+        if str(model.get("kind") or "").lower() != "image":
+            continue
+        seen_ids.add(model_id)
+        image_models.append({
+            "id": model_id,
+            "name": model.get("name") or model_id,
+            "description": model.get("description") or "",
+            "kind": "image",
+            "estimated_cost": estimate_leonardo_image_cost(model_id, 1024, 1024, 1),
+        })
+
+    if not image_models:
+        image_models = [
+            {
+                "id": item["id"],
+                "name": item["name"],
+                "description": "",
+                "kind": "image",
+                "estimated_cost": estimate_leonardo_image_cost(item["id"], 1024, 1024, 1),
+            }
+            for item in LEONARDO_FALLBACK_IMAGE_MODELS
+        ]
+
+    video_models = [
+        {
+            "id": item["id"],
+            "name": item["name"],
+            "description": "Modelo oficial de vídeo de Leonardo.",
+            "kind": "video",
+            "estimated_cost": estimate_leonardo_video_cost(item["id"], "RESOLUTION_720", 5, True),
+        }
+        for item in LEONARDO_VIDEO_MODELS
+    ]
+
+    balance = db.get_leonardo_credit_balance(None)
+    return {
+        "image_models": image_models,
+        "video_models": video_models,
+        "credit_balance": balance,
+        "credit_unit": "credits",
+    }
+
+
+def extract_leonardo_generation_cost(data: dict) -> tuple[float | None, str | None]:
+    try:
+        return leonardo_manager.extract_generation_cost(data)
+    except Exception:
+        return None, None
+
+
+def reconcile_leonardo_credit_balance(task_id: str, data: dict, fallback_cost: float | None = None):
+    cost_amount, cost_unit = extract_leonardo_generation_cost(data)
+    if cost_amount is None and fallback_cost is not None:
+        cost_amount = fallback_cost
+        cost_unit = "credits"
+
+    if cost_amount is None:
+        return None, None
+
+    db.update_ai_task_cost(task_id, cost_amount, cost_unit or "credits")
+    current_balance = db.get_leonardo_credit_balance(None)
+    if current_balance is not None:
+        updated_balance = max(0.0, float(current_balance) - float(cost_amount))
+        db.set_leonardo_credit_balance(updated_balance)
+        return cost_amount, updated_balance
+    return cost_amount, None
 
 # --- AI ASSETS & GENERATION ---
 
@@ -2131,6 +2312,7 @@ async def process_leonardo_task_background(task_id: str, generation_id: str, req
         or normalize_leonardo_model_id(db.get_setting("LEONARDO_DEFAULT_MODEL_ID"))
         or "leonardo"
     )
+    cost_recorded = False
     try:
         while time.time() - start_time < 600:  # 10 min max
             await asyncio.sleep(6)
@@ -2157,8 +2339,39 @@ async def process_leonardo_task_background(task_id: str, generation_id: str, req
                         channel_id=req.channel_id,
                         error_message=str(error_msg),
                         details={"task_id": task_id, "generation_id": generation_id},
-                    )
+                )
                 return
+
+            if status in {"COMPLETE", "COMPLETED", "SUCCESS"} and not cost_recorded:
+                cost_amount, cost_unit = reconcile_leonardo_credit_balance(task_id, data, fallback_cost=estimate_leonardo_image_cost(
+                    model_ref,
+                    req.width,
+                    req.height,
+                    req.num_images,
+                    bool(req.init_image_id or req.init_generation_image_id or req.source_media_filename),
+                    bool(req.transparency),
+                ))
+                cost_recorded = True
+                logger.info(
+                    "Leonardo image task %s cost recorded: amount=%s unit=%s",
+                    task_id,
+                    cost_amount,
+                    cost_unit,
+                )
+                if req.job_id and cost_amount is not None:
+                    log_job_event(
+                        req.job_id,
+                        "leonardo_generation_cost_recorded",
+                        "Coste de Leonardo registrado para la imagen.",
+                        status="info",
+                        channel_id=req.channel_id,
+                        details={
+                            "task_id": task_id,
+                            "generation_id": generation_id,
+                            "cost_amount": cost_amount,
+                            "cost_unit": cost_unit or "credits",
+                        },
+                    )
 
             if status in {"COMPLETE", "COMPLETED", "SUCCESS"} and image_url:
                 try:
@@ -2213,6 +2426,7 @@ async def process_leonardo_video_task_background(task_id: str, generation_id: st
     start_time = time.time()
     channel = db.get_youtube_channel(int(req.channel_id)) if req.channel_id else None
     model_ref = (req.model or "MOTION2").strip() or "MOTION2"
+    cost_recorded = False
     try:
         while time.time() - start_time < 900:  # 15 min max
             await asyncio.sleep(8)
@@ -2239,8 +2453,37 @@ async def process_leonardo_video_task_background(task_id: str, generation_id: st
                         channel_id=req.channel_id,
                         error_message=str(error_msg),
                         details={"task_id": task_id, "generation_id": generation_id},
-                    )
+                )
                 return
+
+            if status in {"COMPLETE", "COMPLETED", "SUCCESS"} and not cost_recorded:
+                cost_amount, cost_unit = reconcile_leonardo_credit_balance(task_id, data, fallback_cost=estimate_leonardo_video_cost(
+                    model_ref,
+                    req.resolution,
+                    req.duration,
+                    bool(req.frame_interpolation),
+                ))
+                cost_recorded = True
+                logger.info(
+                    "Leonardo video task %s cost recorded: amount=%s unit=%s",
+                    task_id,
+                    cost_amount,
+                    cost_unit,
+                )
+                if req.job_id and cost_amount is not None:
+                    log_job_event(
+                        req.job_id,
+                        "leonardo_video_generation_cost_recorded",
+                        "Coste de Leonardo registrado para el vídeo.",
+                        status="info",
+                        channel_id=req.channel_id,
+                        details={
+                            "task_id": task_id,
+                            "generation_id": generation_id,
+                            "cost_amount": cost_amount,
+                            "cost_unit": cost_unit or "credits",
+                        },
+                    )
 
             if status in {"COMPLETE", "COMPLETED", "SUCCESS"} and video_url:
                 try:

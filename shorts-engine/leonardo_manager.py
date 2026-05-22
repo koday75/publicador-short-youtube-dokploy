@@ -2,6 +2,7 @@ import logging
 import os
 import uuid
 import json
+import time
 from typing import Any
 
 import requests
@@ -15,6 +16,9 @@ class LeonardoManager:
     def __init__(self, db: JobDatabase):
         self.db = db
         self.base_url = "https://cloud.leonardo.ai/api/rest/v1"
+        self._model_cache: dict[str, Any] | None = None
+        self._model_cache_ts: float = 0.0
+        self._model_cache_ttl: float = 60 * 30
 
     def get_api_key(self) -> str:
         return (self.db.get_setting("LEONARDO_API_KEY") or "").strip()
@@ -133,6 +137,88 @@ class LeonardoManager:
         generation = data.get("generations_by_pk") or data.get("generation") or {}
         status = str(generation.get("status") or "PENDING").upper()
         return status, data
+
+    @staticmethod
+    def extract_generation_cost(data: dict) -> tuple[float | None, str | None]:
+        generation = data.get("generations_by_pk") or data.get("generation") or {}
+        cost = generation.get("cost") or data.get("cost") or {}
+        if isinstance(cost, (int, float)):
+            return float(cost), "credits"
+        if isinstance(cost, str):
+            try:
+                return float(cost), "credits"
+            except Exception:
+                return None, None
+        if isinstance(cost, dict):
+            for key in ("amount", "value", "cost", "apiCreditCost", "api_credit_cost"):
+                raw = cost.get(key)
+                if raw is None:
+                    continue
+                try:
+                    unit = str(cost.get("unit") or cost.get("currency") or "credits")
+                    return float(raw), unit
+                except Exception:
+                    continue
+        api_credit_cost = generation.get("apiCreditCost") or data.get("apiCreditCost")
+        if api_credit_cost is not None:
+            try:
+                return float(api_credit_cost), "credits"
+            except Exception:
+                pass
+        return None, None
+
+    def list_platform_models(self, force_refresh: bool = False) -> list[dict]:
+        if (
+            not force_refresh
+            and self._model_cache is not None
+            and (time.time() - self._model_cache_ts) < self._model_cache_ttl
+        ):
+            cached_models = self._model_cache.get("models") if isinstance(self._model_cache, dict) else None
+            if isinstance(cached_models, list):
+                return cached_models
+
+        api_key = self.get_api_key()
+        if not api_key:
+            raise RuntimeError("LEONARDO_API_KEY no estÃ¡ configurada.")
+
+        res = requests.get(
+            f"{self.base_url}/platformModels",
+            headers=self._headers(api_key),
+            timeout=45,
+        )
+        res.raise_for_status()
+        data = res.json() or {}
+        raw_items: list[dict] = []
+        for key in ("platformModels", "platform_models", "models", "data", "items", "results"):
+            value = data.get(key)
+            if isinstance(value, list):
+                raw_items = [item for item in value if isinstance(item, dict)]
+                break
+        if not raw_items and isinstance(data, list):
+            raw_items = [item for item in data if isinstance(item, dict)]
+
+        models: list[dict] = []
+        for item in raw_items:
+            model_id = str(item.get("id") or item.get("modelId") or item.get("model_id") or "").strip()
+            name = str(item.get("name") or item.get("title") or model_id).strip()
+            description = str(item.get("description") or item.get("summary") or "").strip()
+            if not model_id and not name:
+                continue
+            kind = str(item.get("kind") or item.get("type") or item.get("category") or "").strip().lower()
+            if kind not in {"image", "video"}:
+                lowered = f"{model_id} {name}".lower()
+                kind = "video" if any(token in lowered for token in ("motion", "veo", "kling", "ltx", "seedance", "video")) else "image"
+            models.append({
+                "id": model_id or name,
+                "name": name or model_id,
+                "description": description,
+                "kind": kind,
+                "source": "api",
+            })
+
+        self._model_cache = {"models": models}
+        self._model_cache_ts = time.time()
+        return models
 
     @staticmethod
     def extract_generated_image_url(data: dict) -> str | None:

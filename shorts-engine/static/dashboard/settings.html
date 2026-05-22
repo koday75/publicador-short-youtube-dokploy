@@ -155,6 +155,32 @@
             </div>
         </section>
 
+        <section class="card" style="margin-bottom:2rem;">
+            <div class="section-title">
+                <div>
+                    <h2>Saldo de Leonardo</h2>
+                    <p>Este saldo es el que la app descontar&aacute; con cada generaci&oacute;n de imagen o v&iacute;deo y se mostrar&aacute; en el creador.</p>
+                </div>
+                <button onclick="loadLeonardoCredits(true)" id="btn-refresh-leonardo" style="background:var(--accent); color:#000; font-weight:bold;">Actualizar saldo</button>
+            </div>
+            <div class="setting-card" style="display:grid; gap:1rem;">
+                <div style="display:flex; justify-content:space-between; align-items:baseline; gap:1rem; flex-wrap:wrap;">
+                    <div>
+                        <label style="display:block; color:var(--text-muted); font-size:0.8rem;">Cr&eacute;dito restante</label>
+                        <div id="leonardo-credit-display" style="font-size:2rem; font-weight:800; color:var(--accent);">—</div>
+                    </div>
+                    <div style="color:var(--text-muted); font-size:0.85rem;">Unidad: cr&eacute;ditos</div>
+                </div>
+                <div class="field">
+                    <label for="leonardo-credit-input">Editar saldo restante</label>
+                    <div style="display:flex; gap:8px; margin-top:5px; flex-wrap:wrap;">
+                        <input type="number" id="leonardo-credit-input" min="0" step="0.01" placeholder="Ej. 25.00">
+                        <button class="save-btn" onclick="saveLeonardoCredit(this)">Guardar</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <section class="card">
             <div class="section-title">
                 <div>
@@ -270,6 +296,8 @@
                     const configured = data[provider] === '********';
                     return renderKeyCard(provider, configured, configured ? 'Configurada' : 'Pendiente', configured ? '#3fb950' : '#e3b341');
                 }).join('');
+
+                loadLeonardoCredits();
             } catch (error) {
                 alert(`Error cr\u00edtico cargando ajustes: ${error.message}`);
                 console.error(error);
@@ -342,6 +370,70 @@
             } finally {
                 btn.disabled = false;
                 btn.innerText = 'Consultar cuentas';
+            }
+        }
+
+        async function loadLeonardoCredits(showLoading = false) {
+            const btn = document.getElementById('btn-refresh-leonardo');
+            if (showLoading && btn) {
+                btn.disabled = true;
+                btn.innerText = 'Consultando...';
+            }
+            try {
+                const res = await fetch('/api/leonardo/credits');
+                const data = await res.json();
+                const balance = typeof data.balance === 'number' ? data.balance : (data.balance ? parseFloat(data.balance) : null);
+                const display = document.getElementById('leonardo-credit-display');
+                const input = document.getElementById('leonardo-credit-input');
+                if (display) {
+                    display.textContent = balance === null || Number.isNaN(balance) ? '—' : balance.toFixed(2);
+                }
+                if (input && balance !== null && !Number.isNaN(balance)) {
+                    input.value = balance.toFixed(2);
+                }
+            } catch (error) {
+                const display = document.getElementById('leonardo-credit-display');
+                if (display) {
+                    display.textContent = 'Error';
+                    display.style.color = 'var(--error)';
+                }
+                console.error(error);
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerText = 'Actualizar saldo';
+                }
+            }
+        }
+
+        async function saveLeonardoCredit(button) {
+            const input = document.getElementById('leonardo-credit-input');
+            if (!input) return;
+            const value = parseFloat(String(input.value || '').trim());
+            if (Number.isNaN(value) || value < 0) {
+                alert('Escribe un saldo v&aacute;lido.');
+                return;
+            }
+            const original = button.innerText;
+            button.disabled = true;
+            button.innerText = 'Guardando...';
+            try {
+                const res = await fetch('/api/leonardo/credits', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ balance: value })
+                });
+                if (!res.ok) {
+                    const data = await res.json().catch(() => ({}));
+                    throw new Error(data.detail || 'No se pudo guardar el saldo.');
+                }
+                await loadLeonardoCredits();
+                alert('Saldo de Leonardo actualizado correctamente.');
+            } catch (error) {
+                alert(`Error al guardar el saldo de Leonardo: ${error.message}`);
+            } finally {
+                button.disabled = false;
+                button.innerText = original;
             }
         }
 

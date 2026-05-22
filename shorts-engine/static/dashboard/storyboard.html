@@ -517,10 +517,12 @@
                     <div class="ai-panel">
                         <h4>Leonardo</h4>
                         <p>Perfecto para fondos, miniaturas y variaciones más pulidas. Se guardará automáticamente en la galería del canal.</p>
+                        <div id="leonardo-credit-remaining" class="ai-reference-note" style="margin-top: 0; margin-bottom: 0.6rem;"></div>
                         <div class="ai-form-grid">
                             <div class="ai-field">
-                                <label for="leonardo-model-id">Modelo Leonardo (UUID opcional)</label>
-                                <input type="text" id="leonardo-model-id" placeholder="Si lo dejas vacío usaré el modelo por defecto">
+                                <label for="leonardo-model-id">Modelo de imagen</label>
+                                <select id="leonardo-model-id" onchange="updateLeonardoCostLabels()"></select>
+                                <div id="leonardo-model-cost" class="ai-reference-note" style="margin-top: 0.4rem; min-height: 0;"></div>
                             </div>
                             <div class="ai-field">
                                 <label for="leonardo-width">Ancho</label>
@@ -557,14 +559,8 @@
                         <div class="ai-form-grid">
                             <div class="ai-field">
                                 <label for="leonardo-video-model">Modelo vídeo</label>
-                                <select id="leonardo-video-model">
-                                    <option value="MOTION2" selected>MOTION2</option>
-                                    <option value="MOTION2FAST">MOTION2FAST</option>
-                                    <option value="VEO3">VEO3</option>
-                                    <option value="VEO3FAST">VEO3FAST</option>
-                                    <option value="KLING2_1">KLING2_1</option>
-                                    <option value="KLING2_5">KLING2_5</option>
-                                </select>
+                                <select id="leonardo-video-model" onchange="updateLeonardoCostLabels()"></select>
+                                <div id="leonardo-video-model-cost" class="ai-reference-note" style="margin-top: 0.4rem; min-height: 0;"></div>
                             </div>
                             <div class="ai-field">
                                 <label for="leonardo-video-resolution">Resolución</label>
@@ -710,6 +706,8 @@
                 document.getElementById('tab-scripts').href = `/guiones?channel_id=${channelId}`;
                 document.getElementById('tab-history').href = `/channels/${channelId}/history`;
                 document.getElementById('tab-settings').href = `/youtube-channels?channel_id=${channelId}`;
+                loadLeonardoModelCatalog();
+                loadLeonardoCredits();
             } catch (e) {}
         }
         let galleryData = [];
@@ -1470,6 +1468,12 @@
         let currentAiSceneId = null;
         let currentChannelContext = null;
         let leonardoStatusTimer = null;
+        let leonardoModelCatalog = {
+            image_models: [],
+            video_models: [],
+            credit_balance: null,
+            credit_unit: 'credits',
+        };
 
         function stopLeonardoStatusTimer() {
             if (leonardoStatusTimer) {
@@ -1561,6 +1565,140 @@
             updateLeonardoVideoNote(currentAiSceneId);
         }
 
+        function formatLeonardoCost(value) {
+            const cost = Number(value);
+            if (!Number.isFinite(cost)) return '—';
+            return `${cost.toFixed(2)} créditos`;
+        }
+
+        function populateLeonardoModelSelects() {
+            const imageSelect = document.getElementById('leonardo-model-id');
+            const videoSelect = document.getElementById('leonardo-video-model');
+            if (!imageSelect || !videoSelect) return;
+
+            const currentImageModel = imageSelect.value || String(currentChannelContext?.leonardo_default_model_id || '').trim();
+            const currentVideoModel = videoSelect.value || 'MOTION2';
+
+            const imageModels = Array.isArray(leonardoModelCatalog.image_models) ? leonardoModelCatalog.image_models : [];
+            const videoModels = Array.isArray(leonardoModelCatalog.video_models) ? leonardoModelCatalog.video_models : [];
+
+            imageSelect.innerHTML = imageModels.length
+                ? imageModels.map((model) => {
+                    const selected = currentImageModel && currentImageModel === model.id ? 'selected' : '';
+                    const costText = formatLeonardoCost(model.estimated_cost);
+                    const description = model.description ? ` - ${model.description}` : '';
+                    return `<option value="${escapeHtml(model.id)}" data-cost="${escapeHtml(String(model.estimated_cost ?? ''))}" ${selected}>${escapeHtml(model.name)} · ${costText}${description}</option>`;
+                }).join('')
+                : '<option value="">Cargando modelos...</option>';
+
+            videoSelect.innerHTML = videoModels.length
+                ? videoModels.map((model) => {
+                    const selected = currentVideoModel && currentVideoModel === model.id ? 'selected' : '';
+                    const costText = formatLeonardoCost(model.estimated_cost);
+                    return `<option value="${escapeHtml(model.id)}" data-cost="${escapeHtml(String(model.estimated_cost ?? ''))}" ${selected}>${escapeHtml(model.name)} · ${costText}</option>`;
+                }).join('')
+                : '<option value="MOTION2" selected>MOTION2</option>';
+
+            if (!imageSelect.value && imageModels.length) {
+                imageSelect.value = currentImageModel && imageModels.some((m) => m.id === currentImageModel)
+                    ? currentImageModel
+                    : imageModels[0].id;
+            }
+            if (!videoSelect.value && videoModels.length) {
+                videoSelect.value = currentVideoModel && videoModels.some((m) => m.id === currentVideoModel)
+                    ? currentVideoModel
+                    : videoModels[0].id;
+            }
+
+            updateLeonardoCostLabels();
+        }
+
+        function updateLeonardoCostLabels() {
+            const imageSelect = document.getElementById('leonardo-model-id');
+            const videoSelect = document.getElementById('leonardo-video-model');
+            const imageCost = document.getElementById('leonardo-model-cost');
+            const videoCost = document.getElementById('leonardo-video-model-cost');
+            const creditDisplay = document.getElementById('leonardo-credit-remaining');
+
+            const imageOption = imageSelect?.selectedOptions?.[0];
+            const videoOption = videoSelect?.selectedOptions?.[0];
+            const imageCostValue = imageOption ? Number(imageOption.dataset.cost || '') : NaN;
+            const videoCostValue = videoOption ? Number(videoOption.dataset.cost || '') : NaN;
+
+            if (imageCost) {
+                imageCost.textContent = Number.isFinite(imageCostValue)
+                    ? `Coste estimado por imagen: ${formatLeonardoCost(imageCostValue)}`
+                    : 'Selecciona un modelo para ver su coste estimado.';
+            }
+            if (videoCost) {
+                videoCost.textContent = Number.isFinite(videoCostValue)
+                    ? `Coste estimado por vídeo: ${formatLeonardoCost(videoCostValue)}`
+                    : 'Selecciona un modelo para ver su coste estimado.';
+            }
+            if (creditDisplay) {
+                const rawBalance = leonardoModelCatalog.credit_balance;
+                const balance = rawBalance === null || rawBalance === undefined || rawBalance === ''
+                    ? null
+                    : Number(rawBalance);
+                creditDisplay.textContent = Number.isFinite(balance)
+                    ? `Crédito restante: ${balance.toFixed(2)} ${leonardoModelCatalog.credit_unit || 'credits'}`
+                    : 'Crédito restante: no configurado';
+            }
+        }
+
+        async function loadLeonardoModelCatalog() {
+            try {
+                const res = await fetch('/api/leonardo/models');
+                if (!res.ok) {
+                    throw new Error((await res.json().catch(() => ({}))).detail || 'No se pudieron cargar los modelos de Leonardo.');
+                }
+                const data = await res.json();
+                leonardoModelCatalog = {
+                    image_models: Array.isArray(data.image_models) ? data.image_models : [],
+                    video_models: Array.isArray(data.video_models) ? data.video_models : [],
+                    credit_balance: typeof data.credit_balance === 'number' ? data.credit_balance : (data.credit_balance !== null && data.credit_balance !== undefined ? Number(data.credit_balance) : null),
+                    credit_unit: data.credit_unit || 'credits',
+                };
+                populateLeonardoModelSelects();
+            } catch (error) {
+                console.error(error);
+                leonardoModelCatalog.image_models = [
+                    { id: '7b592283-e8a7-4c5a-9ba6-d18c31f258b9', name: 'Lucid Origin', estimated_cost: 0.95 },
+                    { id: '05ce0082-2d80-4a2d-8653-4d1c85e2418e', name: 'Lucid Realism', estimated_cost: 0.95 },
+                    { id: 'de7d3faf-762f-48e0-b3b7-9d0ac3a3fcf3', name: 'Leonardo Phoenix 1.0', estimated_cost: 1.0 },
+                    { id: '6b645e3a-d64f-4341-a6d8-7a3690fbf042', name: 'Leonardo Phoenix 0.9', estimated_cost: 0.95 },
+                    { id: 'b2614463-296c-462a-9586-aafdb8f00e36', name: 'Flux Dev', estimated_cost: 0.95 },
+                    { id: '1dd50843-d653-4516-a8e3-f0238ee453ff', name: 'Flux Schnell', estimated_cost: 0.85 },
+                    { id: 'b24e16ff-06e3-43eb-8d33-4416c2d75876', name: 'Leonardo Lightning XL', estimated_cost: 0.85 },
+                    { id: 'aa77f04e-3eec-4034-9c07-d0f619684628', name: 'Leonardo Kino XL', estimated_cost: 0.95 },
+                ];
+                leonardoModelCatalog.video_models = leonardoModelCatalog.video_models.length ? leonardoModelCatalog.video_models : [
+                    { id: 'MOTION2', name: 'Motion 2', estimated_cost: 3.0 },
+                    { id: 'MOTION2FAST', name: 'Motion 2 Fast', estimated_cost: 2.2 },
+                    { id: 'VEO3', name: 'Veo 3', estimated_cost: 4.8 },
+                    { id: 'VEO3FAST', name: 'Veo 3 Fast', estimated_cost: 4.2 },
+                    { id: 'KLING2_1', name: 'Kling 2.1 Pro', estimated_cost: 4.5 },
+                    { id: 'KLING2_5', name: 'Kling 2.5 Turbo', estimated_cost: 5.2 },
+                ];
+                populateLeonardoModelSelects();
+            }
+        }
+
+        async function loadLeonardoCredits() {
+            try {
+                const res = await fetch('/api/leonardo/credits');
+                if (!res.ok) return;
+                const data = await res.json();
+                leonardoModelCatalog.credit_balance = typeof data.balance === 'number'
+                    ? data.balance
+                    : (data.balance !== null && data.balance !== undefined ? Number(data.balance) : null);
+                leonardoModelCatalog.credit_unit = data.unit || 'credits';
+                updateLeonardoCostLabels();
+            } catch (error) {
+                console.error(error);
+            }
+        }
+
         function openAiModal(sceneId) {
             currentAiSceneId = sceneId;
             document.getElementById('aiModal').classList.add('active');
@@ -1570,6 +1708,8 @@
             updateLeonardoReferenceNote(sceneId);
             updateLeonardoChannelStyleNote(currentChannelContext);
             updateLeonardoVideoNote(sceneId);
+            loadLeonardoModelCatalog();
+            loadLeonardoCredits();
         }
 
         function closeAiModal() {
@@ -1853,6 +1993,7 @@
                         if (taskStatus === 'completed') {
                             stopLeonardoStatusTimer();
                             await reloadGalleryData();
+                            await loadLeonardoCredits();
                             if (document.getElementById('mediaPickerModal')?.classList.contains('active')) {
                                 refreshMediaPicker();
                             }
@@ -1971,6 +2112,7 @@
                         if (taskStatus === 'completed') {
                             stopLeonardoStatusTimer();
                             await reloadGalleryData();
+                            await loadLeonardoCredits();
                             if (document.getElementById('mediaPickerModal')?.classList.contains('active')) {
                                 refreshMediaPicker();
                             }
