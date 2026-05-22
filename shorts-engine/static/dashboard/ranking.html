@@ -151,8 +151,11 @@
             display: flex;
             gap: 0.55rem;
             flex-wrap: wrap;
+            align-items: center;
         }
         .channel-tab {
+            display: inline-flex;
+            align-items: center;
             text-decoration: none;
             border: 1px solid var(--border-color);
             border-radius: 999px;
@@ -160,6 +163,7 @@
             font-size: 0.82rem;
             color: var(--text-muted);
             background: rgba(255,255,255,0.03);
+            white-space: nowrap;
         }
         .channel-tab.active {
             background: rgba(88, 166, 255, 0.15);
@@ -280,11 +284,11 @@
         <section class="ranking-topbar">
             <div>
                 <div class="ranking-actions">
-                    <button class="ranking-chip active" data-period="day">Hoy</button>
-                    <button class="ranking-chip" data-period="week">7 días</button>
-                    <button class="ranking-chip" data-period="month">30 días</button>
-                    <button class="ranking-chip" data-period="quarter">Trimestre</button>
-                    <button class="ranking-chip" data-period="year">Año</button>
+                    <button type="button" class="ranking-chip active" data-period="day" onclick="setRankingPeriod('day', this)">Hoy</button>
+                    <button type="button" class="ranking-chip" data-period="week" onclick="setRankingPeriod('week', this)">7 días</button>
+                    <button type="button" class="ranking-chip" data-period="month" onclick="setRankingPeriod('month', this)">30 días</button>
+                    <button type="button" class="ranking-chip" data-period="quarter" onclick="setRankingPeriod('quarter', this)">Trimestre</button>
+                    <button type="button" class="ranking-chip" data-period="year" onclick="setRankingPeriod('year', this)">Año</button>
                 </div>
             </div>
             <div class="ranking-actions">
@@ -295,7 +299,7 @@
                     <option value="comments">Comentarios</option>
                     <option value="engagement">Engagement</option>
                 </select>
-                <button id="refresh-btn" class="ranking-btn">↻ Sincronizar datos</button>
+                <button type="button" id="refresh-btn" class="ranking-btn" onclick="syncRankingData()">↻ Sincronizar datos</button>
             </div>
         </section>
 
@@ -577,23 +581,42 @@
             }
         }
 
-        document.querySelectorAll('.ranking-chip').forEach((button) => {
-            button.addEventListener('click', () => {
-                document.querySelectorAll('.ranking-chip').forEach((item) => item.classList.remove('active'));
-                button.classList.add('active');
-                state.period = button.dataset.period || 'month';
-                loadRanking();
-            });
-        });
+        function setRankingPeriod(period, buttonEl = null) {
+            state.period = period || 'month';
+            document.querySelectorAll('.ranking-chip').forEach((item) => item.classList.remove('active'));
+            const target = buttonEl || document.querySelector(`.ranking-chip[data-period="${state.period}"]`);
+            if (target) target.classList.add('active');
+            loadRanking();
+        }
 
-        document.getElementById('metric-select').addEventListener('change', (event) => {
-            state.metric = event.target.value || 'score';
+        function syncRankingData() {
+            const btn = document.getElementById('refresh-btn');
+            const originalLabel = btn ? btn.textContent : '';
+            if (btn) {
+                btn.disabled = true;
+                btn.textContent = 'Sincronizando...';
+            }
+            loadRanking(true).finally(() => {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.textContent = originalLabel || '↻ Sincronizar datos';
+                }
+            });
+        }
+
+        window.setRankingPeriod = setRankingPeriod;
+        window.syncRankingData = syncRankingData;
+        window.addEventListener('DOMContentLoaded', () => {
+            const metricSelect = document.getElementById('metric-select');
+            if (metricSelect) {
+                metricSelect.value = state.metric;
+                metricSelect.addEventListener('change', (event) => {
+                    state.metric = event.target.value || 'score';
+                    loadRanking();
+                });
+            }
             loadRanking();
         });
-
-        document.getElementById('refresh-btn').addEventListener('click', () => loadRanking(true));
-
-        loadRanking();
     </script>
 </body>
 </html>
