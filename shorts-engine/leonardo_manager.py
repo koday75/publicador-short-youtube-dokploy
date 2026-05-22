@@ -50,6 +50,23 @@ class LeonardoManager:
         except Exception:
             return {}
 
+    @staticmethod
+    def _extract_generation_id(data: dict) -> str | None:
+        generation = data.get("generations_by_pk") or data.get("generation") or {}
+        for key in ("id", "generationId", "generation_id", "generationID"):
+            value = generation.get(key) if isinstance(generation, dict) else None
+            if value:
+                text = str(value).strip()
+                if text:
+                    return text
+        for key in ("generationId", "generation_id", "id"):
+            value = data.get(key)
+            if value:
+                text = str(value).strip()
+                if text:
+                    return text
+        return None
+
     def create_image_generation(
         self,
         prompt: str,
