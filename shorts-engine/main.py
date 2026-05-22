@@ -402,6 +402,24 @@ class LeonardoGenerateRequest(BaseModel):
     transparency: Optional[str] = None
     source_media_filename: Optional[str] = None
 
+class LeonardoVideoGenerateRequest(BaseModel):
+    prompt: str
+    channel_id: Optional[int] = None
+    job_id: Optional[str] = None
+    niche: str = "general"
+    model: Optional[str] = "MOTION2"
+    resolution: Optional[str] = "RESOLUTION_720"
+    width: Optional[int] = None
+    height: Optional[int] = None
+    duration: Optional[int] = 5
+    frame_interpolation: Optional[bool] = True
+    public: Optional[bool] = False
+    seed: Optional[int] = None
+    negative_prompt: Optional[str] = None
+    prompt_enhance: Optional[bool] = True
+    prompt_enhance_instruction: Optional[str] = None
+    source_media_filename: Optional[str] = None
+
 class AiBatchGenerateRequest(BaseModel):
     scenes: List[AiScenePrompt]
     draft_mode: bool = False
@@ -1780,6 +1798,98 @@ async def api_get_leonardo_generation(generation_id: str, user: str = Depends(ge
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
 
+@app.post("/api/leonardo/generate-video")
+async def api_generate_leonardo_video(req: LeonardoVideoGenerateRequest, background_tasks: BackgroundTasks, user: str = Depends(get_current_user)):
+    if not leonardo_manager.is_configured():
+        raise HTTPException(status_code=400, detail="LEONARDO_API_KEY no está configurada.")
+
+    prompt = (req.prompt or "").strip()
+    if not prompt:
+        raise HTTPException(status_code=400, detail="El prompt no puede estar vacío.")
+
+    channel = db.get_youtube_channel(int(req.channel_id)) if req.channel_id else None
+    channel_style_context, channel_style_ids = build_channel_visual_style_context(channel)
+    model_ref = (req.model or "MOTION2").strip() or "MOTION2"
+    effective_prompt = prompt
+    if channel_style_context:
+        effective_prompt = f"{prompt}\n\n{channel_style_context}"
+
+    task_id = f"lev_{uuid.uuid4().hex[:12]}"
+    init_image_id = None
+    init_image_type = "UPLOADED"
+
+    db.add_ai_task(
+        task_id,
+        effective_prompt,
+        req.niche,
+        model_ref,
+        channel_id=req.channel_id,
+        provider="leonardo",
+    )
+
+    try:
+        if req.source_media_filename:
+            media = db.get_media_by_filename(req.source_media_filename, channel_id=req.channel_id)
+            if media and media.get("file_path") and os.path.exists(str(media["file_path"])):
+                media_type = str(media.get("file_type") or "").lower()
+                if media_type.startswith("image"):
+                    uploaded = leonardo_manager.upload_init_image(str(media["file_path"]))
+                    init_image_id = uploaded.get("id")
+                elif media_type.startswith("video"):
+                    raise HTTPException(status_code=400, detail="El generador de vídeo necesita una imagen como referencia, no un vídeo.")
+        if not init_image_id:
+            raise HTTPException(status_code=400, detail="Selecciona una imagen de la escena o de la galería para poder animarla con Leonardo.")
+
+        generation_id, _raw_data = leonardo_manager.create_video_generation(
+            effective_prompt,
+            image_id=init_image_id,
+            image_type=init_image_type,
+            model=model_ref,
+            resolution=req.resolution or "RESOLUTION_720",
+            width=req.width,
+            height=req.height,
+            duration=req.duration,
+            frame_interpolation=req.frame_interpolation,
+            public=bool(req.public),
+            seed=req.seed,
+            negative_prompt=req.negative_prompt,
+            prompt_enhance=req.prompt_enhance,
+            prompt_enhance_instruction=req.prompt_enhance_instruction,
+            style_ids=channel_style_ids,
+        )
+    except HTTPException:
+        db.update_ai_task(task_id, "failed", error_message="No se pudo iniciar la generación de vídeo.")
+        raise
+    except Exception as exc:
+        db.update_ai_task(task_id, "failed", error_message=str(exc))
+        raise HTTPException(status_code=500, detail=str(exc))
+
+    with db._get_connection() as conn:
+        conn.execute(
+            "UPDATE ai_tasks SET provider = ?, external_id = ?, model = ? WHERE task_id = ?",
+            ("leonardo", generation_id, model_ref, task_id),
+        )
+        conn.commit()
+
+    if req.job_id:
+        log_job_event(
+            req.job_id,
+            "leonardo_video_generation_started",
+            "Generación de vídeo con Leonardo iniciada.",
+            status="info",
+            channel_id=req.channel_id,
+            details={
+                "task_id": task_id,
+                "generation_id": generation_id,
+                "model": model_ref,
+                "style_name": channel.get("visual_style_name") if channel else None,
+                "style_ids_applied": bool(channel_style_ids),
+            },
+        )
+
+    background_tasks.add_task(process_leonardo_video_task_background, task_id, generation_id, req)
+    return {"status": "processing", "task_id": task_id, "generation_id": generation_id, "provider": "leonardo", "media_type": "video"}
+
 @app.get("/api/ai/tasks")
 async def api_get_ai_tasks(page: int = 1, limit: int = 25, search: str = None, channel_id: int = None, user: str = Depends(get_current_user)):
     offset = (page - 1) * limit
@@ -2083,6 +2193,108 @@ async def process_leonardo_task_background(task_id: str, generation_id: str, req
     except Exception as e:
         logger.error("Error in process_leonardo_task_background: %s", str(e))
         db.update_ai_task(task_id, "failed", error_message=str(e))
+
+async def process_leonardo_video_task_background(task_id: str, generation_id: str, req: LeonardoVideoGenerateRequest):
+    """Background loop to poll Leonardo video generations and download the rendered clip."""
+    start_time = time.time()
+    channel = db.get_youtube_channel(int(req.channel_id)) if req.channel_id else None
+    model_ref = (req.model or "MOTION2").strip() or "MOTION2"
+    try:
+        while time.time() - start_time < 900:  # 15 min max
+            await asyncio.sleep(8)
+            status, data = leonardo_manager.poll_generation_once(generation_id)
+            generation = data.get("generations_by_pk") or data.get("generation") or {}
+            video_url = leonardo_manager.extract_generated_video_url(data)
+            logger.info("Leonardo video task polling: %s -> status=%s", task_id, status)
+
+            if status in {"FAILED", "FAIL", "ERROR"}:
+                error_msg = (
+                    generation.get("failureReason")
+                    or generation.get("failure_reason")
+                    or data.get("error")
+                    or data.get("message")
+                    or "Error desconocido en Leonardo"
+                )
+                db.update_ai_task(task_id, "failed", error_message=str(error_msg))
+                if req.job_id:
+                    log_job_event(
+                        req.job_id,
+                        "leonardo_video_generation_failed",
+                        "La generación de vídeo con Leonardo falló.",
+                        status="error",
+                        channel_id=req.channel_id,
+                        error_message=str(error_msg),
+                        details={"task_id": task_id, "generation_id": generation_id},
+                    )
+                return
+
+            if status in {"COMPLETE", "COMPLETED", "SUCCESS"} and video_url:
+                try:
+                    result = leonardo_manager.download_generated_video(
+                        video_url,
+                        req.prompt,
+                        req.niche,
+                        model_ref,
+                        req.channel_id,
+                    )
+                    db.update_ai_task(task_id, "completed", result_url=video_url, media_id=result["media_id"])
+                    if req.job_id:
+                        log_job_event(
+                            req.job_id,
+                            "leonardo_video_generation_completed",
+                            "Vídeo de Leonardo descargado y guardado en la galería.",
+                            status="success",
+                            channel_id=req.channel_id,
+                            details={
+                                "task_id": task_id,
+                                "generation_id": generation_id,
+                                "media_id": result["media_id"],
+                                "filename": result["filename"],
+                            },
+                        )
+                    return
+                except Exception as download_err:
+                    logger.error("Leonardo video task %s: error descargando vídeo: %s", task_id, download_err)
+                    db.update_ai_task(task_id, "failed", error_message=f"Error descargando vídeo: {download_err}")
+                    if req.job_id:
+                        log_job_event(
+                            req.job_id,
+                            "leonardo_video_generation_failed",
+                            "No se pudo descargar el vídeo generado por Leonardo.",
+                            status="error",
+                            channel_id=req.channel_id,
+                            error_message=str(download_err),
+                            details={"task_id": task_id, "generation_id": generation_id},
+                        )
+                    return
+
+            if status in {"COMPLETE", "COMPLETED", "SUCCESS"} and not video_url:
+                logger.info("Leonardo video task %s completada sin URL todavía; continuamos esperando.", task_id)
+
+        db.update_ai_task(task_id, "failed", error_message="Tiempo de espera excedido (15 min)")
+        if req.job_id:
+            log_job_event(
+                req.job_id,
+                "leonardo_video_generation_timeout",
+                "Tiempo de espera excedido en Leonardo.",
+                status="error",
+                channel_id=req.channel_id,
+                error_message="Tiempo de espera excedido (15 min)",
+                details={"task_id": task_id, "generation_id": generation_id},
+            )
+    except Exception as e:
+        logger.error("Error in process_leonardo_video_task_background: %s", str(e))
+        db.update_ai_task(task_id, "failed", error_message=str(e))
+        if req.job_id:
+            log_job_event(
+                req.job_id,
+                "leonardo_video_generation_failed",
+                "La generación de vídeo con Leonardo falló por un error interno.",
+                status="error",
+                channel_id=req.channel_id,
+                error_message=str(e),
+                details={"task_id": task_id, "generation_id": generation_id},
+            )
 
 @app.get("/api/ai/assets/search")
 async def api_search_assets(niche: str = None, prompt: str = None, limit: int = 10, user: str = Depends(get_current_user)):

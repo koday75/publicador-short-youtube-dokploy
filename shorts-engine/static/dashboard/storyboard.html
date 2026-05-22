@@ -551,6 +551,47 @@
                             <button id="btn-do-leonardo-gen" class="badge" style="background: var(--primary); color: #fff; border:none; cursor:pointer;" onclick="executeLeonardoGeneration()">Generar con Leonardo</button>
                         </div>
                         <div id="leonardo-status" style="margin-top: 0.15rem; font-size: 0.8rem; min-height: 20px; color: var(--text-muted);"></div>
+                        <hr style="border:0; border-top:1px solid rgba(255,255,255,0.08); margin: 0.85rem 0;">
+                        <h4>Leonardo vídeo</h4>
+                        <p>Convierte la imagen seleccionada en un vídeo corto con movimiento suave. El resultado se guardará en la galería del canal.</p>
+                        <div class="ai-form-grid">
+                            <div class="ai-field">
+                                <label for="leonardo-video-model">Modelo vídeo</label>
+                                <select id="leonardo-video-model">
+                                    <option value="MOTION2" selected>MOTION2</option>
+                                    <option value="MOTION2FAST">MOTION2FAST</option>
+                                    <option value="VEO3">VEO3</option>
+                                    <option value="VEO3FAST">VEO3FAST</option>
+                                    <option value="KLING2_1">KLING2_1</option>
+                                    <option value="KLING2_5">KLING2_5</option>
+                                </select>
+                            </div>
+                            <div class="ai-field">
+                                <label for="leonardo-video-resolution">Resolución</label>
+                                <select id="leonardo-video-resolution">
+                                    <option value="RESOLUTION_480">480p</option>
+                                    <option value="RESOLUTION_720" selected>720p</option>
+                                    <option value="RESOLUTION_1080">1080p</option>
+                                </select>
+                            </div>
+                            <div class="ai-field">
+                                <label for="leonardo-video-duration">Duración (segundos)</label>
+                                <input type="number" id="leonardo-video-duration" min="4" max="10" step="1" value="5">
+                            </div>
+                            <div class="ai-field" style="display:flex; align-items:end;">
+                                <label class="text-toggle" style="margin: 0; display:flex; align-items:center; gap:0.45rem;">
+                                    <input type="checkbox" id="leonardo-video-frame-interpolation" checked>
+                                    Interpolación de fotogramas
+                                </label>
+                            </div>
+                        </div>
+                        <div id="leonardo-video-reference-note" class="ai-reference-note">
+                            Se usará la imagen actual de la escena como fotograma inicial para crear el vídeo.
+                        </div>
+                        <div class="ai-provider-actions">
+                            <button id="btn-do-leonardo-video-gen" class="badge" style="background: var(--primary); color: #fff; border:none; cursor:pointer;" onclick="executeLeonardoVideoGeneration()">Generar vídeo con Leonardo</button>
+                        </div>
+                        <div id="leonardo-video-status" style="margin-top: 0.15rem; font-size: 0.8rem; min-height: 20px; color: var(--text-muted);"></div>
                     </div>
                 </div>
             </div>
@@ -1095,6 +1136,10 @@
                     preview.innerHTML = '<div style="text-align:center; padding: 10px; color:var(--error);">Archivo no encontrado</div>';
                 }
             }
+            if (currentAiSceneId === id) {
+                updateLeonardoReferenceNote(id);
+                updateLeonardoVideoNote(id);
+            }
         }
 
         function updateMediaLabel(id) {
@@ -1103,6 +1148,10 @@
             if (!input || !label) return;
             const item = galleryData.find(m => m.filename === input.value);
             label.textContent = item ? item.original_name : (input.value || 'Sin archivo seleccionado');
+            if (currentAiSceneId === id) {
+                updateLeonardoReferenceNote(id);
+                updateLeonardoVideoNote(id);
+            }
         }
 
         let currentMediaSceneId = null;
@@ -1181,6 +1230,7 @@
             if (document.getElementById('aiModal')?.classList.contains('active') && currentAiSceneId) {
                 updateLeonardoReferenceNote(currentAiSceneId);
                 updateLeonardoChannelStyleNote(currentChannelContext);
+                updateLeonardoVideoNote(currentAiSceneId);
             }
 
             if (musicSelect) {
@@ -1434,13 +1484,17 @@
             return (input?.value || '').trim();
         }
 
+        function getSceneMediaItem(sceneId) {
+            const filename = getSceneMediaFilename(sceneId);
+            return galleryData.find(m => m.filename === filename) || null;
+        }
+
         function updateLeonardoReferenceNote(sceneId) {
             const note = document.getElementById('leonardo-reference-note');
             const checkbox = document.getElementById('leonardo-use-reference');
             if (!note || !checkbox) return;
 
-            const filename = getSceneMediaFilename(sceneId);
-            const item = galleryData.find(m => m.filename === filename);
+            const item = getSceneMediaItem(sceneId);
             const isImage = !!(item && item.file_type && item.file_type.includes('image'));
 
             if (isImage) {
@@ -1451,6 +1505,23 @@
                 note.textContent = 'Si la escena ya tiene una imagen seleccionada, Leonardo puede usarla como referencia visual para mantener coherencia.';
                 checkbox.disabled = true;
                 checkbox.checked = false;
+            }
+        }
+
+        function updateLeonardoVideoNote(sceneId) {
+            const note = document.getElementById('leonardo-video-reference-note');
+            const button = document.getElementById('btn-do-leonardo-video-gen');
+            if (!note) return;
+
+            const item = getSceneMediaItem(sceneId);
+            const isImage = !!(item && item.file_type && item.file_type.includes('image'));
+
+            if (isImage) {
+                note.textContent = `Se usará ${item.original_name || item.filename} como fotograma inicial del vídeo.`;
+                if (button) button.disabled = false;
+            } else {
+                note.textContent = 'Selecciona una imagen en la escena para poder animarla con Leonardo.';
+                if (button) button.disabled = true;
             }
         }
 
@@ -1487,6 +1558,7 @@
         function applyChannelLeonardoDefaults(channel) {
             currentChannelContext = channel || null;
             updateLeonardoChannelStyleNote(channel);
+            updateLeonardoVideoNote(currentAiSceneId);
         }
 
         function openAiModal(sceneId) {
@@ -1497,6 +1569,7 @@
             document.getElementById('leonardo-status').innerText = "";
             updateLeonardoReferenceNote(sceneId);
             updateLeonardoChannelStyleNote(currentChannelContext);
+            updateLeonardoVideoNote(sceneId);
         }
 
         function closeAiModal() {
@@ -1826,6 +1899,124 @@
                 alert("Error Leonardo: " + (e.message || "Error desconocido"));
                 btn.disabled = false;
                 btn.innerText = 'Generar con Leonardo';
+            }
+        }
+
+        async function executeLeonardoVideoGeneration() {
+            const prompt = document.getElementById('ai-prompt').value.trim();
+            const btn = document.getElementById('btn-do-leonardo-video-gen');
+            const status = document.getElementById('leonardo-video-status');
+            const channelId = getChannelIdFromQuery();
+            const sceneId = currentAiSceneId;
+            const sourceMediaFilename = getSceneMediaFilename(sceneId);
+            const sourceItem = getSceneMediaItem(sceneId);
+            const model = document.getElementById('leonardo-video-model').value.trim() || 'MOTION2';
+            const resolution = document.getElementById('leonardo-video-resolution').value.trim() || 'RESOLUTION_720';
+            const duration = parseInt(document.getElementById('leonardo-video-duration').value || '5', 10);
+            const frameInterpolation = document.getElementById('leonardo-video-frame-interpolation')?.checked;
+            const currentJob = currentJobId || new URLSearchParams(window.location.search).get('job_id') || null;
+
+            if (!prompt) return alert("Escribe un prompt");
+            if (!sourceItem || !String(sourceItem.file_type || '').includes('image')) {
+                return alert("Selecciona una imagen en la escena para poder convertirla en vídeo.");
+            }
+
+            btn.disabled = true;
+            btn.innerText = "GENERANDO...";
+            status.innerText = "⏳ Enviando la imagen a Leonardo para crear el vídeo...";
+            stopLeonardoStatusTimer();
+
+            try {
+                const payload = {
+                    prompt,
+                    channel_id: channelId,
+                    job_id: currentJob,
+                    model,
+                    resolution,
+                    duration: Number.isFinite(duration) ? duration : 5,
+                    frame_interpolation: frameInterpolation,
+                    source_media_filename: sourceMediaFilename || null,
+                };
+
+                const res = await fetch('/api/leonardo/generate-video', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) {
+                    throw new Error(data.detail || 'Error desconocido');
+                }
+
+                const taskId = data.task_id;
+                const generationId = data.generation_id;
+                status.innerText = `🎬 Leonardo ha recibido la petición${generationId ? ` · ${generationId}` : ''}. El vídeo se guardará automáticamente en la galería.`;
+
+                const pollLeonardoVideoTask = async () => {
+                    try {
+                        const taskRes = await fetch(channelId
+                            ? `/api/ai/tasks?search=${encodeURIComponent(taskId)}&channel_id=${encodeURIComponent(channelId)}`
+                            : `/api/ai/tasks?search=${encodeURIComponent(taskId)}`);
+                        const taskData = await taskRes.json().catch(() => ({}));
+                        const task = (taskData.tasks || []).find(item => item.task_id === taskId) || (taskData.tasks || [])[0];
+
+                        if (!task) {
+                            status.innerText = 'La tarea se ha enviado. Esperando a que el servidor la registre...';
+                            leonardoStatusTimer = setTimeout(pollLeonardoVideoTask, 2500);
+                            return;
+                        }
+
+                        const taskStatus = String(task.status || '').toLowerCase();
+                        if (taskStatus === 'completed') {
+                            stopLeonardoStatusTimer();
+                            await reloadGalleryData();
+                            if (document.getElementById('mediaPickerModal')?.classList.contains('active')) {
+                                refreshMediaPicker();
+                            }
+                            if (sceneId && task.result_url) {
+                                const filename = String(task.result_url).split('/').pop();
+                                if (filename) {
+                                    const mediaField = document.getElementById(`media-${sceneId}`);
+                                    if (mediaField) {
+                                        mediaField.value = filename;
+                                        updateMediaLabel(sceneId);
+                                        updatePreview(sceneId);
+                                    }
+                                }
+                            }
+                            status.innerText = '✅ Vídeo creado y guardado en la galería del canal.';
+                            btn.disabled = false;
+                            btn.innerText = 'Generar vídeo con Leonardo';
+                            return;
+                        }
+
+                        if (taskStatus === 'failed') {
+                            stopLeonardoStatusTimer();
+                            const errorMessage = task.error_message || 'La generación de vídeo con Leonardo ha fallado.';
+                            status.innerText = `⚠️ ${errorMessage}`;
+                            btn.disabled = false;
+                            btn.innerText = 'Generar vídeo con Leonardo';
+                            return;
+                        }
+
+                        status.innerText = generationId
+                            ? `Leonardo está generando el vídeo (${generationId}). Lo guardaremos en la galería en cuanto termine.`
+                            : 'Leonardo está generando el vídeo. Lo guardaremos en la galería en cuanto termine.';
+                        leonardoStatusTimer = setTimeout(pollLeonardoVideoTask, 3000);
+                    } catch (pollError) {
+                        status.innerText = 'No se pudo consultar el estado ahora mismo. La generación seguirá en segundo plano.';
+                        leonardoStatusTimer = setTimeout(pollLeonardoVideoTask, 5000);
+                    }
+                };
+
+                leonardoStatusTimer = setTimeout(pollLeonardoVideoTask, 1500);
+            } catch (e) {
+                stopLeonardoStatusTimer();
+                status.innerText = '';
+                alert("Error Leonardo: " + (e.message || "Error desconocido"));
+                btn.disabled = false;
+                btn.innerText = 'Generar vídeo con Leonardo';
             }
         }
         document.getElementById('renderProgressModal').addEventListener('click', (event) => {
