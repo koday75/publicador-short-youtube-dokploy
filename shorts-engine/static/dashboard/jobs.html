@@ -826,7 +826,7 @@
                 const safeTitle = escapeHtml(job.title || job.text || '');
                 const safeDisplayTitle = escapeHtml(displayTitle);
                 const safeCommentsTitle = escapeHtml(job.title || displayTitle || job.job_id);
-                const moveTitleJs = JSON.stringify(job.title || displayTitle || job.job_id);
+                const safeActionTitle = escapeHtml(job.title || displayTitle || job.job_id);
 
                 const statusCell = job.youtube_video_url
                     ? `<span class="status-pill published">Publicado en YouTube</span>`
@@ -844,8 +844,8 @@
                         <button class="action-btn" style="background:#333; color:#fff;" onclick="window.location.href='${editUrl}'">Editar</button>
                         ${canPlay ? `<button class="action-btn btn-view" onclick="previewVideo('${job.video_url}', ${channelParam === null ? 'null' : channelParam})">Ver</button>` : ''}
                         ${canPublish ? `<button class="action-btn" style="background:rgba(88,166,255,0.15); color:#58a6ff; border:1px solid rgba(88,166,255,0.3);" onclick="window.location.href='${publishUrl}'">Publicar</button>` : ''}
-                        <button class="action-btn" style="background:rgba(210,153,34,0.16); color:#d29922; border:1px solid rgba(210,153,34,0.3);" onclick="openMoveJobModal('${job.job_id}', ${channelParam === null ? 'null' : channelParam}, ${moveTitleJs})">Mover</button>
-                        <button class="action-btn" style="background:rgba(170,120,255,0.16); color:#cdb4ff; border:1px solid rgba(170,120,255,0.3);" onclick="openDuplicateJobModal('${job.job_id}', ${channelParam === null ? 'null' : channelParam}, ${moveTitleJs})">Duplicar</button>
+                        <button type="button" class="action-btn move-job-btn" style="background:rgba(210,153,34,0.16); color:#d29922; border:1px solid rgba(210,153,34,0.3);" data-job-id="${job.job_id}" data-channel-id="${channelParam === null ? '' : channelParam}" data-job-title="${safeActionTitle}">Mover</button>
+                        <button type="button" class="action-btn duplicate-job-btn" style="background:rgba(170,120,255,0.16); color:#cdb4ff; border:1px solid rgba(170,120,255,0.3);" data-job-id="${job.job_id}" data-channel-id="${channelParam === null ? '' : channelParam}" data-job-title="${safeActionTitle}">Duplicar</button>
                         ${canViewComments ? `<button type="button" class="comments-pill buttonish comment-open-btn" data-job-id="${job.job_id}" data-channel-id="${channelParam === null ? '' : channelParam}" data-video-title="${safeCommentsTitle}">${new Intl.NumberFormat('es-ES').format(commentCount || 0)} comentarios</button>` : ''}
                         <button class="action-btn" style="background:rgba(255,255,255,0.08); color:#fff; border:1px solid rgba(255,255,255,0.12);" onclick="openJobLogs('${job.job_id}', ${channelParam === null ? 'null' : channelParam})">Log</button>
                         <button class="action-btn btn-delete" onclick="deleteJob('${job.job_id}')">Eliminar</button>
@@ -1310,6 +1310,28 @@
             const videoTitle = btn.dataset.videoTitle || '';
             if (!jobId) return;
             openCommentsModal(jobId, Number.isFinite(channelId) ? channelId : null, videoTitle);
+        });
+
+        document.getElementById('jobs-table').addEventListener('click', (event) => {
+            const btn = event.target.closest('.move-job-btn');
+            if (!btn) return;
+            const channelId = btn.dataset.channelId ? parseInt(btn.dataset.channelId, 10) : null;
+            openMoveJobModal(
+                btn.dataset.jobId,
+                Number.isFinite(channelId) ? channelId : null,
+                btn.dataset.jobTitle || ''
+            );
+        });
+
+        document.getElementById('jobs-table').addEventListener('click', (event) => {
+            const btn = event.target.closest('.duplicate-job-btn');
+            if (!btn) return;
+            const channelId = btn.dataset.channelId ? parseInt(btn.dataset.channelId, 10) : null;
+            openDuplicateJobModal(
+                btn.dataset.jobId,
+                Number.isFinite(channelId) ? channelId : null,
+                btn.dataset.jobTitle || ''
+            );
         });
 
         document.addEventListener('keydown', (event) => {
