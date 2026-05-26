@@ -205,6 +205,38 @@
         .btn-secondary { background: rgba(255,255,255,0.08); border: 1px solid var(--border-color); }
         .btn-success { background: rgba(46, 160, 67, 0.95); }
         .btn-danger { background: rgba(220, 38, 38, 0.95); }
+        .translate-tools {
+            margin-top: 0.45rem;
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .translate-tools select {
+            min-width: 120px;
+            border-radius: 999px;
+            border: 1px solid var(--border-color);
+            background: rgba(255,255,255,0.04);
+            color: var(--text-color);
+            padding: 0.45rem 0.7rem;
+        }
+        .translate-tools .btn {
+            padding: 0.48rem 0.75rem;
+            border-radius: 999px;
+            border: 1px solid rgba(88,166,255,0.35);
+            background: rgba(88,166,255,0.16);
+            color: #58a6ff;
+        }
+        .translate-tools .btn:disabled {
+            opacity: 0.65;
+            cursor: wait;
+        }
+        .translate-status {
+            width: 100%;
+            min-height: 16px;
+            color: var(--text-muted);
+            font-size: 0.76rem;
+        }
         .status-pill {
             display: inline-flex;
             align-items: center;
@@ -302,6 +334,14 @@
                     <div class="field">
                         <label for="publish-title">Título de YouTube</label>
                         <input id="publish-title" type="text" placeholder="Título del vídeo">
+                        <div class="translate-tools">
+                            <select id="translate-title-language" title="Idioma destino">
+                                <option value="es">Español</option>
+                                <option value="en">Inglés</option>
+                            </select>
+                            <button id="translate-title-button" class="btn" type="button" onclick="translatePublishField('publish-title', 'translate-title-language', 'translate-title-button', 'translate-title-status')">Traducir título</button>
+                            <span id="translate-title-status" class="translate-status"></span>
+                        </div>
                     </div>
                     <div class="field">
                         <label for="publish-privacy">Privacidad</label>
@@ -324,6 +364,14 @@
                 <div class="field" style="margin-top:0.9rem;">
                     <label for="publish-description">Descripción</label>
                     <textarea id="publish-description" placeholder="Escribe la descripción del vídeo..."></textarea>
+                    <div class="translate-tools">
+                        <select id="translate-description-language" title="Idioma destino">
+                            <option value="es">Español</option>
+                            <option value="en">Inglés</option>
+                        </select>
+                        <button id="translate-description-button" class="btn" type="button" onclick="translatePublishField('publish-description', 'translate-description-language', 'translate-description-button', 'translate-description-status')">Traducir descripción</button>
+                        <span id="translate-description-status" class="translate-status"></span>
+                    </div>
                 </div>
 
                 <div class="advanced-toggle" onclick="toggleAdvanced()">
@@ -502,6 +550,47 @@
         function syncPrivacyFields(value) {
             document.getElementById('publish-privacy').value = value;
             document.getElementById('publish-privacy-advanced').value = value;
+        }
+
+        async function translatePublishField(fieldId, languageId, buttonId, statusId) {
+            const field = document.getElementById(fieldId);
+            const language = document.getElementById(languageId);
+            const button = document.getElementById(buttonId);
+            const status = document.getElementById(statusId);
+            const text = (field?.value || '').trim();
+
+            if (!text) {
+                alert('Escribe primero el texto que quieres traducir.');
+                return;
+            }
+
+            const originalText = button.textContent;
+            button.disabled = true;
+            button.textContent = 'Traduciendo...';
+            status.textContent = 'La IA está revisando y traduciendo el texto.';
+
+            try {
+                const res = await fetch('/api/ai/translate-scene', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        text,
+                        target_language: language.value
+                    })
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) {
+                    throw new Error(data.detail || 'No se pudo traducir el texto.');
+                }
+                field.value = data.translated_text || text;
+                status.textContent = 'Texto traducido correctamente.';
+            } catch (error) {
+                status.textContent = '';
+                alert('Error al traducir: ' + error.message);
+            } finally {
+                button.disabled = false;
+                button.textContent = originalText;
+            }
         }
 
         function previewThumbnail(input) {
