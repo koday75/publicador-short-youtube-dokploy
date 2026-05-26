@@ -308,6 +308,38 @@
             gap: 0.6rem;
             flex-wrap: wrap;
         }
+        .move-job-form {
+            display: grid;
+            gap: 0.85rem;
+            text-align: left;
+        }
+        .move-job-form label {
+            display: block;
+            margin-bottom: 0.35rem;
+            color: var(--text-muted);
+            font-size: 0.8rem;
+        }
+        .move-job-form select,
+        .move-job-form input[type="checkbox"] {
+            font: inherit;
+        }
+        .move-job-form select {
+            width: 100%;
+            padding: 0.7rem 0.8rem;
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+            background: rgba(0,0,0,0.25);
+            color: #fff;
+        }
+        .move-job-note {
+            color: var(--text-muted);
+            font-size: 0.84rem;
+            line-height: 1.45;
+            background: rgba(88,166,255,0.07);
+            border: 1px solid rgba(88,166,255,0.18);
+            padding: 0.8rem;
+            border-radius: 12px;
+        }
     </style>
 </head>
 <body>
@@ -362,6 +394,31 @@
             </table>
             <div class="pagination" id="pagination-controls"></div>
         </section>
+    </div>
+
+    <div id="moveJobModal" class="modal" aria-hidden="true">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeMoveJobModal()">&times;</span>
+            <h3 style="margin:0 1.5rem 0 0;">Mover trabajo a otro canal</h3>
+            <p id="moveJobTitle" style="color:var(--text-muted); margin:0.45rem 0 1rem;">Selecciona el canal destino para reutilizar el trabajo.</p>
+            <div class="move-job-form">
+                <div>
+                    <label for="moveJobChannelSelect">Canal destino</label>
+                    <select id="moveJobChannelSelect"></select>
+                </div>
+                <label style="display:flex; align-items:flex-start; gap:0.65rem; color:var(--text-color);">
+                    <input id="moveJobClearPublication" type="checkbox" checked style="margin-top:0.2rem;">
+                    <span>Quitar el vínculo de YouTube al moverlo para evitar mezclar publicaciones de distintos canales.</span>
+                </label>
+                <div class="move-job-note">
+                    Se conservarán el guion, las escenas, la música y los ajustes del trabajo. Solo cambiará el canal al que pertenece.
+                </div>
+                <div class="modal-footer" style="margin-top:0.25rem;">
+                    <button id="confirmMoveJobBtn" class="modal-btn" type="button" onclick="confirmMoveJob()" style="background: var(--primary);">Mover trabajo</button>
+                    <button class="modal-btn" type="button" onclick="closeMoveJobModal()" style="background:#333;">Cancelar</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <div id="videoModal" class="modal" aria-hidden="true">
@@ -446,6 +503,8 @@
         let currentVideoUrl = '';
         let currentStatsJob = null;
         let currentCommentsContext = null;
+        let currentMoveJob = null;
+        let availableChannels = [];
         let currentSelectedComment = null;
 
         function getChannelIdFromQuery() {
@@ -494,6 +553,111 @@
             }
         }
 
+        async function loadAvailableChannels() {
+            try {
+                const res = await fetch('/api/youtube/channels');
+                const data = await res.json();
+                availableChannels = Array.isArray(data.items) ? data.items : [];
+            } catch (error) {
+                console.error('No se pudieron cargar los canales disponibles:', error);
+                availableChannels = [];
+            }
+        }
+
+        function closeMoveJobModal() {
+            const modal = document.getElementById('moveJobModal');
+            modal.classList.remove('open');
+            modal.setAttribute('aria-hidden', 'true');
+            currentMoveJob = null;
+        }
+
+        async function openMoveJobModal(jobId, currentChannelId = null, jobTitle = '') {
+            currentMoveJob = {
+                jobId,
+                currentChannelId: currentChannelId !== null && currentChannelId !== undefined ? Number(currentChannelId) : null,
+                jobTitle: jobTitle || jobId,
+            };
+
+            const title = document.getElementById('moveJobTitle');
+            const select = document.getElementById('moveJobChannelSelect');
+            const clearPublication = document.getElementById('moveJobClearPublication');
+            const confirmBtn = document.getElementById('confirmMoveJobBtn');
+
+            title.textContent = `Mover "${currentMoveJob.jobTitle}" a otro canal.`;
+            clearPublication.checked = true;
+
+            if (!availableChannels.length) {
+                select.innerHTML = '<option value="">Cargando canales...</option>';
+                select.disabled = true;
+                document.getElementById('moveJobModal').classList.add('open');
+                document.getElementById('moveJobModal').setAttribute('aria-hidden', 'false');
+                await loadAvailableChannels();
+            }
+
+            const targetChannels = availableChannels.filter((channel) => {
+                const id = Number(channel.id);
+                if (!Number.isFinite(id)) return false;
+                if (currentMoveJob.currentChannelId !== null && id === currentMoveJob.currentChannelId) return false;
+                return true;
+            });
+
+            if (!targetChannels.length) {
+                select.innerHTML = '<option value="">No hay otros canales disponibles</option>';
+                select.disabled = true;
+                confirmBtn.disabled = true;
+            } else {
+                select.disabled = false;
+                confirmBtn.disabled = false;
+                select.innerHTML = targetChannels.map((channel) => {
+                    const id = Number(channel.id);
+                    const labelParts = [
+                        channel.internal_name || `Canal ${id}`,
+                        channel.connection_status ? `(${channel.connection_status})` : '',
+                    ].filter(Boolean);
+                    return `<option value="${id}">${escapeHtml(labelParts.join(' '))}</option>`;
+                }).join('');
+            }
+
+            document.getElementById('moveJobModal').classList.add('open');
+            document.getElementById('moveJobModal').setAttribute('aria-hidden', 'false');
+        }
+
+        async function confirmMoveJob() {
+            if (!currentMoveJob) return;
+            const select = document.getElementById('moveJobChannelSelect');
+            const targetChannelId = parseInt(select.value, 10);
+            if (!Number.isFinite(targetChannelId)) {
+                alert('Selecciona un canal destino.');
+                return;
+            }
+
+            const btn = document.getElementById('confirmMoveJobBtn');
+            const originalText = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = 'Moviendo...';
+
+            try {
+                const res = await fetch(`/api/jobs/${encodeURIComponent(currentMoveJob.jobId)}/move-channel`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        target_channel_id: targetChannelId,
+                        clear_publication: document.getElementById('moveJobClearPublication').checked,
+                    }),
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(data.detail || 'No se pudo mover el trabajo.');
+                closeMoveJobModal();
+                await fetchJobs(currentPage);
+                alert('Trabajo movido correctamente.');
+            } catch (error) {
+                alert(error.message || 'No se pudo mover el trabajo.');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = originalText;
+            }
+        }
+
         let searchTimeout;
         function debounceSearch() {
             clearTimeout(searchTimeout);
@@ -530,6 +694,7 @@
                 const safeTitle = escapeHtml(job.title || job.text || '');
                 const safeDisplayTitle = escapeHtml(displayTitle);
                 const safeCommentsTitle = escapeHtml(job.title || displayTitle || job.job_id);
+                const moveTitleJs = JSON.stringify(job.title || displayTitle || job.job_id);
 
                 const statusCell = job.youtube_video_url
                     ? `<span class="status-pill published">Publicado en YouTube</span>`
@@ -547,6 +712,7 @@
                         <button class="action-btn" style="background:#333; color:#fff;" onclick="window.location.href='${editUrl}'">Editar</button>
                         ${canPlay ? `<button class="action-btn btn-view" onclick="previewVideo('${job.video_url}', ${channelParam === null ? 'null' : channelParam})">Ver</button>` : ''}
                         ${canPublish ? `<button class="action-btn" style="background:rgba(88,166,255,0.15); color:#58a6ff; border:1px solid rgba(88,166,255,0.3);" onclick="window.location.href='${publishUrl}'">Publicar</button>` : ''}
+                        <button class="action-btn" style="background:rgba(210,153,34,0.16); color:#d29922; border:1px solid rgba(210,153,34,0.3);" onclick="openMoveJobModal('${job.job_id}', ${channelParam === null ? 'null' : channelParam}, ${moveTitleJs})">Mover</button>
                         ${canViewComments ? `<button type="button" class="comments-pill buttonish comment-open-btn" data-job-id="${job.job_id}" data-channel-id="${channelParam === null ? '' : channelParam}" data-video-title="${safeCommentsTitle}">${new Intl.NumberFormat('es-ES').format(commentCount || 0)} comentarios</button>` : ''}
                         <button class="action-btn" style="background:rgba(255,255,255,0.08); color:#fff; border:1px solid rgba(255,255,255,0.12);" onclick="openJobLogs('${job.job_id}', ${channelParam === null ? 'null' : channelParam})">Log</button>
                         <button class="action-btn btn-delete" onclick="deleteJob('${job.job_id}')">Eliminar</button>
@@ -995,6 +1161,10 @@
             if (event.target.id === 'commentsModal') closeCommentsModal();
         });
 
+        document.getElementById('moveJobModal').addEventListener('click', (event) => {
+            if (event.target.id === 'moveJobModal') closeMoveJobModal();
+        });
+
         document.getElementById('jobs-table').addEventListener('click', (event) => {
             const btn = event.target.closest('.comment-open-btn');
             if (!btn) return;
@@ -1011,10 +1181,11 @@
                 closeStatsModal();
                 closeLogsModal();
                 closeCommentsModal();
+                closeMoveJobModal();
             }
         });
 
-        loadChannelContext().then(() => fetchJobs(1));
+        Promise.all([loadChannelContext(), loadAvailableChannels()]).then(() => fetchJobs(1));
     </script>
 </body>
 </html>

@@ -935,6 +935,19 @@ class JobDatabase:
             )
             conn.commit()
 
+    def move_job_to_channel(self, job_id: str, target_channel_id: int, clear_publication: bool = True):
+        with self._get_connection() as conn:
+            conn.execute(
+                "UPDATE jobs SET channel_id = ? WHERE job_id = ?",
+                (target_channel_id, job_id)
+            )
+            if clear_publication:
+                conn.execute(
+                    "UPDATE jobs SET youtube_video_id = NULL, youtube_video_url = NULL, youtube_published_at = NULL WHERE job_id = ?",
+                    (job_id,)
+                )
+            conn.commit()
+
     def get_recent_jobs(self, limit=25, offset=0, search=None, channel_id=None):
         with self._get_connection() as conn:
             conn.row_factory = sqlite3.Row

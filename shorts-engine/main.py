@@ -247,6 +247,10 @@ class RelinkYoutubeVideoRequest(BaseModel):
     video_reference: str
     channel_id: Optional[int] = None
 
+class MoveJobChannelRequest(BaseModel):
+    target_channel_id: int
+    clear_publication: bool = True
+
 class ScriptTopicCreateRequest(BaseModel):
     channel_id: int
     title: str
@@ -1800,6 +1804,34 @@ async def api_delete_job(job_id: str, user: str = Depends(get_current_user)):
     if db.delete_job(job_id):
         return {"status": "success"}
     raise HTTPException(status_code=404, detail="Trabajo no encontrado")
+
+@app.post("/api/jobs/{job_id}/move-channel")
+async def api_move_job_channel(job_id: str, req: MoveJobChannelRequest, user: str = Depends(get_current_user)):
+    job = db.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Trabajo no encontrado")
+
+    target_channel = db.get_youtube_channel(int(req.target_channel_id))
+    if not target_channel:
+        raise HTTPException(status_code=404, detail="Canal destino no encontrado")
+
+    if job.get("channel_id") is not None and int(job["channel_id"]) == int(req.target_channel_id):
+        raise HTTPException(status_code=400, detail="El trabajo ya pertenece a ese canal")
+
+    db.move_job_to_channel(job_id, int(req.target_channel_id), clear_publication=bool(req.clear_publication))
+    log_job_event(
+        job_id,
+        "job_moved_channel",
+        "Trabajo movido a otro canal.",
+        status="info",
+        channel_id=int(req.target_channel_id),
+        details={
+            "from_channel_id": job.get("channel_id"),
+            "to_channel_id": int(req.target_channel_id),
+            "clear_publication": bool(req.clear_publication),
+        },
+    )
+    return {"status": "success", "job": db.get_job(job_id)}
 
 @app.get("/api/stats")
 async def api_get_stats(channel_id: int = None, user: str = Depends(get_current_user)):
