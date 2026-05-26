@@ -104,6 +104,38 @@
             height: 16px;
             accent-color: var(--primary);
         }
+        .scene-translate-tools {
+            margin-top: 0.65rem;
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .scene-translate-tools select {
+            min-width: 130px;
+            height: 34px;
+            border-radius: 999px;
+            border: 1px solid var(--border-color);
+            background: rgba(255,255,255,0.04);
+            color: var(--text-color);
+            padding: 0 0.75rem;
+        }
+        .scene-translate-tools button {
+            border: 1px solid rgba(88,166,255,0.35);
+            background: rgba(88,166,255,0.16);
+            color: #58a6ff;
+            cursor: pointer;
+        }
+        .scene-translate-tools button:disabled {
+            opacity: 0.6;
+            cursor: wait;
+        }
+        .scene-translate-status {
+            width: 100%;
+            min-height: 16px;
+            color: var(--text-muted);
+            font-size: 0.76rem;
+        }
         .volume-panel {
             margin-top: 1rem;
             display: grid;
@@ -950,6 +982,14 @@
                 <div class="scene-number" style="cursor: move;">${id}</div>
                 <div>
                     <textarea placeholder="Guion de esta escena..." id="text-${id}"></textarea>
+                    <div class="scene-translate-tools">
+                        <select id="translate-lang-${id}" title="Idioma destino">
+                            <option value="es">Español</option>
+                            <option value="en">Inglés</option>
+                        </select>
+                        <button type="button" class="badge" id="translate-btn-${id}" onclick="translateSceneText(${id})">Traducir escena</button>
+                        <span id="translate-status-${id}" class="scene-translate-status"></span>
+                    </div>
                     <div style="margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
                          <div style="display: flex; gap: 5px;">
                             <button onclick="moveScene(this, -1)" class="badge" title="Mover arriba">↑</button>
@@ -1380,6 +1420,47 @@
                 manualTitle,
                 title
             };
+        }
+
+        async function translateSceneText(sceneId) {
+            const textField = document.getElementById(`text-${sceneId}`);
+            const languageField = document.getElementById(`translate-lang-${sceneId}`);
+            const button = document.getElementById(`translate-btn-${sceneId}`);
+            const status = document.getElementById(`translate-status-${sceneId}`);
+            const text = (textField?.value || '').trim();
+
+            if (!text) {
+                alert('Escribe primero el texto de la escena.');
+                return;
+            }
+
+            const originalText = button.innerText;
+            button.disabled = true;
+            button.innerText = 'Traduciendo...';
+            status.textContent = 'La IA está revisando y traduciendo el texto.';
+
+            try {
+                const res = await fetch('/api/ai/translate-scene', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        text,
+                        target_language: languageField.value
+                    })
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) {
+                    throw new Error(data.detail || 'No se pudo traducir la escena.');
+                }
+                textField.value = data.translated_text || text;
+                status.textContent = 'Texto traducido correctamente.';
+            } catch (error) {
+                status.textContent = '';
+                alert('Error al traducir: ' + error.message);
+            } finally {
+                button.disabled = false;
+                button.innerText = originalText;
+            }
         }
 
         async function saveWork(event) {

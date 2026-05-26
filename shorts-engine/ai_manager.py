@@ -47,6 +47,67 @@ class AIManager:
 
         raise Exception(f"Todos los proveedores de IA fallaron. Detalles: {last_error}")
 
+    def translate_scene_text(self, text, target_language):
+        target_language = (target_language or "").strip().lower()
+        language_names = {
+            "es": "español de España",
+            "en": "inglés natural",
+        }
+        if target_language not in language_names:
+            raise Exception("Idioma no soportado. Usa español o inglés.")
+
+        clean_text = (text or "").strip()
+        if not clean_text:
+            raise Exception("El texto de la escena está vacío.")
+
+        configured_providers = []
+        for p in ["GROQ", "DEEPSEEK", "OPENROUTER", "OPENAI"]:
+            if self._get_api_key(p):
+                configured_providers.append(p)
+
+        if not configured_providers:
+            raise Exception("No se ha configurado ninguna API de IA.")
+
+        sys_msg = (
+            "Eres profesor experto de idiomas y editor de guiones para vídeos cortos. "
+            "Traduce el texto con naturalidad, corrige errores leves y conserva el sentido, el tono y la intención. "
+            "No añadas explicaciones. Responde solo con JSON válido: {\"translated_text\":\"...\"}."
+        )
+        user_content = (
+            f"Idioma destino: {language_names[target_language]}.\n"
+            "Texto de la escena:\n"
+            f"{clean_text}"
+        )
+        last_error = None
+
+        for current_provider in configured_providers:
+            api_key = self._get_api_key(current_provider)
+            try:
+                p_lower = current_provider.lower()
+                if p_lower == "groq":
+                    res_text = self._call_groq(user_content, api_key, system_prompt=sys_msg)
+                elif p_lower == "openai":
+                    res_text = self._call_openai(user_content, api_key, system_prompt=sys_msg)
+                elif p_lower in ["deepseek", "openrouter"]:
+                    res_text = self._call_openai_compatible(p_lower, user_content, api_key, system_prompt=sys_msg)
+                else:
+                    continue
+
+                try:
+                    data = json.loads(str(res_text).strip())
+                    translated = str(data.get("translated_text") or "").strip()
+                except Exception:
+                    translated = str(res_text or "").strip()
+
+                if translated:
+                    return translated
+            except Exception as e:
+                logger.error(f"Fallo traduciendo escena con {current_provider}: {e}")
+                last_error = e
+                continue
+
+        raise Exception(f"No se pudo traducir la escena con la IA. Detalles: {last_error}")
+
     def _call_groq(self, prompt, api_key, system_prompt=None):
         url = "https://api.groq.com/openai/v1/chat/completions"
         headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}

@@ -1964,6 +1964,10 @@ class OptimizeRequest(BaseModel):
     provider: str
     template_id: int
 
+class SceneTranslateRequest(BaseModel):
+    text: str
+    target_language: str
+
 @app.post("/api/ai/optimize")
 async def api_optimize_text(req: OptimizeRequest, user: str = Depends(get_current_user)):
     templates = db.get_templates()
@@ -1974,6 +1978,14 @@ async def api_optimize_text(req: OptimizeRequest, user: str = Depends(get_curren
     try:
         optimized = ai_manager.optimize_text(req.text, req.provider, template["prompt"])
         return {"optimized_text": optimized}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/ai/translate-scene")
+async def api_translate_scene(req: SceneTranslateRequest, user: str = Depends(get_current_user)):
+    try:
+        translated = ai_manager.translate_scene_text(req.text, req.target_language)
+        return {"translated_text": translated}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
