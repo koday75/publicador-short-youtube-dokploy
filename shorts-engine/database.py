@@ -814,6 +814,30 @@ class JobDatabase:
             cursor = conn.execute(query, params)
             return cursor.fetchone()[0] > 0
 
+    def _job_title_exists_in_connection(self, conn, title: str, exclude_job_id: str = None) -> bool:
+        if not title or not title.strip():
+            return False
+        query = "SELECT COUNT(*) FROM jobs WHERE LOWER(TRIM(title)) = LOWER(TRIM(?))"
+        params = [title]
+        if exclude_job_id:
+            query += " AND job_id != ?"
+            params.append(exclude_job_id)
+        cursor = conn.execute(query, params)
+        return cursor.fetchone()[0] > 0
+
+    def build_unique_job_title(self, base_title: str, exclude_job_id: str = None) -> str:
+        base = (base_title or "").strip() or "Copia de trabajo"
+        candidate = base
+        suffix_index = 0
+        with self._get_connection() as conn:
+            while self._job_title_exists_in_connection(conn, candidate, exclude_job_id=exclude_job_id):
+                suffix_index += 1
+                if suffix_index == 1:
+                    candidate = f"{base} (copia)"
+                else:
+                    candidate = f"{base} (copia {suffix_index})"
+            return candidate
+
     def add_job(self, job_id, text, niche, voice_id, status="processing", scenes_json=None, music_filename=None, music_volume=None, voice_volume=None, tts_engine=None, tts_speed=None, title=None, channel_id=None, intro_fade_duration=None, outro_fade_duration=None, music_fade_out_duration=None, tail_silence_seconds=None):
         with self._get_connection() as conn:
             conn.execute(
@@ -947,6 +971,44 @@ class JobDatabase:
                     (job_id,)
                 )
             conn.commit()
+
+    def duplicate_job_to_channel(
+        self,
+        source_job_id: str,
+        target_channel_id: int,
+        new_job_id: str,
+        title: str | None = None,
+    ):
+        with self._get_connection() as conn:
+            conn.row_factory = sqlite3.Row
+            source_row = conn.execute("SELECT * FROM jobs WHERE job_id = ?", (source_job_id,)).fetchone()
+            if not source_row:
+                return None
+
+            data = dict(source_row)
+            data["job_id"] = new_job_id
+            data["channel_id"] = target_channel_id
+            data["title"] = self.build_unique_job_title(title or data.get("title") or data.get("text") or source_job_id)
+            data["status"] = "draft"
+            data["video_url"] = None
+            data["error_message"] = None
+            data["finished_at"] = None
+            for field in ("youtube_video_id", "youtube_video_url", "youtube_published_at"):
+                if field in data:
+                    data[field] = None
+
+            excluded_columns = {"id", "created_at"}
+            columns = [row[1] for row in conn.execute("PRAGMA table_info(jobs)").fetchall()]
+            insert_columns = [column for column in columns if column not in excluded_columns]
+            values = [data.get(column) for column in insert_columns]
+            placeholders = ", ".join("?" for _ in insert_columns)
+
+            conn.execute(
+                f"INSERT INTO jobs ({', '.join(insert_columns)}) VALUES ({placeholders})",
+                values,
+            )
+            conn.commit()
+            return self.get_job(new_job_id)
 
     def get_recent_jobs(self, limit=25, offset=0, search=None, channel_id=None):
         with self._get_connection() as conn:

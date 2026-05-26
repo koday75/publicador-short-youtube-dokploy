@@ -320,10 +320,19 @@
             font-size: 0.8rem;
         }
         .move-job-form select,
+        .move-job-form input[type="text"],
         .move-job-form input[type="checkbox"] {
             font: inherit;
         }
         .move-job-form select {
+            width: 100%;
+            padding: 0.7rem 0.8rem;
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+            background: rgba(0,0,0,0.25);
+            color: #fff;
+        }
+        .move-job-form input[type="text"] {
             width: 100%;
             padding: 0.7rem 0.8rem;
             border-radius: 10px;
@@ -421,6 +430,31 @@
         </div>
     </div>
 
+    <div id="duplicateJobModal" class="modal" aria-hidden="true">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeDuplicateJobModal()">&times;</span>
+            <h3 style="margin:0 1.5rem 0 0;">Duplicar trabajo a otro canal</h3>
+            <p id="duplicateJobTitle" style="color:var(--text-muted); margin:0.45rem 0 1rem;">Selecciona el canal destino para crear una copia del trabajo.</p>
+            <div class="move-job-form">
+                <div>
+                    <label for="duplicateJobChannelSelect">Canal destino</label>
+                    <select id="duplicateJobChannelSelect"></select>
+                </div>
+                <div>
+                    <label for="duplicateJobTitleInput">Título de la copia</label>
+                    <input id="duplicateJobTitleInput" type="text" placeholder="Ej: Título del trabajo (copia)">
+                </div>
+                <div class="move-job-note">
+                    Se copiarán el guion, las escenas, la música y los ajustes. La copia empezará como borrador y no arrastrará la publicación anterior.
+                </div>
+                <div class="modal-footer" style="margin-top:0.25rem;">
+                    <button id="confirmDuplicateJobBtn" class="modal-btn" type="button" onclick="confirmDuplicateJob()" style="background: var(--primary);">Duplicar trabajo</button>
+                    <button class="modal-btn" type="button" onclick="closeDuplicateJobModal()" style="background:#333;">Cancelar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div id="videoModal" class="modal" aria-hidden="true">
         <div class="modal-content">
             <span class="close-modal" onclick="closeVideoModal()">&times;</span>
@@ -504,6 +538,7 @@
         let currentStatsJob = null;
         let currentCommentsContext = null;
         let currentMoveJob = null;
+        let currentDuplicateJob = null;
         let availableChannels = [];
         let currentSelectedComment = null;
 
@@ -569,6 +604,13 @@
             modal.classList.remove('open');
             modal.setAttribute('aria-hidden', 'true');
             currentMoveJob = null;
+        }
+
+        function closeDuplicateJobModal() {
+            const modal = document.getElementById('duplicateJobModal');
+            modal.classList.remove('open');
+            modal.setAttribute('aria-hidden', 'true');
+            currentDuplicateJob = null;
         }
 
         async function openMoveJobModal(jobId, currentChannelId = null, jobTitle = '') {
@@ -658,6 +700,96 @@
             }
         }
 
+        async function openDuplicateJobModal(jobId, currentChannelId = null, jobTitle = '') {
+            currentDuplicateJob = {
+                jobId,
+                currentChannelId: currentChannelId !== null && currentChannelId !== undefined ? Number(currentChannelId) : null,
+                jobTitle: jobTitle || jobId,
+            };
+
+            const title = document.getElementById('duplicateJobTitle');
+            const select = document.getElementById('duplicateJobChannelSelect');
+            const titleInput = document.getElementById('duplicateJobTitleInput');
+            const confirmBtn = document.getElementById('confirmDuplicateJobBtn');
+
+            title.textContent = `Duplicar "${currentDuplicateJob.jobTitle}" a otro canal.`;
+            titleInput.value = `${currentDuplicateJob.jobTitle} (copia)`;
+
+            if (!availableChannels.length) {
+                select.innerHTML = '<option value="">Cargando canales...</option>';
+                select.disabled = true;
+                document.getElementById('duplicateJobModal').classList.add('open');
+                document.getElementById('duplicateJobModal').setAttribute('aria-hidden', 'false');
+                await loadAvailableChannels();
+            }
+
+            const targetChannels = availableChannels.filter((channel) => {
+                const id = Number(channel.id);
+                if (!Number.isFinite(id)) return false;
+                if (currentDuplicateJob.currentChannelId !== null && id === currentDuplicateJob.currentChannelId) return false;
+                return true;
+            });
+
+            if (!targetChannels.length) {
+                select.innerHTML = '<option value="">No hay otros canales disponibles</option>';
+                select.disabled = true;
+                titleInput.disabled = true;
+                confirmBtn.disabled = true;
+            } else {
+                select.disabled = false;
+                titleInput.disabled = false;
+                confirmBtn.disabled = false;
+                select.innerHTML = targetChannels.map((channel) => {
+                    const id = Number(channel.id);
+                    const labelParts = [
+                        channel.internal_name || `Canal ${id}`,
+                        channel.connection_status ? `(${channel.connection_status})` : '',
+                    ].filter(Boolean);
+                    return `<option value="${id}">${escapeHtml(labelParts.join(' '))}</option>`;
+                }).join('');
+            }
+
+            document.getElementById('duplicateJobModal').classList.add('open');
+            document.getElementById('duplicateJobModal').setAttribute('aria-hidden', 'false');
+        }
+
+        async function confirmDuplicateJob() {
+            if (!currentDuplicateJob) return;
+            const select = document.getElementById('duplicateJobChannelSelect');
+            const targetChannelId = parseInt(select.value, 10);
+            if (!Number.isFinite(targetChannelId)) {
+                alert('Selecciona un canal destino.');
+                return;
+            }
+
+            const btn = document.getElementById('confirmDuplicateJobBtn');
+            const originalText = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = 'Duplicando...';
+
+            try {
+                const titleValue = document.getElementById('duplicateJobTitleInput').value.trim();
+                const res = await fetch(`/api/jobs/${encodeURIComponent(currentDuplicateJob.jobId)}/duplicate-channel`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        target_channel_id: targetChannelId,
+                        title: titleValue || null,
+                    }),
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(data.detail || 'No se pudo duplicar el trabajo.');
+                closeDuplicateJobModal();
+                await fetchJobs(currentPage);
+                alert('Trabajo duplicado correctamente.');
+            } catch (error) {
+                alert(error.message || 'No se pudo duplicar el trabajo.');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = originalText;
+            }
+        }
+
         let searchTimeout;
         function debounceSearch() {
             clearTimeout(searchTimeout);
@@ -713,6 +845,7 @@
                         ${canPlay ? `<button class="action-btn btn-view" onclick="previewVideo('${job.video_url}', ${channelParam === null ? 'null' : channelParam})">Ver</button>` : ''}
                         ${canPublish ? `<button class="action-btn" style="background:rgba(88,166,255,0.15); color:#58a6ff; border:1px solid rgba(88,166,255,0.3);" onclick="window.location.href='${publishUrl}'">Publicar</button>` : ''}
                         <button class="action-btn" style="background:rgba(210,153,34,0.16); color:#d29922; border:1px solid rgba(210,153,34,0.3);" onclick="openMoveJobModal('${job.job_id}', ${channelParam === null ? 'null' : channelParam}, ${moveTitleJs})">Mover</button>
+                        <button class="action-btn" style="background:rgba(170,120,255,0.16); color:#cdb4ff; border:1px solid rgba(170,120,255,0.3);" onclick="openDuplicateJobModal('${job.job_id}', ${channelParam === null ? 'null' : channelParam}, ${moveTitleJs})">Duplicar</button>
                         ${canViewComments ? `<button type="button" class="comments-pill buttonish comment-open-btn" data-job-id="${job.job_id}" data-channel-id="${channelParam === null ? '' : channelParam}" data-video-title="${safeCommentsTitle}">${new Intl.NumberFormat('es-ES').format(commentCount || 0)} comentarios</button>` : ''}
                         <button class="action-btn" style="background:rgba(255,255,255,0.08); color:#fff; border:1px solid rgba(255,255,255,0.12);" onclick="openJobLogs('${job.job_id}', ${channelParam === null ? 'null' : channelParam})">Log</button>
                         <button class="action-btn btn-delete" onclick="deleteJob('${job.job_id}')">Eliminar</button>
@@ -1165,6 +1298,10 @@
             if (event.target.id === 'moveJobModal') closeMoveJobModal();
         });
 
+        document.getElementById('duplicateJobModal').addEventListener('click', (event) => {
+            if (event.target.id === 'duplicateJobModal') closeDuplicateJobModal();
+        });
+
         document.getElementById('jobs-table').addEventListener('click', (event) => {
             const btn = event.target.closest('.comment-open-btn');
             if (!btn) return;
@@ -1182,6 +1319,7 @@
                 closeLogsModal();
                 closeCommentsModal();
                 closeMoveJobModal();
+                closeDuplicateJobModal();
             }
         });
 

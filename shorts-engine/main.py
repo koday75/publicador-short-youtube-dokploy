@@ -251,6 +251,10 @@ class MoveJobChannelRequest(BaseModel):
     target_channel_id: int
     clear_publication: bool = True
 
+class DuplicateJobChannelRequest(BaseModel):
+    target_channel_id: int
+    title: Optional[str] = None
+
 class ScriptTopicCreateRequest(BaseModel):
     channel_id: int
     title: str
@@ -1832,6 +1836,57 @@ async def api_move_job_channel(job_id: str, req: MoveJobChannelRequest, user: st
         },
     )
     return {"status": "success", "job": db.get_job(job_id)}
+
+@app.post("/api/jobs/{job_id}/duplicate-channel")
+async def api_duplicate_job_channel(job_id: str, req: DuplicateJobChannelRequest, user: str = Depends(get_current_user)):
+    job = db.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Trabajo no encontrado")
+
+    target_channel = db.get_youtube_channel(int(req.target_channel_id))
+    if not target_channel:
+        raise HTTPException(status_code=404, detail="Canal destino no encontrado")
+
+    if job.get("channel_id") is not None and int(job["channel_id"]) == int(req.target_channel_id):
+        raise HTTPException(status_code=400, detail="El trabajo ya pertenece a ese canal")
+
+    source_title = (job.get("title") or job.get("text") or job_id or "").strip()
+    desired_title = (req.title or "").strip() or source_title
+    new_job_id = f"{job_id}_copy_{uuid.uuid4().hex[:8]}"
+    duplicated_job = db.duplicate_job_to_channel(
+        source_job_id=job_id,
+        target_channel_id=int(req.target_channel_id),
+        new_job_id=new_job_id,
+        title=desired_title,
+    )
+    if not duplicated_job:
+        raise HTTPException(status_code=500, detail="No se pudo duplicar el trabajo")
+
+    log_job_event(
+        job_id,
+        "job_duplicated_channel",
+        "Trabajo duplicado en otro canal.",
+        status="success",
+        channel_id=int(job.get("channel_id")) if job.get("channel_id") is not None else None,
+        details={
+            "from_channel_id": job.get("channel_id"),
+            "to_channel_id": int(req.target_channel_id),
+            "new_job_id": new_job_id,
+            "new_title": duplicated_job.get("title"),
+        },
+    )
+    log_job_event(
+        new_job_id,
+        "job_created_from_duplicate",
+        "Trabajo creado a partir de una copia.",
+        status="info",
+        channel_id=int(req.target_channel_id),
+        details={
+            "source_job_id": job_id,
+            "source_channel_id": job.get("channel_id"),
+        },
+    )
+    return {"status": "success", "job": duplicated_job}
 
 @app.get("/api/stats")
 async def api_get_stats(channel_id: int = None, user: str = Depends(get_current_user)):
