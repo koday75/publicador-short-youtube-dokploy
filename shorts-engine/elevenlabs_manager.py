@@ -17,7 +17,7 @@ try:
 except ImportError:
     EDGE_TTS_AVAILABLE = False
 
-# Edge-TTS voice catalogue (Spanish)
+# Edge-TTS voice catalogue (Spanish and English)
 EDGE_TTS_VOICES = {
     "es-ES-AlvaroNeural": {"name": "Álvaro", "gender": "male", "locale": "es-ES"},
     "es-ES-ElviraNeural": {"name": "Elvira", "gender": "female", "locale": "es-ES"},
@@ -26,6 +26,15 @@ EDGE_TTS_VOICES = {
     "es-AR-TomasNeural": {"name": "Tomás", "gender": "male", "locale": "es-AR"},
     "es-AR-ElenaNeural": {"name": "Elena", "gender": "female", "locale": "es-AR"},
     "es-CO-GonzaloNeural": {"name": "Gonzalo", "gender": "male", "locale": "es-CO"},
+    "en-US-GuyNeural": {"name": "Guy", "gender": "male", "locale": "en-US"},
+    "en-US-JennyNeural": {"name": "Jenny", "gender": "female", "locale": "en-US"},
+    "en-US-AriaNeural": {"name": "Aria", "gender": "female", "locale": "en-US"},
+    "en-US-DavisNeural": {"name": "Davis", "gender": "male", "locale": "en-US"},
+    "en-GB-RyanNeural": {"name": "Ryan", "gender": "male", "locale": "en-GB"},
+    "en-GB-SoniaNeural": {"name": "Sonia", "gender": "female", "locale": "en-GB"},
+    "en-GB-LibbyNeural": {"name": "Libby", "gender": "female", "locale": "en-GB"},
+    "en-AU-WilliamNeural": {"name": "William", "gender": "male", "locale": "en-AU"},
+    "en-AU-NatashaNeural": {"name": "Natasha", "gender": "female", "locale": "en-AU"},
     "es-CO-SalomeNeural": {"name": "Salomé", "gender": "female", "locale": "es-CO"},
 }
 
