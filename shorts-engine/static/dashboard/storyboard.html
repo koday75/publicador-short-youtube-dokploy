@@ -789,6 +789,7 @@
         let renderEstimateStartedAt = 0;
         let renderEstimateDurationMs = 0;
         let renderProgressClosable = false;
+        let renderProgressFinishTimer = null;
 
         const GTTS_VOICES = [
             { value: 'es', label: '🇪🇸 Español (España)' },
@@ -1982,6 +1983,13 @@
             }
         }
 
+        function stopRenderFinishTimer() {
+            if (renderProgressFinishTimer) {
+                clearTimeout(renderProgressFinishTimer);
+                renderProgressFinishTimer = null;
+            }
+        }
+
         function startEstimatedRenderProgress(sceneCount) {
             stopEstimatedRenderProgress();
             renderEstimateStartedAt = Date.now();
@@ -1999,11 +2007,30 @@
         }
 
         function finishRenderProgressAsError(message) {
+            stopRenderFinishTimer();
             stopEstimatedRenderProgress();
             renderProgressClosable = true;
             const closeBtn = document.getElementById('renderProgressClose');
             if (closeBtn) closeBtn.style.display = 'block';
             setRenderProgress(renderProgressValue || 0, 'No se pudo completar el render', message, 'Error');
+        }
+
+        function finalizeRenderProgressSuccess(redirectUrl, btn, originalText, sceneCount = 0) {
+            stopRenderFinishTimer();
+            stopEstimatedRenderProgress();
+            stopRenderPolling();
+            setRenderProgress(100, 'Vídeo listo', 'El render ha terminado correctamente. Cerrando el indicador...', 'Completado');
+            renderProgressClosable = true;
+            const closeBtn = document.getElementById('renderProgressClose');
+            if (closeBtn) closeBtn.style.display = 'block';
+            resetRenderButton(btn, originalText);
+            renderProgressFinishTimer = setTimeout(() => {
+                closeRenderProgressModal(true);
+                renderProgressFinishTimer = null;
+            }, 80);
+            setTimeout(() => {
+                window.location.href = redirectUrl;
+            }, 250);
         }
 
         async function pollRenderProgress(jobId, channelId, btn, originalText) {
@@ -2035,18 +2062,8 @@
                     || Boolean(data.finished_at && data.video_url);
 
                 if (isRenderFinished) {
-                    stopEstimatedRenderProgress();
-                    stopRenderPolling();
-                    setRenderProgress(100, 'Vídeo listo', 'El render ha terminado correctamente. Abriendo los trabajos del canal...', 'Completado');
-                    renderProgressClosable = true;
-                    resetRenderButton(btn, originalText);
                     const redirectUrl = channelId ? `/jobs?channel_id=${channelId}` : '/jobs';
-                    setTimeout(() => {
-                        closeRenderProgressModal(true);
-                    }, 650);
-                    setTimeout(() => {
-                        window.location.href = redirectUrl;
-                    }, 900);
+                    finalizeRenderProgressSuccess(redirectUrl, btn, originalText, scenesCount);
                     return;
                 }
 
@@ -2379,6 +2396,12 @@
             if (event.key === 'Escape' && renderProgressClosable) {
                 closeRenderProgressModal(true);
             }
+        });
+
+        window.addEventListener('beforeunload', () => {
+            stopRenderPolling();
+            stopEstimatedRenderProgress();
+            stopRenderFinishTimer();
         });
 
         loadChannelContext();
