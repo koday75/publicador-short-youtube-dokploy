@@ -619,9 +619,9 @@
                 </div>
                 <div class="section-grid">
                     <div class="section-card">
-                        <h3>Crear vídeos</h3>
-                        <p>Storyboard, voz, música y render dentro del canal seleccionado.</p>
-                        <a id="link-storyboard" class="primary-link" href="/storyboard">Abrir creación</a>
+                        <h3>Vídeos para YouTube</h3>
+                        <p>Hub de producción para abrir storyboard, publicar y continuar el flujo de cada canal.</p>
+                        <a id="link-youtube-videos" class="primary-link" href="/channels/0/youtube-videos">Abrir hub</a>
                     </div>
                     <div class="section-card">
                         <h3>Galería</h3>
@@ -755,7 +755,7 @@
         let currentSelectedComment = null;
 
         function setLinks(channelId) {
-                document.getElementById('link-storyboard').href = `/storyboard?channel_id=${channelId}`;
+                document.getElementById('link-youtube-videos').href = `/channels/${channelId}/youtube-videos`;
                 document.getElementById('link-gallery').href = `/gallery?channel_id=${channelId}`;
                 document.getElementById('link-jobs').href = `/jobs?channel_id=${channelId}`;
                 document.getElementById('link-ranking').href = `/channels/${channelId}/ranking`;

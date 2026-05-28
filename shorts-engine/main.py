@@ -138,6 +138,10 @@ async def overview_page(request: Request):
 async def channel_workspace_page(channel_id: int, request: Request):
     return await render_dashboard_file(request, "static/dashboard/channel-workspace.html")
 
+@app.get("/channels/{channel_id}/youtube-videos", response_class=HTMLResponse)
+async def channel_youtube_videos_page(channel_id: int, request: Request):
+    return await render_dashboard_file(request, "static/dashboard/youtube-videos.html")
+
 @app.get("/channels/{channel_id}/history", response_class=HTMLResponse)
 async def channel_history_page(channel_id: int, request: Request):
     return await render_dashboard_file(request, "static/dashboard/channel-history.html")
