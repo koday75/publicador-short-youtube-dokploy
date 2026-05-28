@@ -733,6 +733,17 @@
                     <div>
                         <small style="display:block; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:0.4rem;">Borrador de respuesta</small>
                         <textarea id="commentReplyText" placeholder="La respuesta generada por IA aparecerá aquí..."></textarea>
+                        <div class="comment-translate-tools" style="margin-top:0.75rem;">
+                            <small style="display:block; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em;">Traducir borrador</small>
+                            <div class="comment-translate-row">
+                                <select id="replyTranslateLanguage" title="Idioma destino">
+                                    <option value="es">Español</option>
+                                    <option value="en">Inglés</option>
+                                </select>
+                                <button class="btn btn-secondary" id="translateReplyBtn" type="button" onclick="translateReplyDraft()">Traducir borrador</button>
+                                <span id="replyTranslateStatus" class="comment-translate-status"></span>
+                            </div>
+                        </div>
                     </div>
                     <div class="comment-panel-actions">
                         <button class="btn btn-primary" id="generateReplyBtn" type="button" onclick="generateCommentReply()">Generar con IA</button>
@@ -938,6 +949,7 @@
             const translation = document.getElementById('selectedCommentTranslation');
             const translationText = document.getElementById('selectedCommentTranslationText');
             const translateStatus = document.getElementById('commentTranslateStatus');
+            const replyTranslateStatus = document.getElementById('replyTranslateStatus');
             title.textContent = 'Ninguno';
             text.textContent = 'Pulsa "Responder con IA" en un comentario para preparar una respuesta.';
             reply.value = '';
@@ -945,6 +957,7 @@
             if (translation) translation.style.display = 'none';
             if (translationText) translationText.textContent = '';
             if (translateStatus) translateStatus.textContent = '';
+            if (replyTranslateStatus) replyTranslateStatus.textContent = '';
         }
 
         function selectCommentForReply(comment) {
@@ -1025,6 +1038,46 @@
 
         async function translateSelectedComment() {
             return translateComment(currentSelectedComment);
+        }
+
+        async function translateReplyDraft() {
+            const replyField = document.getElementById('commentReplyText');
+            const languageField = document.getElementById('replyTranslateLanguage');
+            const button = document.getElementById('translateReplyBtn');
+            const status = document.getElementById('replyTranslateStatus');
+            const text = (replyField?.value || '').trim();
+
+            if (!text) {
+                alert('Escribe primero un borrador de respuesta.');
+                return;
+            }
+
+            const originalLabel = button.textContent;
+            button.disabled = true;
+            button.textContent = 'Traduciendo...';
+            status.textContent = 'La IA está revisando y traduciendo el borrador.';
+
+            try {
+                const res = await fetch('/api/ai/translate-scene', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        text,
+                        target_language: languageField.value,
+                    }),
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(data.detail || 'No se pudo traducir el borrador.');
+
+                replyField.value = data.translated_text || text;
+                status.textContent = 'Borrador traducido correctamente.';
+            } catch (error) {
+                status.textContent = '';
+                alert('Error al traducir: ' + (error.message || 'No se pudo traducir el borrador.'));
+            } finally {
+                button.disabled = false;
+                button.textContent = originalLabel;
+            }
         }
 
         async function translateCommentFromId(commentId) {
