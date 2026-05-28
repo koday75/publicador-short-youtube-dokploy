@@ -84,7 +84,7 @@
             color: var(--text-muted);
             font-size: 0.72rem;
         }
-        .preview-box { width: 150px; aspect-ratio: 9/16; border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden; background: #000; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; color: var(--text-muted); }
+        .preview-box { width: 150px; aspect-ratio: var(--storyboard-preview-aspect, 9 / 16); border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden; background: #000; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; color: var(--text-muted); }
         .preview-box img, .preview-box video { width: 100%; height: 100%; object-fit: contain; background: #000; }
         .btn-add { background: var(--accent); width: 100%; margin-top: 1rem; padding: 1rem; font-weight: bold; }
         .btn-remove { background: var(--error); padding: 5px 10px; font-size: 0.7rem; }
@@ -457,7 +457,7 @@
             <div style="flex: 1;">
                 <h1>🎬 Cinema Storyboard</h1>
                 <div style="margin-top: 5px;">
-                    <input type="text" id="manual-job-title" placeholder="📝 Escribe un título para tu nuevo Short..." style="width: 100%; max-width: 500px; padding: 10px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: #fff; border-radius: 4px; font-size: 1rem;">
+                    <input type="text" id="manual-job-title" placeholder="📝 Escribe un título para tu nuevo vídeo..." style="width: 100%; max-width: 500px; padding: 10px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: #fff; border-radius: 4px; font-size: 1rem;">
                 </div>
             </div>
             <div style="display: flex; gap: 10px; align-items: flex-start;">
@@ -513,6 +513,18 @@
                         <option value="terror">Terror / Oscuro</option>
                         <option value="curiosidades">Curiosidades / Épico</option>
                     </select>
+                </div>
+            </div>
+            <div style="display:grid; grid-template-columns: minmax(260px, 300px) 1fr; gap: 1rem; margin-top: 1rem; align-items:center;">
+                <div>
+                    <label>Formato de vídeo</label>
+                    <select id="storyboard-format" style="width:100%; margin-top:5px;" onchange="applyStoryboardVideoFormat(this.value)">
+                        <option value="vertical" selected>Short 9:16 (vertical)</option>
+                        <option value="landscape">YouTube 16:9 (horizontal)</option>
+                    </select>
+                </div>
+                <div id="format-note" style="background:rgba(88,166,255,0.07); border:1px solid rgba(88,166,255,0.18); border-radius:8px; padding:10px; font-size:0.8rem; color:var(--text-muted);">
+                    El formato vertical está pensado para Shorts. El formato horizontal te prepara el storyboard para vídeos normales de YouTube.
                 </div>
             </div>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem; align-items: center;">
@@ -825,6 +837,20 @@
             label.textContent = kind === 'scene-image-zoom' ? `${parseFloat(input.value || '1').toFixed(2)}x` : `${parseFloat(input.value || '0').toFixed(1)}s`;
         }
 
+        function applyStoryboardVideoFormat(value) {
+            const format = (value || 'vertical').toLowerCase();
+            const isLandscape = format === 'landscape' || format === 'youtube' || format === '16:9';
+            const root = document.documentElement;
+            root.style.setProperty('--storyboard-preview-aspect', isLandscape ? '16 / 9' : '9 / 16');
+            const note = document.getElementById('format-note');
+            if (note) {
+                note.textContent = isLandscape
+                    ? 'El formato horizontal prepara el storyboard para vídeos normales de YouTube (16:9).'
+                    : 'El formato vertical está pensado para Shorts y vídeos 9:16.';
+            }
+            return isLandscape ? 'landscape' : 'vertical';
+        }
+
         async function init() {
             await reloadGalleryData();
             
@@ -857,6 +883,7 @@
                 console.error("Error loading settings:", e);
                 onEngineChange();
             }
+            applyStoryboardVideoFormat(document.getElementById('storyboard-format')?.value || 'vertical');
             
             const urlParams = new URLSearchParams(window.location.search);
             const jobId = urlParams.get('job_id');
@@ -883,6 +910,13 @@
                             document.getElementById('speed-label').innerText = parseFloat(job.tts_speed).toFixed(1) + 'x';
                         }
                         
+                        const savedVideoFormat = (job.video_format || job.storyboard_format || 'vertical').toLowerCase();
+                        const formatSelect = document.getElementById('storyboard-format');
+                        if (formatSelect) {
+                            formatSelect.value = savedVideoFormat === 'landscape' ? 'landscape' : 'vertical';
+                            applyStoryboardVideoFormat(formatSelect.value);
+                        }
+
                         document.getElementById('global-niche').value = job.niche || 'default';
                         if(job.music_filename) {
                             document.getElementById('global-music').value = job.music_filename;
@@ -1422,6 +1456,7 @@
                     channel_id: getChannelIdFromQuery(),
                     tts_engine: document.getElementById('tts-engine').value,
                     tts_speed: parseFloat(document.getElementById('tts-speed').value),
+                    video_format: document.getElementById('storyboard-format').value,
                     job_id: overrideJobId,
                     title
                 },

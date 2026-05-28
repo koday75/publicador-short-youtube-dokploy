@@ -25,6 +25,19 @@ class VideoEditor:
             return default
         return max(min_value, min(max_value, parsed))
 
+    def _normalize_canvas_dimensions(self, canvas_width: int | None, canvas_height: int | None) -> tuple[int, int]:
+        try:
+            width = int(canvas_width or 1080)
+        except Exception:
+            width = 1080
+        try:
+            height = int(canvas_height or 1920)
+        except Exception:
+            height = 1920
+        width = max(256, width - (width % 2))
+        height = max(256, height - (height % 2))
+        return width, height
+
     def _get_model(self):
         if self.model is None:
             if WhisperModel is None:
@@ -158,7 +171,9 @@ class VideoEditor:
                      music_path: str = None, music_volume: float = 0.14, voice_volume: float = 1.0,
                      logo_path: str = None, logo_position: str = "top-right",
                      intro_fade_duration: float = 0.8, outro_fade_duration: float = 0.8,
-                     music_fade_out_duration: float = 2.0, tail_silence_seconds: float = 5.0):
+                     music_fade_out_duration: float = 2.0, tail_silence_seconds: float = 5.0,
+                     canvas_width: int = 1080, canvas_height: int = 1920):
+        canvas_width, canvas_height = self._normalize_canvas_dimensions(canvas_width, canvas_height)
         srt_path = f"temp_subs_{uuid.uuid4().hex[:8]}.srt"
         temp_render_path = f"{output_path}.render_{uuid.uuid4().hex[:8]}.mp4"
         temp_extended_path = f"{output_path}.extended_{uuid.uuid4().hex[:8]}.mp4"
@@ -170,7 +185,10 @@ class VideoEditor:
         sub_filter = f"subtitles={srt_path}:force_style='{style}'"
 
         inputs = ['-stream_loop', '-1', '-i', background_video, '-i', audio_path]
-        filter_complex = f"[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,setsar=1,{sub_filter}[v]"
+        filter_complex = (
+            f"[0:v]scale={canvas_width}:{canvas_height}:force_original_aspect_ratio=increase,"
+            f"crop={canvas_width}:{canvas_height},setsar=1,{sub_filter}[v]"
+        )
         voice_volume = self._safe_volume(voice_volume, default=1.0, max_value=1.35)
         music_volume = self._safe_volume(music_volume, default=0.14, max_value=1.0)
         audio_mix = (
@@ -236,12 +254,14 @@ class VideoEditor:
                         pass
 
     def assemble_storyboard(self, scenes, output_path, music_path=None, music_volume=0.14, voice_volume=1.0,
-                            intro_fade_duration: float = 0.8, outro_fade_duration: float = 0.8,
-                            music_fade_out_duration: float = 2.0, tail_silence_seconds: float = 5.0):
+                     intro_fade_duration: float = 0.8, outro_fade_duration: float = 0.8,
+                            music_fade_out_duration: float = 2.0, tail_silence_seconds: float = 5.0,
+                            canvas_width: int = 1080, canvas_height: int = 1920):
         """
         Ensambla escenas con transiciones crossfade (fundido) entre clips.
         scenes: list of {audio, video, text, sub_pos, sub_size}
         """
+        canvas_width, canvas_height = self._normalize_canvas_dimensions(canvas_width, canvas_height)
         temp_clips = []
         temp_text_files = []
         FADE_DURATION = 0.5  # seconds for crossfade
@@ -295,7 +315,7 @@ class VideoEditor:
                 drawtext = ""
                 if show_text and str(scene.get("text", "")).strip():
                     char_width = sub_size * 0.55
-                    max_chars = int(864 / char_width) if char_width > 0 else 30
+                    max_chars = int(canvas_width / char_width) if char_width > 0 else 30
                     wrapped_text = self._wrap_text_for_ffmpeg(scene["text"], max_chars=max_chars)
 
                     txt_output = os.path.join("storage", "shorts", f"tmp_text_{render_id}_{idx}.txt")
@@ -342,13 +362,13 @@ class VideoEditor:
                         pan_x = "(iw-iw/zoom)/2"
                         pan_y = "(ih-ih/zoom)/2"
                     video_filter = (
-                        "scale=1080:1920:force_original_aspect_ratio=increase,"
-                        "crop=1080:1920,"
-                        f"zoompan=z='min(max({zoom_expr},1.0),1.4)':x='{pan_x}':y='{pan_y}':d={d_frames}:s=1080x1920:fps={fps},setsar=1"
+                        f"scale={canvas_width}:{canvas_height}:force_original_aspect_ratio=increase,"
+                        f"crop={canvas_width}:{canvas_height},"
+                        f"zoompan=z='min(max({zoom_expr},1.0),1.4)':x='{pan_x}':y='{pan_y}':d={d_frames}:s={canvas_width}x{canvas_height}:fps={fps},setsar=1"
                     )
                 else:
                     inputs = ['-stream_loop', '-1', '-i', scene["video"]]
-                    video_filter = "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,setsar=1"
+                    video_filter = f"scale={canvas_width}:{canvas_height}:force_original_aspect_ratio=increase,crop={canvas_width}:{canvas_height},setsar=1"
 
                 if clip_fades:
                     video_filter = f"{video_filter},{','.join(clip_fades)}"

@@ -215,6 +215,7 @@ class StoryboardRequest(BaseModel):
     job_id: Optional[str] = None
     tts_engine: Optional[str] = None
     tts_speed: Optional[float] = None
+    video_format: Optional[str] = "vertical"
     title: Optional[str] = None  # TÃ­tulo Ãºnico del Short (para deduplicaciÃ³n)
 
 class PublishVideoRequest(BaseModel):
@@ -2958,7 +2959,8 @@ async def api_render_storyboard(req: StoryboardRequest, background_tasks: Backgr
         intro_fade_duration=req.intro_fade_duration,
         outro_fade_duration=req.outro_fade_duration,
         music_fade_out_duration=req.music_fade_out_duration,
-        tail_silence_seconds=req.tail_silence_seconds
+        tail_silence_seconds=req.tail_silence_seconds,
+        video_format=normalize_storyboard_video_format(req.video_format)[0]
     )
     log_job_event(
         job_id,
@@ -3027,7 +3029,8 @@ async def api_draft_storyboard(req: StoryboardRequest, background_tasks: Backgro
         intro_fade_duration=req.intro_fade_duration,
         outro_fade_duration=req.outro_fade_duration,
         music_fade_out_duration=req.music_fade_out_duration,
-        tail_silence_seconds=req.tail_silence_seconds
+        tail_silence_seconds=req.tail_silence_seconds,
+        video_format=normalize_storyboard_video_format(req.video_format)[0]
     )
     log_job_event(
         job_id,
@@ -3581,13 +3584,21 @@ def resolve_background_video(niche: str, bg_name: str, custom_id: str = None, ch
 
 async def process_storyboard_job(job_id, req: StoryboardRequest):
     try:
+        storyboard_format, canvas_width, canvas_height, aspect_label = normalize_storyboard_video_format(req.video_format)
         log_job_event(
             job_id,
             "render_started",
             "Render de storyboard iniciado.",
             status="info",
             channel_id=req.channel_id,
-            details={"scenes": len(req.scenes), "music_filename": req.music_filename, "tts_engine": req.tts_engine},
+            details={
+                "scenes": len(req.scenes),
+                "music_filename": req.music_filename,
+                "tts_engine": req.tts_engine,
+                "video_format": storyboard_format,
+                "canvas_width": canvas_width,
+                "canvas_height": canvas_height,
+            },
         )
         scene_clips = []
         global_music_path = os.path.join(UPLOAD_DIR, req.music_filename) if req.music_filename else None
@@ -3670,6 +3681,8 @@ async def process_storyboard_job(job_id, req: StoryboardRequest):
             outro_fade_duration=req.outro_fade_duration if req.outro_fade_duration is not None else 0.8,
             music_fade_out_duration=req.music_fade_out_duration if req.music_fade_out_duration is not None else 2.0,
             tail_silence_seconds=req.tail_silence_seconds if req.tail_silence_seconds is not None else 2.0,
+            canvas_width=canvas_width,
+            canvas_height=canvas_height,
         )
         db.update_job_status(job_id, "rendered", video_url=f"/static/shorts/{output_filename}")
         log_job_event(
@@ -3678,7 +3691,7 @@ async def process_storyboard_job(job_id, req: StoryboardRequest):
             "Render de storyboard completado correctamente.",
             status="success",
             channel_id=req.channel_id,
-            details={"output_filename": output_filename},
+            details={"output_filename": output_filename, "video_format": storyboard_format, "aspect_ratio": aspect_label},
         )
         logger.info(f"Cinema Storyboard {job_id} renderizado. Esperando aprobaci?n humana.")
 
@@ -3709,6 +3722,12 @@ class RenderRequest(BaseModel):
     logo_filename: str = None
     logo_position: str = "top-right"
     custom_background_filename: str = None
+
+def normalize_storyboard_video_format(value: Optional[str]) -> tuple[str, int, int, str]:
+    normalized = (value or "vertical").strip().lower()
+    if normalized in {"16:9", "landscape", "wide", "youtube", "youtube-wide", "youtube_landscape"}:
+        return "landscape", 1920, 1080, "16 / 9"
+    return "vertical", 1080, 1920, "9 / 16"
 
 @app.post("/render")
 async def render_short(request: RenderRequest, background_tasks: BackgroundTasks):
