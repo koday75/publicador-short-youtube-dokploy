@@ -371,6 +371,26 @@ class JobDatabase:
             except Exception:
                 pass
 
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS channel_daily_snapshots (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    channel_id INTEGER NOT NULL,
+                    snapshot_date TEXT NOT NULL,
+                    subscriber_count INTEGER DEFAULT 0,
+                    view_count INTEGER DEFAULT 0,
+                    video_count INTEGER DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(channel_id, snapshot_date)
+                )
+            """)
+            try:
+                conn.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_channel_daily_snapshots_channel_date ON channel_daily_snapshots(channel_id, snapshot_date)"
+                )
+            except Exception:
+                pass
+
             # Guiones / research tables
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS script_topics (
@@ -1405,6 +1425,80 @@ class JobDatabase:
             query += " GROUP BY snapshot_date ORDER BY snapshot_date ASC"
             rows = conn.execute(query, params).fetchall()
             return [dict(row) for row in rows]
+
+    def upsert_channel_daily_snapshot(
+        self,
+        channel_id: int,
+        snapshot_date: str,
+        subscriber_count: int | None = 0,
+        view_count: int | None = 0,
+        video_count: int | None = 0,
+    ):
+        subscriber_count = int(subscriber_count or 0)
+        view_count = int(view_count or 0)
+        video_count = int(video_count or 0)
+        with self._get_connection() as conn:
+            conn.execute(
+                """
+                INSERT INTO channel_daily_snapshots (
+                    channel_id, snapshot_date, subscriber_count, view_count, video_count, updated_at
+                ) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                ON CONFLICT(channel_id, snapshot_date) DO UPDATE SET
+                    subscriber_count = excluded.subscriber_count,
+                    view_count = excluded.view_count,
+                    video_count = excluded.video_count,
+                    updated_at = CURRENT_TIMESTAMP
+                """,
+                (channel_id, snapshot_date, subscriber_count, view_count, video_count),
+            )
+            conn.commit()
+            return {
+                "channel_id": channel_id,
+                "snapshot_date": snapshot_date,
+                "subscriber_count": subscriber_count,
+                "view_count": view_count,
+                "video_count": video_count,
+            }
+
+    def get_channel_daily_snapshots(self, channel_id: int, start_date: str | None = None, end_date: str | None = None):
+        with self._get_connection() as conn:
+            conn.row_factory = sqlite3.Row
+            query = """
+                SELECT
+                    snapshot_date,
+                    subscriber_count,
+                    view_count,
+                    video_count
+                FROM channel_daily_snapshots
+                WHERE channel_id = ?
+            """
+            params: list[Any] = [channel_id]
+            if start_date:
+                query += " AND snapshot_date >= ?"
+                params.append(start_date)
+            if end_date:
+                query += " AND snapshot_date <= ?"
+                params.append(end_date)
+            query += " ORDER BY snapshot_date ASC"
+            rows = [dict(row) for row in conn.execute(query, params).fetchall()]
+
+        previous = None
+        enriched = []
+        for row in rows:
+            subscriber_count = int(row.get("subscriber_count") or 0)
+            view_count = int(row.get("view_count") or 0)
+            video_count = int(row.get("video_count") or 0)
+            enriched.append({
+                **row,
+                "subscriber_count": subscriber_count,
+                "view_count": view_count,
+                "video_count": video_count,
+                "subscriber_delta": subscriber_count - int(previous.get("subscriber_count") or 0) if previous else 0,
+                "view_delta": view_count - int(previous.get("view_count") or 0) if previous else 0,
+                "video_delta": video_count - int(previous.get("video_count") or 0) if previous else 0,
+            })
+            previous = row
+        return enriched
 
     def get_channel_overview(self, channel_id: int):
         channel = self.get_youtube_channel(channel_id)

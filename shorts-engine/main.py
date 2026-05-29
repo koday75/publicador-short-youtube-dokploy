@@ -657,6 +657,7 @@ async def api_get_youtube_channel_insights(
         "keywords": (dataset.get("keywords") or [])[:20],
         "top_jobs": (dataset.get("top_jobs") or [])[:20],
         "daily_series": (dataset.get("daily_series") or [])[-30:],
+        "channel_daily_series": (dataset.get("channel_daily_series") or [])[-30:],
         "overview": dataset.get("overview") or {},
     }
 
@@ -1324,6 +1325,7 @@ def build_channel_insights_payload(channel_id: int, refresh: bool = False) -> di
         "best_job": best_job,
         "jobs": job_cards,
         "daily_series": db.get_channel_ranking_daily_series(channel_id),
+        "channel_daily_series": db.get_channel_daily_snapshots(channel_id),
     }
 
 
@@ -1345,16 +1347,29 @@ def get_ranking_period_bounds(period: str | None) -> tuple[str, str, str]:
 
 
 def refresh_channel_ranking_snapshots(channel_id: int) -> dict[str, Any]:
+    snapshot_date = datetime.now(timezone.utc).date().isoformat()
+    channel_snapshot = None
+    try:
+        channel_snapshot = youtube_manager.refresh_channel_snapshot(channel_id)
+        db.upsert_channel_daily_snapshot(
+            channel_id=channel_id,
+            snapshot_date=snapshot_date,
+            subscriber_count=channel_snapshot.get("subscriber_count") or 0,
+            view_count=channel_snapshot.get("view_count") or 0,
+            video_count=channel_snapshot.get("video_count") or 0,
+        )
+    except Exception as exc:
+        logger.debug(f"No se pudo guardar el snapshot diario del canal {channel_id}: {exc}")
+
     published_jobs = [
         job for job in db.get_recent_jobs(limit=1000, channel_id=channel_id)
         if str(job.get("youtube_video_id") or "").strip()
     ]
     video_ids = [str(job.get("youtube_video_id") or "").strip() for job in published_jobs if str(job.get("youtube_video_id") or "").strip()]
     if not video_ids:
-        return {"refreshed": 0, "jobs": 0}
+        return {"refreshed": 0, "jobs": 0, "channel_snapshot": bool(channel_snapshot)}
 
     stats_map = youtube_manager.get_video_statistics(channel_id, video_ids)
-    snapshot_date = datetime.now(timezone.utc).date().isoformat()
     refreshed = 0
     for job in published_jobs:
         video_id = str(job.get("youtube_video_id") or "").strip()
@@ -1372,7 +1387,7 @@ def refresh_channel_ranking_snapshots(channel_id: int) -> dict[str, Any]:
         )
         refreshed += 1
 
-    return {"refreshed": refreshed, "jobs": len(published_jobs)}
+    return {"refreshed": refreshed, "jobs": len(published_jobs), "channel_snapshot": bool(channel_snapshot)}
 
 
 def build_channel_ranking_payload(channel_id: int, period: str | None = None, metric: str | None = None, refresh: bool = False) -> dict[str, Any]:
@@ -1392,6 +1407,7 @@ def build_channel_ranking_payload(channel_id: int, period: str | None = None, me
 
     items = db.get_channel_ranking_snapshots(channel_id, start_date=start_date, end_date=end_date, latest_only=True)
     daily_series = db.get_channel_ranking_daily_series(channel_id, start_date=start_date, end_date=end_date)
+    channel_daily_series = db.get_channel_daily_snapshots(channel_id, start_date=start_date, end_date=end_date)
 
     ranked_items = []
     for row in items:
@@ -1466,6 +1482,7 @@ def build_channel_ranking_payload(channel_id: int, period: str | None = None, me
         "summary": summary,
         "items": ranked_items,
         "daily_series": daily_totals,
+        "channel_daily_series": channel_daily_series,
         "refresh": refresh_info,
     }
 

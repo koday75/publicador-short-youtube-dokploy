@@ -299,6 +299,8 @@
                     <option value="likes">Likes</option>
                     <option value="comments">Comentarios</option>
                     <option value="engagement">Engagement</option>
+                    <option value="subscribers">Suscriptores</option>
+                    <option value="channel_views">Vistas del canal</option>
                 </select>
                 <button type="button" id="refresh-btn" class="ranking-btn" onclick="syncRankingData()">↻ Sincronizar datos</button>
             </div>
@@ -319,6 +321,11 @@
                 <h3>Comentarios</h3>
                 <div class="ranking-value" id="summary-comments">0</div>
                 <div class="ranking-sub">Interacción conversacional del periodo.</div>
+            </article>
+            <article class="ranking-card">
+                <h3>Suscriptores</h3>
+                <div class="ranking-value" id="summary-subscribers">0</div>
+                <div class="ranking-sub" id="summary-subscribers-sub">Subida registrada en el periodo.</div>
             </article>
             <article class="ranking-card">
                 <h3>Mejor trabajo</h3>
@@ -412,11 +419,17 @@
             if (metric === 'likes') return 'Likes';
             if (metric === 'comments') return 'Comentarios';
             if (metric === 'engagement') return 'Engagement';
+            if (metric === 'subscribers') return 'Suscriptores';
+            if (metric === 'channel_views') return 'Vistas del canal';
             return 'Score';
         }
 
         function renderChart(points) {
             const svg = document.getElementById('ranking-chart');
+            points = (points || []).map((point) => ({
+                ...point,
+                date: point.date || point.snapshot_date || '',
+            }));
             if (!points.length) {
                 svg.innerHTML = '<text x="50%" y="50%" text-anchor="middle" fill="#8f96a8" font-size="20">No hay datos para este periodo.</text>';
                 return;
@@ -481,6 +494,8 @@
             if (metric === 'views') return '#58a6ff';
             if (metric === 'likes') return '#3fb950';
             if (metric === 'comments') return '#b088f9';
+            if (metric === 'subscribers') return '#ffcc66';
+            if (metric === 'channel_views') return '#f778ba';
             return '#58a6ff';
         }
 
@@ -488,6 +503,8 @@
             if (metric === 'views') return 'views';
             if (metric === 'likes') return 'likes';
             if (metric === 'comments') return 'comments';
+            if (metric === 'subscribers') return 'subscriber_count';
+            if (metric === 'channel_views') return 'view_count';
             return 'engagement_score';
         }
 
@@ -495,6 +512,13 @@
             document.getElementById('summary-views').textContent = formatNumber(data.summary.total_views);
             document.getElementById('summary-likes').textContent = formatNumber(data.summary.total_likes);
             document.getElementById('summary-comments').textContent = formatNumber(data.summary.total_comments);
+            const channelSeries = Array.isArray(data.channel_daily_series) ? data.channel_daily_series : [];
+            const latestChannel = channelSeries.length ? channelSeries[channelSeries.length - 1] : null;
+            const subscriberDelta = channelSeries.reduce((total, item) => total + Number(item.subscriber_delta || 0), 0);
+            document.getElementById('summary-subscribers').textContent = latestChannel ? formatNumber(latestChannel.subscriber_count) : '0';
+            document.getElementById('summary-subscribers-sub').textContent = latestChannel
+                ? `${subscriberDelta >= 0 ? '+' : ''}${formatNumber(subscriberDelta)} suscriptores en el periodo`
+                : 'Sin snapshots de suscriptores todavía.';
             const top = data.summary.top_job;
             document.getElementById('summary-top').textContent = top ? (top.title || top.job_id || '—') : '—';
             document.getElementById('summary-top-sub').textContent = top
@@ -579,7 +603,10 @@
                 document.getElementById('page-subtitle').textContent = `Periodos de rendimiento para ${channel.youtube_channel_title || channel.internal_name || 'este canal'}.`;
                 setChannelLinks(channel);
                 renderSummary(data);
-                renderChart(data.daily_series || []);
+                const chartPoints = ['subscribers', 'channel_views'].includes(state.metric)
+                    ? (data.channel_daily_series || [])
+                    : (data.daily_series || []);
+                renderChart(chartPoints);
                 renderTable(data.items || []);
             } catch (error) {
                 document.getElementById('ranking-table-body').innerHTML = `

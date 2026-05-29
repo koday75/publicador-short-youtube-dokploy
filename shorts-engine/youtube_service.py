@@ -228,6 +228,16 @@ class YouTubeChannelService:
             "last_connection_error": None,
         }
         self.db.update_youtube_channel(channel_id, update_payload)
+        try:
+            self.db.upsert_channel_daily_snapshot(
+                channel_id=channel_id,
+                snapshot_date=self._now().date().isoformat(),
+                subscriber_count=update_payload.get("subscriber_count") or 0,
+                view_count=update_payload.get("view_count") or 0,
+                video_count=update_payload.get("video_count") or 0,
+            )
+        except Exception:
+            pass
         return self.db.get_youtube_channel(channel_id)
 
     def _extract_thumbnail(self, channel_info: dict[str, Any]) -> Optional[str]:
