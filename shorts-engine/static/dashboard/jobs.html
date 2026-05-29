@@ -874,12 +874,12 @@
             const table = document.getElementById('jobs-table');
             table.innerHTML = '<tr><td colspan="6" class="empty-state">Cargando trabajos...</td></tr>';
 
-            const res = await fetch(`/api/jobs?page=${page}&limit=25&search=${encodeURIComponent(search)}${channelId ? `&channel_id=${channelId}` : ''}`);
+            const res = await fetch(`/api/jobs?page=${page}&limit=5&search=${encodeURIComponent(search)}${channelId ? `&channel_id=${channelId}` : ''}`);
             const data = await res.json();
 
             if (!data.jobs || !data.jobs.length) {
                 table.innerHTML = '<tr><td colspan="6" class="empty-state">No se encontraron trabajos.</td></tr>';
-                renderPagination(data.total || 0, data.page || 1, data.limit || 25);
+                renderPagination(data.total || 0, data.page || 1, data.limit || 5);
                 return;
             }
 
@@ -938,7 +938,7 @@
                 table.appendChild(row);
             });
 
-            renderPagination(data.total || 0, data.page || 1, data.limit || 25);
+            renderPagination(data.total || 0, data.page || 1, data.limit || 5);
         }
 
         function renderPagination(total, page, limit) {

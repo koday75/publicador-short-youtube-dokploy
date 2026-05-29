@@ -1016,7 +1016,7 @@ class JobDatabase:
             conn.commit()
             return self.get_job(new_job_id)
 
-    def get_recent_jobs(self, limit=25, offset=0, search=None, channel_id=None):
+    def get_recent_jobs(self, limit=25, offset=0, search=None, channel_id=None, order="DESC"):
         with self._get_connection() as conn:
             conn.row_factory = sqlite3.Row
             query = "SELECT * FROM jobs WHERE 1=1"
@@ -1027,8 +1027,9 @@ class JobDatabase:
             if search:
                 query += " AND (title LIKE ? OR text LIKE ? OR job_id LIKE ? OR niche LIKE ?)"
                 params.extend([f"%{search}%", f"%{search}%", f"%{search}%", f"%{search}%"])
-            
-            query += " ORDER BY created_at DESC LIMIT ? OFFSET ?"
+
+            normalized_order = "ASC" if str(order).upper() == "ASC" else "DESC"
+            query += f" ORDER BY created_at {normalized_order}, id {normalized_order} LIMIT ? OFFSET ?"
             params.extend([limit, offset])
             
             cursor = conn.execute(query, params)
