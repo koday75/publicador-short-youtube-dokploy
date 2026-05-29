@@ -407,6 +407,7 @@
                 <a id="tab-scripts" class="channel-tab" href="#">Guiones</a>
                 <a id="tab-history" class="channel-tab" href="#">Historial</a>
                 <a id="tab-ranking" class="channel-tab" href="#">Ranking</a>
+                <a id="tab-insights" class="channel-tab" href="#">Análisis IA</a>
                 <a id="tab-settings" class="channel-tab" href="#">Ajustes</a>
             </nav>
         </section>
@@ -424,6 +425,7 @@
                             <a id="open-storyboard" class="primary" href="#">Abrir storyboard</a>
                             <a id="open-publish" href="#">Ir a publicar</a>
                             <a id="open-jobs" href="#">Ver trabajos</a>
+                            <a id="open-insights" href="#">Analizar canal</a>
                         </div>
                     </div>
                 </section>
@@ -486,6 +488,11 @@
                             <h4>4. Seguimiento</h4>
                             <p>Controla el progreso, el rendimiento y las ejecuciones más recientes de cada pieza.</p>
                             <a id="pipeline-jobs" href="#">Abrir trabajos</a>
+                        </article>
+                        <article class="pipeline-card">
+                            <h4>5. Análisis IA</h4>
+                            <p>Descubre qué nichos, títulos y patrones funcionan mejor para generar nuevos vídeos con más acierto.</p>
+                            <a id="pipeline-insights" href="#">Abrir análisis</a>
                         </article>
                     </div>
                 </section>
@@ -711,6 +718,7 @@
             document.getElementById('tab-scripts').href = `/guiones?channel_id=${channelId}`;
             document.getElementById('tab-history').href = `/channels/${channelId}/history`;
             document.getElementById('tab-ranking').href = `/channels/${channelId}/ranking`;
+            document.getElementById('tab-insights').href = `/channels/${channelId}/insights`;
             document.getElementById('tab-settings').href = `/youtube-channels?channel_id=${channelId}`;
 
             document.getElementById('open-storyboard').href = storyboardHref;
@@ -722,8 +730,10 @@
             document.getElementById('open-publish').textContent = latestJob && latestJob.job_id ? 'Abrir publicación' : 'Ir a trabajos';
             document.getElementById('pipeline-publish').textContent = latestJob && latestJob.job_id ? 'Abrir publicación' : 'Ir a trabajos';
             document.getElementById('open-jobs').href = `/jobs?channel_id=${channelId}`;
+            document.getElementById('open-insights').href = `/channels/${channelId}/insights`;
             document.getElementById('pipeline-jobs').href = `/jobs?channel_id=${channelId}`;
             document.getElementById('pipeline-gallery').href = `/gallery?channel_id=${channelId}`;
+            document.getElementById('pipeline-insights').href = `/channels/${channelId}/insights`;
             document.getElementById('gallery-panel-link').href = `/gallery?channel_id=${channelId}`;
             document.getElementById('jobs-panel-link').href = `/jobs?channel_id=${channelId}`;
         }

@@ -11,6 +11,7 @@ import time
 import asyncio
 import json
 import unicodedata
+from collections import Counter, defaultdict
 import pyotp
 from fastapi import FastAPI, HTTPException, BackgroundTasks, Request, Response, Depends, File, UploadFile, Query
 from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse
@@ -149,6 +150,10 @@ async def channel_history_page(channel_id: int, request: Request):
 @app.get("/channels/{channel_id}/ranking", response_class=HTMLResponse)
 async def channel_ranking_page(channel_id: int, request: Request):
     return await render_dashboard_file(request, "static/dashboard/ranking.html")
+
+@app.get("/channels/{channel_id}/insights", response_class=HTMLResponse)
+async def channel_insights_page(channel_id: int, request: Request):
+    return await render_dashboard_file(request, "static/dashboard/insights.html")
 
 @app.get("/jobs", response_class=HTMLResponse)
 async def jobs_page(request: Request):
@@ -628,6 +633,115 @@ async def api_get_youtube_channel_overview(channel_id: int, user: str = Depends(
         "comment_videos": comment_videos,
     }
 
+@app.get("/api/youtube/channels/{channel_id}/insights")
+async def api_get_youtube_channel_insights(
+    channel_id: int,
+    refresh: bool = Query(False, description="Forzar sincronización de métricas antes de analizar"),
+    user: str = Depends(get_current_user),
+):
+    channel = db.get_youtube_channel(channel_id)
+    if not channel:
+        raise HTTPException(status_code=404, detail="Canal no encontrado")
+
+    dataset = build_channel_insights_payload(channel_id, refresh=refresh)
+    if not dataset:
+        raise HTTPException(status_code=404, detail="Canal no encontrado")
+    analysis_input = {
+        "channel": dataset.get("channel"),
+        "jobs_count": dataset.get("jobs_count", 0),
+        "published_jobs_count": dataset.get("published_jobs_count", 0),
+        "draft_jobs_count": dataset.get("draft_jobs_count", 0),
+        "best_niche": dataset.get("best_niche"),
+        "best_job": dataset.get("best_job"),
+        "niches": (dataset.get("niches") or [])[:12],
+        "keywords": (dataset.get("keywords") or [])[:20],
+        "top_jobs": (dataset.get("top_jobs") or [])[:20],
+        "daily_series": (dataset.get("daily_series") or [])[-30:],
+        "overview": dataset.get("overview") or {},
+    }
+
+    analysis_prompt = (
+        "Eres un estratega senior de YouTube y analista de audiencias. "
+        "Analiza los trabajos, los nichos, los títulos y las métricas reales del canal. "
+        "Prioriza siempre vistas, likes, comentarios y engagement de los vídeos publicados sobre las hipótesis de los borradores. "
+        "Detecta qué nichos, temas, ganchos y formatos funcionan mejor, qué patrones conviene repetir, "
+        "qué ideas nuevas pueden crecer y qué errores conviene evitar. "
+        "Si un nicho tiene pocos datos, indícalo con baja confianza. "
+        "Responde solo con JSON válido usando esta estructura: "
+        "{\"summary\":\"...\",\"best_niches\":[...],\"best_topics\":[...],\"audience_preferences\":[...],"
+        "\"underperforming_patterns\":[...],\"content_gaps\":[...],\"recommended_formats\":[...],"
+        "\"next_video_ideas\":[...],\"what_to_repeat\":[...],\"what_to_avoid\":[...],"
+        "\"recommended_prompt\":\"...\",\"actions\":[...]}"
+    )
+
+    ai_result = None
+    ai_error = None
+    try:
+        ai_result = ai_manager.analyze_channel_performance(analysis_input)
+    except Exception as exc:
+        ai_error = str(exc)
+        logger.debug(f"Fallback de insights para canal {channel_id}: {exc}")
+
+    if not ai_result:
+        best_niche = dataset.get("best_niche") or {}
+        best_job = dataset.get("best_job") or {}
+        ai_result = {
+            "summary": (
+                f"El nicho con mejor rendimiento provisional es {best_niche.get('niche') or 'general'}. "
+                f"El vídeo con más tracción hasta ahora es {best_job.get('title') or 'Sin título'}."
+            ),
+            "best_niches": [
+                {
+                    "niche": best_niche.get("niche") or "general",
+                    "score": int(best_niche.get("engagement_score") or 0),
+                    "why": "Mejor promedio de engagement entre los datos disponibles.",
+                    "evidence": [
+                        f"Vistas medias: {best_niche.get('avg_views', 0)}",
+                        f"Publicaciones: {best_niche.get('jobs', 0)}",
+                    ],
+                }
+            ] if best_niche else [],
+            "best_topics": [],
+            "audience_preferences": [],
+            "underperforming_patterns": [],
+            "content_gaps": [],
+            "recommended_formats": [],
+            "next_video_ideas": [],
+            "what_to_repeat": [],
+            "what_to_avoid": [],
+            "recommended_prompt": "",
+            "actions": [],
+        }
+
+    prompt_template = (
+        "Actúa como estratega senior de YouTube y analista de crecimiento. "
+        "Estudia los trabajos, títulos, nichos y métricas reales del canal. "
+        "Prioriza vídeos publicados con vistas, likes y comentarios sobre borradores. "
+        "Identifica qué nichos y temas funcionan mejor, qué patrones narrativos o de título conviene repetir, "
+        "qué ideas nuevas podrían crecer y qué riesgos conviene evitar. "
+        "Devuelve SOLO JSON válido con este esquema: "
+        "{\"summary\":\"...\",\"best_niches\":[{\"niche\":\"...\",\"score\":0,\"why\":\"...\",\"evidence\":[\"...\"]}],"
+        "\"best_topics\":[{\"topic\":\"...\",\"why\":\"...\",\"evidence\":[\"...\"]}],"
+        "\"audience_preferences\":[\"...\"],"
+        "\"underperforming_patterns\":[\"...\"],"
+        "\"content_gaps\":[\"...\"],"
+        "\"recommended_formats\":[\"...\"],"
+        "\"next_video_ideas\":[{\"title\":\"...\",\"angle\":\"...\",\"why\":\"...\",\"priority\":\"alta|media|baja\"}],"
+        "\"what_to_repeat\":[\"...\"],"
+        "\"what_to_avoid\":[\"...\"],"
+        "\"recommended_prompt\":\"...\","
+        "\"actions\":[\"...\"]}"
+    )
+
+    return {
+        "channel": serialize_youtube_channel(channel),
+        "dataset": dataset,
+        "analysis": ai_result,
+        "analysis_prompt": analysis_prompt,
+        "prompt_template": prompt_template,
+        "ai_error": ai_error,
+    }
+
 @app.get("/api/youtube/channels/{channel_id}/ranking")
 async def api_get_youtube_channel_ranking(
     channel_id: int,
@@ -1073,6 +1187,144 @@ def serialize_youtube_channel(channel: dict | None) -> dict | None:
         safe["google_client_secret"] = "********"
     safe["default_tags"] = normalize_tags_input(safe.get("default_tags"))
     return safe
+
+
+CHANNEL_INSIGHTS_STOPWORDS = {
+    "a", "acerca", "al", "algo", "algunas", "algunos", "ante", "antes", "con", "contra", "cual", "cuando", "de", "del", "desde",
+    "despues", "dos", "el", "ella", "ellas", "ellos", "en", "entre", "era", "eras", "eres", "es", "esa", "esas", "ese", "eso",
+    "esta", "estaba", "estaban", "estamos", "estan", "estar", "este", "estos", "fue", "han", "hasta", "hay", "la", "las", "le",
+    "les", "lo", "los", "mas", "mi", "mis", "muy", "ni", "no", "nos", "nosotros", "o", "para", "pero", "por", "que", "quien",
+    "se", "sin", "sobre", "su", "sus", "te", "tiene", "tienen", "todo", "todos", "tu", "un", "una", "uno", "unos", "unas", "ya",
+    "the", "and", "for", "with", "from", "that", "this", "those", "these", "you", "your", "our", "their", "what", "who", "when",
+    "where", "why", "how", "about", "into", "over", "under", "after", "before", "then", "than", "also", "more", "most", "very",
+}
+
+
+def _normalize_insight_text(value: Any) -> str:
+    text = unicodedata.normalize("NFKD", str(value or "").strip().lower())
+    text = "".join(ch for ch in text if not unicodedata.combining(ch))
+    return text
+
+
+def _extract_channel_keywords(jobs: list[dict[str, Any]], limit: int = 12) -> list[dict[str, Any]]:
+    counter: Counter[str] = Counter()
+    for job in jobs or []:
+        haystack = " ".join([
+            str(job.get("title") or ""),
+            str(job.get("text") or ""),
+            str(job.get("niche") or ""),
+        ])
+        tokens = re.findall(r"[a-z0-9áéíóúñü]+", haystack.lower())
+        for token in tokens:
+            normalized = _normalize_insight_text(token)
+            if len(normalized) < 4 or normalized in CHANNEL_INSIGHTS_STOPWORDS:
+                continue
+            counter[normalized] += 1
+    return [{"keyword": keyword, "count": count} for keyword, count in counter.most_common(limit)]
+
+
+def build_channel_insights_payload(channel_id: int, refresh: bool = False) -> dict[str, Any]:
+    channel = db.get_youtube_channel(channel_id)
+    if not channel:
+        return {}
+
+    if refresh:
+        try:
+            refresh_channel_ranking_snapshots(channel_id)
+        except Exception as exc:
+            logger.debug(f"No se pudieron refrescar los snapshots para el analisis del canal {channel_id}: {exc}")
+
+    overview = db.get_channel_overview(channel_id) or {}
+    jobs = db.get_recent_jobs(limit=1000, channel_id=channel_id, order="DESC")
+    published_jobs = [job for job in jobs if str(job.get("youtube_video_id") or "").strip()]
+    snapshots = db.get_channel_ranking_snapshots(channel_id, latest_only=True)
+    snapshot_map = {str(row.get("job_id") or ""): row for row in snapshots if row.get("job_id")}
+    niche_map: dict[str, dict[str, Any]] = {}
+    job_cards: list[dict[str, Any]] = []
+
+    for job in jobs:
+        job_id = str(job.get("job_id") or "").strip()
+        niche = (job.get("niche") or "general").strip() or "general"
+        snapshot = snapshot_map.get(job_id, {})
+        views = int(snapshot.get("view_count") or job.get("youtube_view_count") or 0)
+        likes = int(snapshot.get("like_count") or 0)
+        comments = int(snapshot.get("comment_count") or job.get("youtube_comment_count") or 0)
+        engagement_score = int(snapshot.get("engagement_score") or (views + likes * 5 + comments * 10))
+        engagement_rate = round(((likes + comments) / views) * 100 if views else 0.0, 2)
+        published = bool(str(job.get("youtube_video_id") or "").strip())
+        niche_bucket = niche_map.setdefault(niche, {
+            "niche": niche,
+            "jobs": 0,
+            "published_jobs": 0,
+            "draft_jobs": 0,
+            "views": 0,
+            "likes": 0,
+            "comments": 0,
+            "engagement_score": 0,
+            "top_titles": [],
+        })
+        niche_bucket["jobs"] += 1
+        niche_bucket["published_jobs"] += int(published)
+        niche_bucket["draft_jobs"] += int(not published)
+        niche_bucket["views"] += views
+        niche_bucket["likes"] += likes
+        niche_bucket["comments"] += comments
+        niche_bucket["engagement_score"] += engagement_score
+        if job.get("title"):
+            niche_bucket["top_titles"].append(str(job.get("title") or "").strip())
+
+        job_cards.append({
+            "job_id": job_id,
+            "title": str(job.get("title") or job.get("text") or job_id or "Sin título").strip(),
+            "niche": niche,
+            "status": str(job.get("status") or "unknown").strip(),
+            "created_at": job.get("created_at"),
+            "youtube_published_at": job.get("youtube_published_at"),
+            "youtube_video_id": job.get("youtube_video_id"),
+            "youtube_video_url": job.get("youtube_video_url"),
+            "published": published,
+            "views": views,
+            "likes": likes,
+            "comments": comments,
+            "engagement_score": engagement_score,
+            "engagement_rate": engagement_rate,
+        })
+
+    niche_items = []
+    for niche_data in niche_map.values():
+        jobs_count = max(1, int(niche_data["jobs"]))
+        avg_views = round(niche_data["views"] / jobs_count, 2)
+        avg_engagement = round(niche_data["engagement_score"] / jobs_count, 2)
+        publish_rate = round((niche_data["published_jobs"] / jobs_count) * 100, 2)
+        niche_items.append({
+            **niche_data,
+            "avg_views": avg_views,
+            "avg_engagement_score": avg_engagement,
+            "publish_rate": publish_rate,
+            "top_titles": niche_data["top_titles"][:5],
+        })
+
+    niche_items.sort(key=lambda item: (item["avg_engagement_score"], item["avg_views"], item["published_jobs"]), reverse=True)
+    keyword_items = _extract_channel_keywords(jobs, limit=12)
+    top_jobs = sorted(job_cards, key=lambda item: (item["engagement_score"], item["views"], item["likes"], item["comments"]), reverse=True)[:12]
+    best_niche = niche_items[0] if niche_items else None
+    best_job = top_jobs[0] if top_jobs else None
+    draft_jobs = [job for job in job_cards if not job["published"]]
+
+    return {
+        "channel": serialize_youtube_channel(channel),
+        "overview": overview,
+        "jobs_count": len(job_cards),
+        "published_jobs_count": len(published_jobs),
+        "draft_jobs_count": len(draft_jobs),
+        "niches": niche_items,
+        "keywords": keyword_items,
+        "top_jobs": top_jobs,
+        "best_niche": best_niche,
+        "best_job": best_job,
+        "jobs": job_cards,
+        "daily_series": db.get_channel_ranking_daily_series(channel_id),
+    }
 
 
 def get_ranking_period_bounds(period: str | None) -> tuple[str, str, str]:

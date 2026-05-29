@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Análisis IA - Shorts Engine</title>
+    <link rel="stylesheet" href="/assets/style.css">
+    <link rel="icon" href="/icono.ico" type="image/x-icon">
+    <style>
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            gap: 1rem;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            margin-bottom: 1.25rem;
+        }
+        .page-header-actions {
+            display: flex;
+            gap: 0.65rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.45rem;
+            border-radius: 999px;
+            border: 1px solid var(--border-color);
+            padding: 0.68rem 1rem;
+            font-weight: 700;
+            text-decoration: none;
+            color: #fff;
+            background: rgba(255,255,255,0.04);
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .btn:hover {
+            border-color: rgba(88, 166, 255, 0.35);
+            background: rgba(88, 166, 255, 0.12);
+        }
+        .btn-primary {
+            background: linear-gradient(90deg, #58a6ff, #8f5cff);
+            border-color: transparent;
+            color: #fff;
+        }
+        .btn-primary:hover {
+            background: linear-gradient(90deg, #69b2ff, #9d6cff);
+        }
+        .btn-secondary {
+            background: rgba(255,255,255,0.05);
+            color: #fff;
+        }
+        .channel-shell {
+            border: 1px solid rgba(88, 166, 255, 0.18);
+            background: rgba(88, 166, 255, 0.05);
+            border-radius: 18px;
+            padding: 1rem 1.1rem;
+            margin: 0 0 1rem;
+        }
+        .channel-breadcrumb {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            align-items: center;
+            color: var(--text-muted);
+            font-size: 0.84rem;
+            margin-bottom: 0.8rem;
+        }
+        .channel-breadcrumb a {
+            color: #fff;
+            text-decoration: none;
+        }
+        .channel-tabs {
+            display: flex;
+            gap: 0.55rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .channel-tab {
+            display: inline-flex;
+            align-items: center;
+            text-decoration: none;
+            border: 1px solid var(--border-color);
+            border-radius: 999px;
+            padding: 0.55rem 0.85rem;
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            background: rgba(255,255,255,0.03);
+            white-space: nowrap;
+        }
+        .channel-tab.active {
+            background: rgba(88, 166, 255, 0.15);
+            color: #58a6ff;
+            border-color: rgba(88, 166, 255, 0.3);
+            font-weight: 700;
+        }
+        .insights-layout {
+            display: grid;
+            gap: 1rem;
+        }
+        .insights-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 0.9rem;
+        }
+        .insight-card {
+            border: 1px solid var(--border-color);
+            border-radius: 18px;
+            background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(0,0,0,0.14));
+            padding: 1rem;
+            min-height: 118px;
+        }
+        .insight-card small {
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-size: 0.68rem;
+        }
+        .insight-card strong {
+            display: block;
+            font-size: 1.8rem;
+            line-height: 1;
+            margin: 0.35rem 0 0.25rem;
+        }
+        .insight-card span {
+            color: var(--text-muted);
+            font-size: 0.88rem;
+            line-height: 1.45;
+        }
+        .panel {
+            border: 1px solid var(--border-color);
+            border-radius: 18px;
+            background: rgba(255,255,255,0.03);
+            padding: 1rem;
+        }
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            gap: 1rem;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            margin-bottom: 0.9rem;
+        }
+        .panel-header h3 {
+            margin: 0;
+            font-size: 1.05rem;
+        }
+        .panel-header p {
+            margin: 0.3rem 0 0;
+            color: var(--text-muted);
+            font-size: 0.88rem;
+            line-height: 1.5;
+        }
+        .analysis-summary {
+            display: grid;
+            gap: 0.75rem;
+        }
+        .analysis-summary p {
+            margin: 0;
+            color: #f1f5f9;
+            line-height: 1.55;
+        }
+        .analysis-pills {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+        .analysis-pill {
+            border: 1px solid rgba(88, 166, 255, 0.22);
+            background: rgba(88, 166, 255, 0.08);
+            color: #9ecbff;
+            border-radius: 999px;
+            padding: 0.3rem 0.6rem;
+            font-size: 0.76rem;
+            font-weight: 700;
+        }
+        .niche-grid,
+        .ideas-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 0.9rem;
+        }
+        .niche-card,
+        .idea-card {
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            background: rgba(0,0,0,0.16);
+            padding: 0.95rem;
+            display: grid;
+            gap: 0.55rem;
+        }
+        .niche-card strong,
+        .idea-card strong {
+            font-size: 0.98rem;
+            line-height: 1.35;
+        }
+        .niche-card small,
+        .idea-card small {
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            line-height: 1.45;
+        }
+        .score-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            width: fit-content;
+            border-radius: 999px;
+            padding: 0.28rem 0.55rem;
+            font-weight: 700;
+            font-size: 0.75rem;
+            color: #58a6ff;
+            background: rgba(88, 166, 255, 0.1);
+            border: 1px solid rgba(88, 166, 255, 0.18);
+        }
+        .prompt-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 0.9rem;
+        }
+        .prompt-card {
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            background: rgba(255,255,255,0.03);
+            padding: 1rem;
+            display: grid;
+            gap: 0.7rem;
+        }
+        .prompt-card h4 {
+            margin: 0;
+            font-size: 0.98rem;
+        }
+        .prompt-card p {
+            margin: 0;
+            color: var(--text-muted);
+            line-height: 1.5;
+            font-size: 0.88rem;
+        }
+        .prompt-card textarea {
+            width: 100%;
+            min-height: 180px;
+            border-radius: 14px;
+            border: 1px solid var(--border-color);
+            background: rgba(0,0,0,0.28);
+            color: #fff;
+            padding: 0.9rem;
+            resize: vertical;
+            line-height: 1.5;
+        }
+        .prompt-card textarea:focus {
+            outline: 1px solid rgba(88,166,255,0.55);
+            border-color: rgba(88,166,255,0.5);
+        }
+        .prompt-actions {
+            display: flex;
+            gap: 0.6rem;
+            flex-wrap: wrap;
+        }
+        .table-wrap {
+            overflow-x: auto;
+        }
+        .ranking-table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 980px;
+        }
+        .ranking-table th,
+        .ranking-table td {
+            padding: 0.85rem 0.9rem;
+            text-align: left;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            vertical-align: top;
+        }
+        .ranking-table th {
+            color: #aab2c5;
+            font-size: 0.82rem;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+        .metric-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            padding: 0.3rem 0.55rem;
+            border-radius: 999px;
+            font-weight: 700;
+            font-size: 0.8rem;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.08);
+            white-space: nowrap;
+        }
+        .metric-pill.views { color: #58a6ff; border-color: rgba(88,166,255,0.22); background: rgba(88,166,255,0.08); }
+        .metric-pill.likes { color: #3fb950; border-color: rgba(63,185,80,0.22); background: rgba(63,185,80,0.08); }
+        .metric-pill.comments { color: #b088f9; border-color: rgba(176,136,249,0.22); background: rgba(176,136,249,0.08); }
+        .metric-pill.connected { color: #3fb950; border-color: rgba(63,185,80,0.22); background: rgba(63,185,80,0.08); }
+        .metric-pill.warning { color: #ffcc66; border-color: rgba(255,204,102,0.22); background: rgba(255,204,102,0.08); }
+        .metric-pill.error { color: #f85149; border-color: rgba(248,81,73,0.22); background: rgba(248,81,73,0.08); }
+        .metric-pill.disconnected { color: #b6b6b6; border-color: rgba(182,182,182,0.22); background: rgba(182,182,182,0.08); }
+        .empty-state {
+            padding: 2rem 1rem;
+            text-align: center;
+            color: var(--text-muted);
+            border: 1px dashed rgba(255,255,255,0.12);
+            border-radius: 16px;
+            background: rgba(255,255,255,0.02);
+        }
+        .muted {
+            color: var(--text-muted);
+        }
+        @media (max-width: 900px) {
+            .page-header,
+            .panel-header {
+                flex-direction: column;
+            }
+            .page-header-actions {
+                width: 100%;
+            }
+            .btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-shell">
+        <header class="page-header">
+            <div>
+                <h1 id="page-title">📊 Análisis IA del canal</h1>
+                <p id="page-subtitle" class="page-subtitle">La IA estudia los trabajos, los nichos y las métricas para recomendarte los temas con más potencial.</p>
+            </div>
+            <div class="page-header-actions">
+                <a id="back-channel-link" class="btn btn-secondary" href="#">← Volver al canal</a>
+                <a id="edit-channel-link" class="btn btn-primary" href="#">Editar canal</a>
+            </div>
+        </header>
+
+        <section class="channel-shell" id="channel-shell" style="display:none;">
+            <div class="channel-breadcrumb">
+                <a href="/channels">Canales</a>
+                <span>›</span>
+                <strong id="channel-breadcrumb-name">Canal</strong>
+                <span>›</span>
+                <span id="channel-breadcrumb-page">Análisis IA</span>
+            </div>
+            <nav class="channel-tabs" aria-label="Secciones del canal">
+                <a id="tab-overview" class="channel-tab" href="#">Resumen</a>
+                <a id="tab-youtube-videos" class="channel-tab" href="#">Vídeos de YouTube</a>
+                <a id="tab-storyboard" class="channel-tab" href="#">Crear vídeos</a>
+                <a id="tab-gallery" class="channel-tab" href="#">Galería</a>
+                <a id="tab-jobs" class="channel-tab" href="#">Trabajos</a>
+                <a id="tab-ai-tasks" class="channel-tab" href="#">Registros IA</a>
+                <a id="tab-scripts" class="channel-tab" href="#">Guiones</a>
+                <a id="tab-history" class="channel-tab" href="#">Historial</a>
+                <a id="tab-ranking" class="channel-tab" href="#">Ranking</a>
+                <a id="tab-insights" class="channel-tab active" href="#">Análisis IA</a>
+                <a id="tab-settings" class="channel-tab" href="#">Ajustes</a>
+            </nav>
+        </section>
+
+        <main class="insights-layout">
+            <section class="panel">
+                <div class="panel-header">
+                    <div>
+                        <h3>Visión rápida del canal</h3>
+                        <p>Una lectura ejecutiva para detectar qué temas funcionan mejor, qué repetir y qué producir a continuación.</p>
+                    </div>
+                    <div class="prompt-actions">
+                        <button id="refresh-btn" class="btn btn-primary" type="button" onclick="syncInsights()">↻ Sincronizar y analizar</button>
+                    </div>
+                </div>
+                <div class="insights-grid">
+                    <article class="insight-card">
+                        <small>Trabajos analizados</small>
+                        <strong id="metric-total-jobs">0</strong>
+                        <span>Incluye borradores, renderizados y publicaciones vinculadas al canal.</span>
+                    </article>
+                    <article class="insight-card">
+                        <small>Publicados con datos</small>
+                        <strong id="metric-published-jobs">0</strong>
+                        <span>Vídeos con métricas reales para estudiar el comportamiento del público.</span>
+                    </article>
+                    <article class="insight-card">
+                        <small>Nicho ganador</small>
+                        <strong id="metric-top-niche">—</strong>
+                        <span>El nicho con mejor promedio de rendimiento hasta ahora.</span>
+                    </article>
+                    <article class="insight-card">
+                        <small>Mejor trabajo</small>
+                        <strong id="metric-top-job">—</strong>
+                        <span>La pieza con mejores señales de engagement del canal.</span>
+                    </article>
+                </div>
+            </section>
+
+            <section class="panel">
+                <div class="panel-header">
+                    <div>
+                        <h3>Resumen estratégico</h3>
+                        <p>La IA resume qué está funcionando y cómo convertirlo en nuevos vídeos con más probabilidad de éxito.</p>
+                    </div>
+                    <span id="analysis-status" class="score-badge">Listo para analizar</span>
+                </div>
+                <div class="analysis-summary">
+                    <p id="analysis-summary" class="muted">Pulsa <strong>Sincronizar y analizar</strong> para generar una lectura estratégica del canal.</p>
+                    <div class="analysis-pills" id="analysis-pills"></div>
+                    <div id="analysis-actions" class="muted" style="display:grid; gap:0.4rem;"></div>
+                </div>
+            </section>
+
+            <section class="panel">
+                <div class="panel-header">
+                    <div>
+                        <h3>Nichos y temas que mejor funcionan</h3>
+                        <p>Ordenados por rendimiento medio y engagement real.</p>
+                    </div>
+                </div>
+                <div id="niche-grid" class="niche-grid">
+                    <div class="empty-state" style="grid-column:1/-1;">Sin datos todavía.</div>
+                </div>
+            </section>
+
+            <section class="panel">
+                <div class="panel-header">
+                    <div>
+                        <h3>Ideas para próximos vídeos</h3>
+                        <p>Propuestas generadas a partir de los patrones que mejor han respondido en tu canal.</p>
+                    </div>
+                </div>
+                <div id="ideas-grid" class="ideas-grid">
+                    <div class="empty-state" style="grid-column:1/-1;">La IA no ha generado ideas todavía.</div>
+                </div>
+            </section>
+
+            <section class="prompt-grid">
+                <article class="prompt-card">
+                    <h4>Prompt de análisis</h4>
+                    <p>Este es el prompt que usa la IA para estudiar tu canal como analista de crecimiento.</p>
+                    <textarea id="analysis-prompt" readonly></textarea>
+                    <div class="prompt-actions">
+                        <button class="btn btn-secondary" type="button" onclick="copyPrompt('analysis-prompt')">Copiar prompt</button>
+                    </div>
+                </article>
+                <article class="prompt-card">
+                    <h4>Prompt recomendado para nuevos vídeos</h4>
+                    <p>El mejor prompt sugerido por la IA para generar nuevos contenidos a partir de este análisis.</p>
+                    <textarea id="recommended-prompt" readonly></textarea>
+                    <div class="prompt-actions">
+                        <button class="btn btn-secondary" type="button" onclick="copyPrompt('recommended-prompt')">Copiar prompt</button>
+                    </div>
+                </article>
+            </section>
+
+            <section class="panel">
+                <div class="panel-header">
+                    <div>
+                        <h3>Top trabajos estudiados</h3>
+                        <p>Vídeos ordenados por engagement para ver qué piezas empujan el rendimiento del canal.</p>
+                    </div>
+                </div>
+                <div class="table-wrap">
+                    <table class="ranking-table">
+                        <thead>
+                            <tr>
+                                <th>Trabajo</th>
+                                <th>Nicho</th>
+                                <th>Estado</th>
+                                <th>Vistas</th>
+                                <th>Likes</th>
+                                <th>Comentarios</th>
+                                <th>Engagement</th>
+                                <th>Fecha</th>
+                            </tr>
+                        </thead>
+                        <tbody id="top-jobs-body">
+                            <tr><td colspan="8"><div class="empty-state">Sin datos todavía.</div></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        const state = {
+            data: null,
+            loading: false,
+        };
+
+        function getChannelId() {
+            const parts = window.location.pathname.split('/').filter(Boolean);
+            const idx = parts.indexOf('channels');
+            if (idx >= 0 && parts[idx + 1]) {
+                const value = parseInt(parts[idx + 1], 10);
+                return Number.isFinite(value) ? value : null;
+            }
+            return null;
+        }
+
+        function escapeHtml(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function formatDate(value) {
+            if (!value) return '—';
+            const d = new Date(value);
+            if (Number.isNaN(d.getTime())) return value;
+            return d.toLocaleString('es-ES');
+        }
+
+        function formatNumber(value) {
+            return new Intl.NumberFormat('es-ES').format(Number(value) || 0);
+        }
+
+        function statusClass(status) {
+            const normalized = String(status || '').toLowerCase();
+            if (normalized === 'completed') return 'connected';
+            if (normalized === 'rendered') return 'warning';
+            if (normalized === 'failed') return 'error';
+            if (normalized === 'draft') return 'disconnected';
+            return 'disconnected';
+        }
+
+        function statusLabel(status) {
+            const normalized = String(status || '').toLowerCase();
+            if (normalized === 'draft') return 'Borrador';
+            if (normalized === 'processing') return 'Procesando';
+            if (normalized === 'rendered') return 'Renderizado';
+            if (normalized === 'completed') return 'Completado';
+            if (normalized === 'failed') return 'Fallido';
+            return status || 'Desconocido';
+        }
+
+        function setChannelLinks(channelId, channel = {}) {
+            if (!channelId) return;
+            document.getElementById('channel-shell').style.display = 'block';
+            document.getElementById('channel-breadcrumb-name').textContent = channel.internal_name || channel.youtube_channel_title || `Canal ${channelId}`;
+            document.getElementById('back-channel-link').href = `/channels/${channelId}`;
+            document.getElementById('edit-channel-link').href = `/youtube-channels?channel_id=${channelId}`;
+            document.getElementById('tab-overview').href = `/channels/${channelId}`;
+            document.getElementById('tab-youtube-videos').href = `/channels/${channelId}/youtube-videos`;
+            document.getElementById('tab-storyboard').href = `/storyboard?channel_id=${channelId}`;
+            document.getElementById('tab-gallery').href = `/gallery?channel_id=${channelId}`;
+            document.getElementById('tab-jobs').href = `/jobs?channel_id=${channelId}`;
+            document.getElementById('tab-ai-tasks').href = `/ai-tasks?channel_id=${channelId}`;
+            document.getElementById('tab-scripts').href = `/guiones?channel_id=${channelId}`;
+            document.getElementById('tab-history').href = `/channels/${channelId}/history`;
+            document.getElementById('tab-ranking').href = `/channels/${channelId}/ranking`;
+            document.getElementById('tab-insights').href = `/channels/${channelId}/insights`;
+            document.getElementById('tab-settings').href = `/youtube-channels?channel_id=${channelId}`;
+        }
+
+        function renderNiches(niches) {
+            const container = document.getElementById('niche-grid');
+            if (!Array.isArray(niches) || !niches.length) {
+                container.innerHTML = '<div class="empty-state" style="grid-column:1/-1;">Todavía no hay suficientes datos para destacar un nicho.</div>';
+                return;
+            }
+            container.innerHTML = niches.slice(0, 8).map((item, index) => `
+                <article class="niche-card">
+                    <div class="score-badge">#${index + 1} · ${formatNumber(item.avg_engagement_score || item.engagement_score || item.score || 0)} pts</div>
+                    <strong>${escapeHtml(item.niche || 'general')}</strong>
+                    <small>${item.jobs !== undefined ? `${formatNumber(item.jobs || 0)} trabajos · ${formatNumber(item.published_jobs || 0)} publicados · ${formatNumber(item.publish_rate || 0)}% publicados` : 'Puntuación estratégica generada por la IA.'}</small>
+                    <small>${item.avg_views !== undefined ? `${formatNumber(item.avg_views || 0)} vistas medias · ${formatNumber(item.views || 0)} vistas totales` : (Array.isArray(item.evidence) ? escapeHtml(item.evidence.slice(0, 2).join(' · ')) : '')}</small>
+                    <small>${escapeHtml(item.top_titles && item.top_titles.length ? item.top_titles.slice(0, 3).join(' · ') : '')}</small>
+                    <small>${escapeHtml(item.reason || item.why || 'La IA lo usa como referencia principal de crecimiento.')}</small>
+                </article>
+            `).join('');
+        }
+
+        function renderIdeas(ideas) {
+            const container = document.getElementById('ideas-grid');
+            if (!Array.isArray(ideas) || !ideas.length) {
+                container.innerHTML = '<div class="empty-state" style="grid-column:1/-1;">La IA no ha generado ideas todavía.</div>';
+                return;
+            }
+            container.innerHTML = ideas.slice(0, 8).map((item) => `
+                <article class="idea-card">
+                    <strong>${escapeHtml(item.title || 'Idea sin título')}</strong>
+                    <small><span class="score-badge">${escapeHtml(item.priority || 'media')}</span></small>
+                    <small>${escapeHtml(item.angle || item.why || 'Sin descripción.')}</small>
+                </article>
+            `).join('');
+        }
+
+        function renderTopJobs(jobs) {
+            const tbody = document.getElementById('top-jobs-body');
+            if (!Array.isArray(jobs) || !jobs.length) {
+                tbody.innerHTML = '<tr><td colspan="8"><div class="empty-state">No hay trabajos suficientes para analizar.</div></td></tr>';
+                return;
+            }
+            tbody.innerHTML = jobs.slice(0, 12).map((job) => `
+                <tr>
+                    <td>
+                        <div style="font-weight:800; color:#fff;">${escapeHtml(job.title || job.job_id || 'Sin título')}</div>
+                        <div class="muted" style="font-size:0.82rem;">${escapeHtml(job.job_id || '')}</div>
+                    </td>
+                    <td>${escapeHtml(job.niche || 'general')}</td>
+                    <td><span class="metric-pill ${statusClass(job.status)}">${escapeHtml(statusLabel(job.status))}</span></td>
+                    <td><span class="metric-pill views">👁 ${formatNumber(job.views || 0)}</span></td>
+                    <td><span class="metric-pill likes">❤ ${formatNumber(job.likes || 0)}</span></td>
+                    <td><span class="metric-pill comments">💬 ${formatNumber(job.comments || 0)}</span></td>
+                    <td>${formatNumber(job.engagement_score || 0)} · ${(Number(job.engagement_rate) || 0).toFixed(2)}%</td>
+                    <td>${escapeHtml(formatDate(job.youtube_published_at || job.created_at || ''))}</td>
+                </tr>
+            `).join('');
+        }
+
+        function renderAnalysis(data) {
+            const channel = data.channel || {};
+            const dataset = data.dataset || {};
+            const analysis = data.analysis || {};
+
+            document.title = `${channel.internal_name || channel.youtube_channel_title || 'Canal'} · Análisis IA - Shorts Engine`;
+            document.getElementById('page-title').textContent = `📊 Análisis IA de ${channel.internal_name || channel.youtube_channel_title || `Canal ${getChannelId() || ''}`}`.trim();
+            document.getElementById('page-subtitle').textContent = 'La IA revisa los trabajos, detecta qué contenido responde mejor y propone nuevos temas con criterio editorial.';
+
+            document.getElementById('metric-total-jobs').textContent = formatNumber(dataset.jobs_count || 0);
+            document.getElementById('metric-published-jobs').textContent = formatNumber(dataset.published_jobs_count || 0);
+            document.getElementById('metric-top-niche').textContent = dataset.best_niche ? (dataset.best_niche.niche || 'general') : '—';
+            document.getElementById('metric-top-job').textContent = dataset.best_job ? (dataset.best_job.title || 'Sin título') : '—';
+
+            document.getElementById('analysis-summary').textContent = analysis.summary || 'La IA todavía no ha devuelto un resumen estratégico.';
+
+            const pills = [];
+            if (dataset.best_niche) pills.push(`Nicho líder: ${dataset.best_niche.niche}`);
+            if (dataset.best_job) pills.push(`Mejor trabajo: ${dataset.best_job.title}`);
+            if (Array.isArray(analysis.best_topics)) {
+                analysis.best_topics.slice(0, 3).forEach((item) => {
+                    pills.push(`Tema: ${item.topic || item.title || item.why || 'Sin título'}`);
+                });
+            }
+            if (Array.isArray(analysis.audience_preferences)) {
+                analysis.audience_preferences.slice(0, 3).forEach((item) => pills.push(item));
+            }
+            document.getElementById('analysis-pills').innerHTML = pills.map((item) => `<span class="analysis-pill">${escapeHtml(item)}</span>`).join('');
+
+            const actions = Array.isArray(analysis.actions) ? analysis.actions : [];
+            document.getElementById('analysis-actions').innerHTML = actions.length
+                ? actions.map((action) => `<div>• ${escapeHtml(action)}</div>`).join('')
+                : '<div>• La IA no ha devuelto acciones concretas todavía.</div>';
+
+            const promptText = data.analysis_prompt || data.prompt_template || '';
+            const recommendedPrompt = analysis.recommended_prompt || '';
+            document.getElementById('analysis-prompt').value = promptText;
+            document.getElementById('recommended-prompt').value = recommendedPrompt || promptText;
+
+            renderNiches((Array.isArray(analysis.best_niches) && analysis.best_niches.length) ? analysis.best_niches : (dataset.niches || []));
+            renderIdeas(analysis.next_video_ideas || []);
+            renderTopJobs(dataset.top_jobs || []);
+
+            const status = document.getElementById('analysis-status');
+            status.textContent = data.ai_error ? 'Fallback local' : 'IA lista';
+            status.className = `score-badge ${data.ai_error ? '' : ''}`.trim();
+
+            setChannelLinks(getChannelId(), channel);
+        }
+
+        async function loadInsights(refresh = false) {
+            const channelId = getChannelId();
+            if (!channelId) {
+                document.getElementById('analysis-summary').textContent = 'Falta el identificador del canal.';
+                return;
+            }
+
+            const btn = document.getElementById('refresh-btn');
+            const original = btn ? btn.textContent : '';
+            if (btn) {
+                btn.disabled = true;
+                btn.textContent = refresh ? 'Sincronizando...' : 'Analizando...';
+            }
+
+            try {
+                const response = await fetch(`/api/youtube/channels/${channelId}/insights${refresh ? '?refresh=1' : ''}`);
+                if (!response.ok) {
+                    const payload = await response.json().catch(() => ({}));
+                    throw new Error(payload.detail || 'No se pudo cargar el análisis.');
+                }
+                const data = await response.json();
+                state.data = data;
+                renderAnalysis(data);
+            } catch (error) {
+                document.getElementById('analysis-summary').textContent = error.message || 'Error al cargar el análisis.';
+                document.getElementById('analysis-status').textContent = 'Sin datos';
+                document.getElementById('niche-grid').innerHTML = '<div class="empty-state" style="grid-column:1/-1;">No se pudieron cargar los nichos.</div>';
+                document.getElementById('ideas-grid').innerHTML = '<div class="empty-state" style="grid-column:1/-1;">No se pudieron cargar las ideas.</div>';
+                document.getElementById('top-jobs-body').innerHTML = '<tr><td colspan="8"><div class="empty-state">No se pudieron cargar los trabajos.</div></td></tr>';
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.textContent = original || '↻ Sincronizar y analizar';
+                }
+            }
+        }
+
+        function syncInsights() {
+            loadInsights(true);
+        }
+
+        async function copyPrompt(elementId) {
+            const input = document.getElementById(elementId);
+            if (!input) return;
+            try {
+                await navigator.clipboard.writeText(input.value || '');
+            } catch (_) {
+                input.select();
+                document.execCommand('copy');
+            }
+        }
+
+        window.syncInsights = syncInsights;
+        window.copyPrompt = copyPrompt;
+        window.addEventListener('DOMContentLoaded', () => {
+            setChannelLinks(getChannelId(), {});
+            loadInsights(false);
+        });
+    </script>
+    <script src="/assets/channel-tabs.js"></script>
+</body>
+</html>

@@ -426,3 +426,93 @@ class AIManager:
                 continue
 
         raise Exception(f"No se pudo generar el resumen del tema. Detalles: {last_error}")
+
+    def analyze_channel_performance(self, channel_payload, provider=None):
+        """
+        Analiza el rendimiento global del canal y recomienda nichos, temas y patrones que conviene repetir.
+        Devuelve un JSON estructurado para una pantalla de insights.
+        """
+        configured_providers = []
+        if provider and self._get_api_key(provider):
+            configured_providers.append(provider)
+        else:
+            for p in ["GROQ", "DEEPSEEK", "OPENROUTER", "OPENAI"]:
+                if self._get_api_key(p):
+                    configured_providers.append(p)
+
+        if not configured_providers:
+            raise Exception("No se ha configurado ninguna API de IA.")
+
+        sys_msg = (
+            "Eres un estratega senior de YouTube, analista de audiencias y editor de crecimiento para canales en español. "
+            "Estudia los trabajos, los nichos, los títulos, el estado de publicación y las métricas reales de cada vídeo. "
+            "Tu objetivo es descubrir qué temas, formatos y enfoques funcionan mejor para ese canal. "
+            "Prioriza siempre las pruebas con datos reales de rendimiento (vistas, likes, comentarios y engagement) por encima de la intuición. "
+            "Los borradores o trabajos no publicados deben considerarse señales débiles y pesar menos que los vídeos publicados. "
+            "Detecta patrones repetidos en títulos, ángulos, longitudes, nichos y gancho narrativo. "
+            "Propón oportunidades concretas para nuevos vídeos que aprovechen lo que ya ha funcionado. "
+            "Responde solo con JSON válido, sin markdown, sin explicaciones extra y sin texto fuera del JSON. "
+            "La estructura exacta debe ser: "
+            "{\"summary\":\"...\","
+            "\"best_niches\":[{\"niche\":\"...\",\"score\":0,\"why\":\"...\",\"evidence\":[\"...\"]}],"
+            "\"best_topics\":[{\"topic\":\"...\",\"why\":\"...\",\"evidence\":[\"...\"]}],"
+            "\"audience_preferences\":[\"...\"],"
+            "\"underperforming_patterns\":[\"...\"],"
+            "\"content_gaps\":[\"...\"],"
+            "\"recommended_formats\":[\"...\"],"
+            "\"next_video_ideas\":[{\"title\":\"...\",\"angle\":\"...\",\"why\":\"...\",\"priority\":\"alta|media|baja\"}],"
+            "\"what_to_repeat\":[\"...\"],"
+            "\"what_to_avoid\":[\"...\"],"
+            "\"recommended_prompt\":\"...\","
+            "\"actions\":[\"...\"]}"
+        )
+
+        user_content = (
+            "Analiza el canal y devuelve recomendaciones accionables.\n"
+            "Usa solo los datos proporcionados. Si faltan métricas en algunos vídeos, indícalo en la confianza de tu análisis.\n\n"
+            "DATOS DEL CANAL (JSON):\n"
+            f"{json.dumps(channel_payload, ensure_ascii=False, indent=2)}"
+        )
+
+        last_error = None
+        for current_provider in configured_providers:
+            api_key = self._get_api_key(current_provider)
+            logger.info(f"Intentando analizar rendimiento del canal con {current_provider}...")
+            try:
+                p_lower = current_provider.lower()
+                if p_lower == "groq":
+                    res_text = self._call_groq(user_content, api_key, system_prompt=sys_msg)
+                elif p_lower == "openai":
+                    res_text = self._call_openai(user_content, api_key, system_prompt=sys_msg)
+                elif p_lower in ["deepseek", "openrouter"]:
+                    res_text = self._call_openai_compatible(p_lower, user_content, api_key, system_prompt=sys_msg)
+                else:
+                    continue
+
+                clean_text = res_text.replace("```json", "").replace("```", "").strip()
+                try:
+                    data = json.loads(clean_text)
+                except Exception:
+                    data = {
+                        "summary": clean_text,
+                        "best_niches": [],
+                        "best_topics": [],
+                        "audience_preferences": [],
+                        "underperforming_patterns": [],
+                        "content_gaps": [],
+                        "recommended_formats": [],
+                        "next_video_ideas": [],
+                        "what_to_repeat": [],
+                        "what_to_avoid": [],
+                        "recommended_prompt": "",
+                        "actions": [],
+                    }
+
+                if isinstance(data, dict):
+                    return data
+            except Exception as e:
+                logger.error(f"Fallo en {current_provider} al analizar rendimiento del canal: {e}")
+                last_error = e
+                continue
+
+        raise Exception(f"No se pudo analizar el rendimiento del canal con la IA. Detalles: {last_error}")
