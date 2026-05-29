@@ -1693,7 +1693,7 @@ async def api_process_candidate(cand_id: int, request: Request, background_tasks
 @app.get("/api/jobs")
 async def api_get_jobs(page: int = 1, limit: int = 25, search: str = None, channel_id: int = None, user: str = Depends(get_current_user)):
     offset = (page - 1) * limit
-    jobs = db.get_recent_jobs(limit=limit, offset=offset, search=search, channel_id=channel_id, order="ASC")
+    jobs = db.get_recent_jobs(limit=limit, offset=offset, search=search, channel_id=channel_id, order="DESC")
     total = db.count_jobs(search=search, channel_id=channel_id)
 
     jobs_by_channel: dict[int, list[str]] = {}
