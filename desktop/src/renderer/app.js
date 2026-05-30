@@ -551,6 +551,7 @@ function addScene() {
 function deleteScene(index) {
   if (!state.project?.scenes) return;
   state.project.scenes.splice(index, 1);
+  setActiveSceneIndex(Math.min(state.activeSceneIndex, (state.project.scenes.length || 1) - 1));
   renderScenes();
 }
 
