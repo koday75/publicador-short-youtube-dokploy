@@ -48,10 +48,18 @@ const els = {
   musicInput: document.getElementById("musicInput"),
   ttsEngineInput: document.getElementById("ttsEngineInput"),
   voiceInput: document.getElementById("voiceInput"),
+  studioProjectTitle: document.getElementById("studioProjectTitle"),
+  studioFormatLabel: document.getElementById("studioFormatLabel"),
+  scenePreviewTitle: document.getElementById("scenePreviewTitle"),
+  scenePreviewMeta: document.getElementById("scenePreviewMeta"),
+  scenePreviewFrame: document.getElementById("scenePreviewFrame"),
+  selectedSceneLabel: document.getElementById("selectedSceneLabel"),
+  inlineAssetsCount: document.getElementById("inlineAssetsCount"),
   addSceneBtn: document.getElementById("addSceneBtn"),
   scenesList: document.getElementById("scenesList"),
   assetsCount: document.getElementById("assetsCount"),
   assetsList: document.getElementById("assetsList"),
+  miniAssetsList: document.getElementById("miniAssetsList"),
   syncSummary: document.getElementById("syncSummary"),
   selectRenderBtn: document.getElementById("selectRenderBtn"),
   uploadRenderBtn: document.getElementById("uploadRenderBtn"),
@@ -168,6 +176,15 @@ function viewLabel(view) {
     connection: "Conexion al servidor"
   };
   return labels[view] || "Canales";
+}
+
+function formatVideoLabel(format) {
+  const labels = {
+    vertical: "Short 9:16",
+    horizontal: "YouTube 16:9",
+    square: "Cuadrado 1:1"
+  };
+  return labels[format] || "Short 9:16";
 }
 
 function selectedChannel() {
@@ -351,12 +368,15 @@ function renderProject() {
   els.musicInput.value = project.audio?.music_filename || project.music_filename || "";
   els.ttsEngineInput.value = project.audio?.tts_engine || project.tts_engine || "";
   els.voiceInput.value = project.audio?.voice_id || project.voice_id || "";
+  els.studioProjectTitle.textContent = project.title || project.job_id || project.id || "Trabajo";
+  els.studioFormatLabel.textContent = formatVideoLabel(project.video_format || "vertical");
   els.syncSummary.innerHTML = `
     <strong>${escapeHtml(project.title || project.job_id || project.id)}</strong>
     <span>Estado: ${statusLabel(project.status)}</span>
     <span>Trabajo: ${escapeHtml(project.job_id || project.id)}</span>
   `;
   renderScenes();
+  renderScenePreview();
   renderSidebarStats();
 }
 
@@ -382,10 +402,57 @@ function subtitleOptions(selectedValue) {
     .join("");
 }
 
+function findAssetByFilename(filename) {
+  return state.assets.find((asset) => String(asset.filename || "") === String(filename || ""));
+}
+
+function mediaPreviewMarkup(filename, compact = false) {
+  const asset = findAssetByFilename(filename);
+  if (!filename) {
+    return `<div class="${compact ? "mini-preview-empty" : "preview-empty"}">Sin archivo visual</div>`;
+  }
+
+  const url = absoluteServerUrl(asset?.url || "");
+  const fileType = String(asset?.file_type || "").toLowerCase();
+  const label = escapeHtml(asset?.original_name || filename);
+
+  if (url && fileType === "image") {
+    return `<img src="${escapeHtml(url)}" alt="${label}" loading="lazy" />`;
+  }
+
+  if (url && fileType === "video") {
+    return `<video src="${escapeHtml(url)}" muted playsinline preload="metadata"></video>`;
+  }
+
+  return `<div class="${compact ? "mini-preview-empty" : "preview-empty"}">${escapeHtml(filename)}</div>`;
+}
+
+function renderScenePreview() {
+  if (!els.scenePreviewFrame) return;
+  const scenes = Array.isArray(state.project?.scenes) ? state.project.scenes : [];
+  const scene = scenes[state.activeSceneIndex];
+
+  if (!scene) {
+    els.scenePreviewTitle.textContent = "Sin escena";
+    els.scenePreviewMeta.textContent = "Sin archivo";
+    els.selectedSceneLabel.textContent = "Sin escena";
+    els.scenePreviewFrame.innerHTML = "<span>Abre un trabajo o crea una escena para verla aqui.</span>";
+    return;
+  }
+
+  const filename = scene.media_filename || "";
+  const asset = findAssetByFilename(filename);
+  els.scenePreviewTitle.textContent = `Escena ${state.activeSceneIndex + 1}`;
+  els.selectedSceneLabel.textContent = `Escena ${state.activeSceneIndex + 1}`;
+  els.scenePreviewMeta.textContent = asset?.file_type ? String(asset.file_type).toUpperCase() : (filename ? "Archivo manual" : "Sin archivo");
+  els.scenePreviewFrame.innerHTML = mediaPreviewMarkup(filename, false);
+}
+
 function renderScenes() {
   const scenes = Array.isArray(state.project?.scenes) ? state.project.scenes : [];
   if (!scenes.length) {
     els.scenesList.innerHTML = '<div class="empty">Este trabajo no tiene escenas todavia.</div>';
+    renderScenePreview();
     return;
   }
 
@@ -393,6 +460,7 @@ function renderScenes() {
     .map((scene, index) => `
       <article class="scene-card ${index === state.activeSceneIndex ? "active" : ""}" data-scene-index="${index}">
         <div class="scene-index">${index + 1}</div>
+        <div class="scene-thumb">${mediaPreviewMarkup(scene.media_filename || "", true)}</div>
         <div class="scene-fields">
           <label>
             Texto de la escena
@@ -431,21 +499,27 @@ function renderScenes() {
       </article>
     `)
     .join("");
+  renderScenePreview();
 }
 
 function renderAssets() {
   const assets = state.assets || [];
   els.assetsCount.textContent = `${assets.length} archivo${assets.length === 1 ? "" : "s"}`;
+  if (els.inlineAssetsCount) {
+    els.inlineAssetsCount.textContent = `${assets.length} archivo${assets.length === 1 ? "" : "s"}`;
+  }
 
   if (!state.selectedChannelId) {
     els.assetsList.className = "assets-list empty";
     els.assetsList.textContent = "Selecciona un canal para ver sus archivos.";
+    renderMiniAssets();
     return;
   }
 
   if (!assets.length) {
     els.assetsList.className = "assets-list empty";
     els.assetsList.textContent = "Aun no hay archivos en este canal.";
+    renderMiniAssets();
     return;
   }
 
@@ -458,14 +532,14 @@ function renderAssets() {
         ? `<img src="${escapeHtml(url)}" alt="${escapeHtml(asset.original_name || asset.filename || "asset")}" loading="lazy" />`
         : fileType === "video"
           ? `<video src="${escapeHtml(url)}" muted playsinline preload="metadata"></video>`
-          : `<div class="asset-icon">${fileType === "audio" ? "♫" : "◌"}</div>`;
+          : `<div class="asset-icon">${fileType === "audio" ? "Audio" : "Archivo"}</div>`;
 
       return `
         <article class="asset-card" data-asset-filename="${escapeHtml(asset.filename || "")}">
           <div class="asset-preview">${preview}</div>
           <div class="asset-meta">
             <strong>${escapeHtml(asset.original_name || asset.filename || "Archivo")}</strong>
-            <span>${escapeHtml((asset.file_type || "other").toUpperCase())} · ${escapeHtml(asset.created_at || "")}</span>
+            <span>${escapeHtml((asset.file_type || "other").toUpperCase())} - ${escapeHtml(asset.created_at || "")}</span>
           </div>
           <div class="asset-actions">
             <button type="button" class="ghost" data-action="use-asset">Usar en escena</button>
@@ -474,6 +548,30 @@ function renderAssets() {
         </article>
       `;
     })
+    .join("");
+}
+
+function renderMiniAssets() {
+  if (!els.miniAssetsList) return;
+  const assets = (state.assets || []).slice(0, 8);
+  if (!state.selectedChannelId) {
+    els.miniAssetsList.className = "mini-assets-list empty";
+    els.miniAssetsList.textContent = "Selecciona un canal.";
+    return;
+  }
+  if (!assets.length) {
+    els.miniAssetsList.className = "mini-assets-list empty";
+    els.miniAssetsList.textContent = "Sin archivos cargados.";
+    return;
+  }
+  els.miniAssetsList.className = "mini-assets-list";
+  els.miniAssetsList.innerHTML = assets
+    .map((asset) => `
+      <button type="button" class="mini-asset" data-asset-filename="${escapeHtml(asset.filename || "")}">
+        <span class="mini-asset-preview">${mediaPreviewMarkup(asset.filename || "", true)}</span>
+        <span>${escapeHtml(asset.original_name || asset.filename || "Archivo")}</span>
+      </button>
+    `)
     .join("");
 }
 
@@ -539,6 +637,9 @@ function applyAssetToActiveScene(filename) {
   }
   if (assetSelect) {
     assetSelect.value = filename;
+  }
+  if (state.project?.scenes?.[state.activeSceneIndex]) {
+    state.project.scenes[state.activeSceneIndex].media_filename = filename;
   }
   return true;
 }
@@ -664,6 +765,7 @@ async function loadAssets(channelId = state.selectedChannelId) {
   }
 
   renderAssets();
+  renderMiniAssets();
   renderScenes();
 }
 
@@ -811,6 +913,18 @@ function bindEvents() {
 
   els.addSceneBtn.addEventListener("click", addScene);
 
+  els.projectTitleInput.addEventListener("input", () => {
+    if (els.studioProjectTitle) {
+      els.studioProjectTitle.textContent = els.projectTitleInput.value.trim() || "Trabajo sin titulo";
+    }
+  });
+
+  els.videoFormatInput.addEventListener("change", () => {
+    if (els.studioFormatLabel) {
+      els.studioFormatLabel.textContent = formatVideoLabel(els.videoFormatInput.value);
+    }
+  });
+
   els.scenesList.addEventListener("click", (event) => {
     const deleteButton = event.target.closest('[data-action="delete-scene"]');
     if (deleteButton) {
@@ -823,7 +937,12 @@ function bindEvents() {
     const sceneCard = event.target.closest("[data-scene-index]");
     if (sceneCard) {
       setActiveSceneIndex(sceneCard.dataset.sceneIndex);
+      if (event.target.closest("input, textarea, select, button")) {
+        renderScenePreview();
+        return;
+      }
       renderScenes();
+      renderScenePreview();
     }
   });
 
@@ -831,7 +950,7 @@ function bindEvents() {
     const card = event.target.closest("[data-scene-index]");
     if (card) {
       setActiveSceneIndex(card.dataset.sceneIndex);
-      renderScenes();
+      renderScenePreview();
     }
   });
 
@@ -845,6 +964,11 @@ function bindEvents() {
       }
     }
     setActiveSceneIndex(sceneCard.dataset.sceneIndex);
+    if (state.project?.scenes?.[state.activeSceneIndex]) {
+      const filenameInput = sceneCard.querySelector('[data-field="media_filename"]');
+      state.project.scenes[state.activeSceneIndex].media_filename = filenameInput?.value || "";
+    }
+    renderScenePreview();
   });
 
   els.assetsList.addEventListener("click", async (event) => {
@@ -865,9 +989,25 @@ function bindEvents() {
     if (useButton || card) {
       if (applyAssetToActiveScene(filename)) {
         showToast(`Archivo usado en la escena ${state.activeSceneIndex + 1}.`);
+        renderScenePreview();
       }
     }
   });
+
+  if (els.miniAssetsList) {
+    els.miniAssetsList.addEventListener("click", (event) => {
+      const card = event.target.closest("[data-asset-filename]");
+      if (!card) return;
+      if (applyAssetToActiveScene(card.dataset.assetFilename)) {
+        showToast(`Archivo usado en la escena ${state.activeSceneIndex + 1}.`);
+        renderScenePreview();
+      }
+    });
+  }
+
+  for (const shortcut of Array.from(document.querySelectorAll("[data-view-shortcut]"))) {
+    shortcut.addEventListener("click", () => setActiveView(shortcut.dataset.viewShortcut));
+  }
 
   els.selectRenderBtn.addEventListener("click", async () => {
     try {

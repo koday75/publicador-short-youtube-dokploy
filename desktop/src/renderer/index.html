@@ -115,7 +115,7 @@
         </section>
 
         <section class="view-section" data-view="jobs">
-          <div class="section-grid jobs-grid">
+          <div class="editor-workbench">
             <section class="panel jobs-panel">
               <div class="section-heading">
                 <div>
@@ -136,6 +136,14 @@
               </div>
 
               <form id="projectForm" class="project-form hidden">
+                <div class="editor-topbar">
+                  <div>
+                    <span class="eyebrow">Editor profesional</span>
+                    <h2 id="studioProjectTitle">Sin trabajo abierto</h2>
+                  </div>
+                  <div class="format-pill" id="studioFormatLabel">Short 9:16</div>
+                </div>
+
                 <div class="form-grid project-meta-grid">
                   <label>
                     Titulo
@@ -167,10 +175,38 @@
                   </label>
                 </div>
 
+                <div class="preview-layout">
+                  <section class="preview-panel">
+                    <div class="preview-toolbar">
+                      <div>
+                        <span class="eyebrow">Preview</span>
+                        <h3 id="scenePreviewTitle">Escena 1</h3>
+                      </div>
+                      <span id="scenePreviewMeta" class="badge muted">Sin archivo</span>
+                    </div>
+                    <div id="scenePreviewFrame" class="scene-preview-frame">
+                      <span>Selecciona una escena para ver su imagen o video.</span>
+                    </div>
+                  </section>
+
+                  <aside class="inspector-panel">
+                    <div class="inspector-card">
+                      <span class="eyebrow">Escena activa</span>
+                      <strong id="selectedSceneLabel">Escena 1</strong>
+                      <p class="hint">Edita texto, subtitulos y recurso visual desde la timeline inferior.</p>
+                    </div>
+                    <div class="inspector-card">
+                      <span class="eyebrow">Biblioteca</span>
+                      <strong id="inlineAssetsCount">0 archivos</strong>
+                      <p class="hint">Usa la biblioteca del canal para arrastrar el estilo visual del video.</p>
+                    </div>
+                  </aside>
+                </div>
+
                 <div class="editor-stage-header">
                   <div>
-                    <h2>Escenas</h2>
-                    <p class="hint">Texto, archivo visual y opciones basicas por escena.</p>
+                    <h2>Timeline de escenas</h2>
+                    <p class="hint">Cada bloque representa una escena del video. Selecciona, ajusta y guarda.</p>
                   </div>
                   <button id="addSceneBtn" type="button" class="primary">Anadir escena</button>
                 </div>
@@ -179,11 +215,11 @@
               </form>
             </section>
 
-            <section class="panel sync-panel">
+            <section class="panel studio-side-panel">
               <div class="section-heading">
                 <div>
-                  <h2>Control del proyecto</h2>
-                  <p class="hint">Sincronizacion, subida del render y siguiente salto del editor.</p>
+                  <h2>Sincronizacion</h2>
+                  <p class="hint">Estado del trabajo y subida del video renderizado.</p>
                 </div>
               </div>
 
@@ -200,14 +236,12 @@
                 <button id="uploadRenderBtn" class="primary" disabled>Subir render al servidor</button>
               </div>
 
-              <div class="roadmap">
-                <h3>Siguiente salto</h3>
-                <ul>
-                  <li>Timeline con pistas.</li>
-                  <li>Preview local.</li>
-                  <li>Render con FFmpeg.</li>
-                  <li>Sincronizacion de assets.</li>
-                </ul>
+              <div class="mini-library">
+                <div class="mini-library-head">
+                  <h3>Biblioteca rapida</h3>
+                  <button class="ghost" type="button" data-view-shortcut="library">Abrir biblioteca</button>
+                </div>
+                <div id="miniAssetsList" class="mini-assets-list empty">Sin archivos cargados.</div>
               </div>
             </section>
           </div>
