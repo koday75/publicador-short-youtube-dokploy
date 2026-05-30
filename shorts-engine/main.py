@@ -16,7 +16,7 @@ import pyotp
 from fastapi import FastAPI, HTTPException, BackgroundTasks, Request, Response, Depends, File, UploadFile, Query
 from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Any, List, Optional, Union
 from database import JobDatabase
 from ai_manager import AIManager
@@ -103,6 +103,13 @@ async def get_current_user(request: Request):
         return "api_user"
 
     raise HTTPException(status_code=401, detail="No autenticado")
+
+async def get_desktop_client(request: Request):
+    token = (request.headers.get("X-Desktop-Token") or request.headers.get("X-API-Key") or "").strip()
+    expected = (os.getenv("DESKTOP_API_TOKEN") or DASHBOARD_PASSWORD).strip()
+    if token and expected and token == expected:
+        return "desktop_client"
+    raise HTTPException(status_code=401, detail="Cliente de escritorio no autorizado")
 
 # Dashboard UI Routes
 async def render_dashboard_file(request: Request, filename: str):
@@ -264,6 +271,25 @@ class MoveJobChannelRequest(BaseModel):
 class DuplicateJobChannelRequest(BaseModel):
     target_channel_id: int
     title: Optional[str] = None
+
+class DesktopJobProjectRequest(BaseModel):
+    channel_id: int
+    title: Optional[str] = None
+    scenes: List[StoryboardScene] = Field(default_factory=list)
+    music_filename: Optional[str] = None
+    music_volume: Optional[float] = None
+    voice_volume: Optional[float] = None
+    intro_fade_duration: Optional[float] = 0.8
+    outro_fade_duration: Optional[float] = 0.8
+    music_fade_out_duration: Optional[float] = 2.0
+    tail_silence_seconds: Optional[float] = 2.0
+    voice_id: Optional[str] = None
+    niche: str = "default"
+    tts_engine: Optional[str] = None
+    tts_speed: Optional[float] = None
+    video_format: Optional[str] = "vertical"
+    status: Optional[str] = "desktop_draft"
+    metadata: Optional[dict[str, Any]] = None
 
 class ScriptTopicCreateRequest(BaseModel):
     channel_id: int
@@ -3424,6 +3450,278 @@ async def api_get_job_publish_context(job_id: str, channel_id: int = None, user:
             "default_language": channel.get("default_language") or "es",
             "notify_subscribers": bool(channel.get("notify_subscribers")),
         },
+    }
+
+def serialize_desktop_project(job: dict, channel: dict | None = None) -> dict[str, Any]:
+    try:
+        scenes = json.loads(job.get("scenes_json") or "[]")
+    except Exception:
+        scenes = []
+    return {
+        "version": "1.0",
+        "job_id": job.get("job_id"),
+        "channel_id": job.get("channel_id"),
+        "channel": serialize_youtube_channel(channel) if channel else None,
+        "title": job.get("title") or job.get("text") or job.get("job_id"),
+        "status": job.get("status"),
+        "niche": job.get("niche") or "default",
+        "video_format": job.get("video_format") or "vertical",
+        "scenes": scenes,
+        "audio": {
+            "music_filename": job.get("music_filename"),
+            "music_volume": job.get("music_volume"),
+            "voice_volume": job.get("voice_volume"),
+            "voice_id": job.get("voice_id"),
+            "tts_engine": job.get("tts_engine"),
+            "tts_speed": job.get("tts_speed"),
+        },
+        "render": {
+            "video_url": job.get("video_url"),
+            "intro_fade_duration": job.get("intro_fade_duration"),
+            "outro_fade_duration": job.get("outro_fade_duration"),
+            "music_fade_out_duration": job.get("music_fade_out_duration"),
+            "tail_silence_seconds": job.get("tail_silence_seconds"),
+        },
+        "youtube": {
+            "youtube_video_id": job.get("youtube_video_id"),
+            "youtube_video_url": job.get("youtube_video_url"),
+            "youtube_published_at": job.get("youtube_published_at"),
+        },
+        "created_at": job.get("created_at"),
+        "updated_at": job.get("updated_at"),
+    }
+
+def ensure_desktop_channel(channel_id: int) -> dict:
+    channel = db.get_youtube_channel(channel_id)
+    if not channel:
+        raise HTTPException(status_code=404, detail="Canal no encontrado")
+    return channel
+
+@app.get("/api/desktop/channels")
+async def api_desktop_channels(client: str = Depends(get_desktop_client)):
+    channels = db.list_youtube_channels()
+    return {
+        "channels": [serialize_youtube_channel(channel) for channel in channels],
+        "count": len(channels),
+    }
+
+@app.get("/api/desktop/jobs")
+async def api_desktop_jobs(
+    channel_id: Optional[int] = Query(None),
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    search: Optional[str] = Query(None),
+    client: str = Depends(get_desktop_client),
+):
+    if channel_id is not None:
+        ensure_desktop_channel(channel_id)
+    jobs = db.get_recent_jobs(limit=limit, offset=offset, search=search, channel_id=channel_id)
+    return {
+        "jobs": [serialize_desktop_project(job, None) for job in jobs],
+        "total": db.count_jobs(search=search, channel_id=channel_id),
+        "limit": limit,
+        "offset": offset,
+    }
+
+@app.post("/api/desktop/jobs")
+async def api_desktop_create_job(req: DesktopJobProjectRequest, client: str = Depends(get_desktop_client)):
+    channel = ensure_desktop_channel(req.channel_id)
+    job_id = f"desktop_{uuid.uuid4().hex[:8]}"
+    title = (req.title or "").strip() or f"Trabajo de escritorio {datetime.now().strftime('%Y%m%d-%H%M')}"
+    if db.check_title_exists(title, channel_id=req.channel_id):
+        title = db.build_unique_job_title(title)
+    normalized_format = normalize_storyboard_video_format(req.video_format)[0]
+    scenes_json = json.dumps([scene.dict() for scene in req.scenes], ensure_ascii=False)
+    status = (req.status or "desktop_draft").strip() or "desktop_draft"
+    db.save_or_update_job(
+        job_id,
+        f"Proyecto creado desde editor de escritorio: {title}",
+        req.niche or "default",
+        req.voice_id,
+        status=status,
+        scenes_json=scenes_json,
+        music_filename=req.music_filename,
+        music_volume=req.music_volume,
+        voice_volume=req.voice_volume,
+        tts_engine=req.tts_engine,
+        tts_speed=req.tts_speed,
+        title=title,
+        channel_id=req.channel_id,
+        intro_fade_duration=req.intro_fade_duration,
+        outro_fade_duration=req.outro_fade_duration,
+        music_fade_out_duration=req.music_fade_out_duration,
+        tail_silence_seconds=req.tail_silence_seconds,
+        video_format=normalized_format,
+    )
+    log_job_event(
+        job_id,
+        "desktop_created",
+        "Trabajo creado desde el editor de escritorio.",
+        status="info",
+        channel_id=req.channel_id,
+        actor="desktop",
+        details={"title": title, "scenes": len(req.scenes), "video_format": normalized_format, "metadata": req.metadata or {}},
+    )
+    job = db.get_job(job_id)
+    return {"status": "success", "project": serialize_desktop_project(job, channel)}
+
+@app.put("/api/desktop/jobs/{job_id}")
+async def api_desktop_update_job(job_id: str, req: DesktopJobProjectRequest, client: str = Depends(get_desktop_client)):
+    existing = db.get_job(job_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Trabajo no encontrado")
+    channel = ensure_desktop_channel(req.channel_id)
+    if int(existing.get("channel_id") or req.channel_id) != int(req.channel_id):
+        raise HTTPException(status_code=400, detail="El trabajo pertenece a otro canal")
+
+    title = (req.title or existing.get("title") or "").strip() or job_id
+    if db.check_title_exists(title, exclude_job_id=job_id, channel_id=req.channel_id):
+        raise HTTPException(status_code=409, detail="Ya existe un trabajo con ese título en este canal")
+
+    normalized_format = normalize_storyboard_video_format(req.video_format)[0]
+    scenes_json = json.dumps([scene.dict() for scene in req.scenes], ensure_ascii=False)
+    status = (req.status or existing.get("status") or "desktop_draft").strip()
+    db.save_or_update_job(
+        job_id,
+        existing.get("text") or f"Proyecto actualizado desde editor de escritorio: {title}",
+        req.niche or existing.get("niche") or "default",
+        req.voice_id,
+        status=status,
+        scenes_json=scenes_json,
+        music_filename=req.music_filename,
+        music_volume=req.music_volume,
+        voice_volume=req.voice_volume,
+        tts_engine=req.tts_engine,
+        tts_speed=req.tts_speed,
+        title=title,
+        channel_id=req.channel_id,
+        intro_fade_duration=req.intro_fade_duration,
+        outro_fade_duration=req.outro_fade_duration,
+        music_fade_out_duration=req.music_fade_out_duration,
+        tail_silence_seconds=req.tail_silence_seconds,
+        video_format=normalized_format,
+    )
+    log_job_event(
+        job_id,
+        "desktop_updated",
+        "Trabajo actualizado desde el editor de escritorio.",
+        status="info",
+        channel_id=req.channel_id,
+        actor="desktop",
+        details={"title": title, "scenes": len(req.scenes), "video_format": normalized_format, "metadata": req.metadata or {}},
+    )
+    job = db.get_job(job_id)
+    return {"status": "success", "project": serialize_desktop_project(job, channel)}
+
+@app.get("/api/desktop/jobs/{job_id}/project")
+async def api_desktop_get_project(job_id: str, client: str = Depends(get_desktop_client)):
+    job = db.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Trabajo no encontrado")
+    channel = db.get_youtube_channel(job.get("channel_id")) if job.get("channel_id") else None
+    return {"status": "success", "project": serialize_desktop_project(job, channel)}
+
+@app.post("/api/desktop/jobs/{job_id}/assets")
+async def api_desktop_upload_asset(
+    job_id: str,
+    file: UploadFile = File(...),
+    client: str = Depends(get_desktop_client),
+):
+    job = db.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Trabajo no encontrado")
+
+    ext = os.path.splitext(file.filename or "")[1].lower()
+    if not ext:
+        raise HTTPException(status_code=400, detail="El archivo debe tener extensión")
+
+    file_id = str(uuid.uuid4())
+    filename = f"{file_id}{ext}"
+    file_path = os.path.join(UPLOAD_DIR, filename)
+    with open(file_path, "wb") as buffer:
+        buffer.write(await file.read())
+
+    file_type = "video" if ext in [".mp4", ".mov", ".avi", ".m4v"] else \
+                "image" if ext in [".jpg", ".jpeg", ".png", ".webp"] else \
+                "audio" if ext in [".mp3", ".wav", ".m4a", ".aac"] else "other"
+    media_id = db.add_media(filename, file.filename or filename, file_type, file_path, os.path.getsize(file_path), channel_id=job.get("channel_id"))
+    log_job_event(
+        job_id,
+        "desktop_asset_uploaded",
+        "Asset recibido desde el editor de escritorio.",
+        status="info",
+        channel_id=job.get("channel_id"),
+        actor="desktop",
+        details={"media_id": media_id, "filename": filename, "file_type": file_type},
+    )
+    return {
+        "status": "success",
+        "media_id": media_id,
+        "filename": filename,
+        "file_type": file_type,
+        "url": f"/static/uploads/{filename}",
+    }
+
+@app.post("/api/desktop/jobs/{job_id}/render")
+async def api_desktop_upload_render(
+    job_id: str,
+    file: UploadFile = File(...),
+    thumbnail: UploadFile | None = File(None),
+    duration_seconds: Optional[float] = Query(None),
+    width: Optional[int] = Query(None),
+    height: Optional[int] = Query(None),
+    client: str = Depends(get_desktop_client),
+):
+    job = db.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Trabajo no encontrado")
+
+    ext = os.path.splitext(file.filename or "")[1].lower() or ".mp4"
+    if ext not in {".mp4", ".mov", ".m4v"}:
+        raise HTTPException(status_code=400, detail="El render debe ser un vídeo MP4, MOV o M4V")
+
+    safe_job_id = re.sub(r"[^A-Za-z0-9_-]+", "_", job_id)
+    output_filename = f"{safe_job_id}_desktop_{uuid.uuid4().hex[:8]}{ext}"
+    output_path = os.path.join(BASE_DIR, "shorts", output_filename)
+    with open(output_path, "wb") as buffer:
+        buffer.write(await file.read())
+
+    video_url = f"/static/shorts/{output_filename}"
+    db.update_job_render(job_id, "rendered_local", video_url=video_url)
+    media_id = db.add_media(output_filename, file.filename or output_filename, "video", output_path, os.path.getsize(output_path), channel_id=job.get("channel_id"))
+
+    thumbnail_filename = None
+    if thumbnail and thumbnail.filename:
+        thumb_ext = os.path.splitext(thumbnail.filename)[1].lower() or ".png"
+        if thumb_ext in {".jpg", ".jpeg", ".png", ".webp"}:
+            thumbnail_filename = f"{safe_job_id}_thumb_{uuid.uuid4().hex[:8]}{thumb_ext}"
+            thumb_path = os.path.join(UPLOAD_DIR, thumbnail_filename)
+            with open(thumb_path, "wb") as buffer:
+                buffer.write(await thumbnail.read())
+            db.add_media(thumbnail_filename, thumbnail.filename, "image", thumb_path, os.path.getsize(thumb_path), channel_id=job.get("channel_id"))
+
+    log_job_event(
+        job_id,
+        "desktop_render_uploaded",
+        "Render recibido desde el editor de escritorio.",
+        status="success",
+        channel_id=job.get("channel_id"),
+        actor="desktop",
+        details={
+            "video_url": video_url,
+            "media_id": media_id,
+            "thumbnail_filename": thumbnail_filename,
+            "duration_seconds": duration_seconds,
+            "width": width,
+            "height": height,
+        },
+    )
+    return {
+        "status": "success",
+        "job_id": job_id,
+        "video_url": video_url,
+        "media_id": media_id,
+        "thumbnail_filename": thumbnail_filename,
     }
 
 @app.get("/api/jobs/{job_id}/youtube-comments")

@@ -969,6 +969,22 @@ class JobDatabase:
             )
             conn.commit()
 
+    def update_job_render(self, job_id, status, video_url=None, error_message=None):
+        finished_at = datetime.now().isoformat() if status in ["rendered", "completed", "failed", "rendered_local", "ready_to_publish"] else None
+        with self._get_connection() as conn:
+            conn.execute(
+                """
+                UPDATE jobs
+                SET status = ?,
+                    video_url = COALESCE(?, video_url),
+                    error_message = ?,
+                    finished_at = ?
+                WHERE job_id = ?
+                """,
+                (status, video_url, error_message, finished_at, job_id),
+            )
+            conn.commit()
+
     def mark_job_published(self, job_id: str, youtube_video_id: str, youtube_video_url: str):
         with self._get_connection() as conn:
             conn.execute(

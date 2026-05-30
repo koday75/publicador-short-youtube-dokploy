@@ -593,8 +593,12 @@
 
         function jobStatusLabel(status) {
             if (status === 'draft') return 'Borrador';
+            if (status === 'desktop_draft') return 'Borrador de escritorio';
+            if (status === 'editing_desktop') return 'Editando en escritorio';
             if (status === 'processing') return 'Procesando';
             if (status === 'rendered') return 'Renderizado';
+            if (status === 'rendered_local') return 'Renderizado local';
+            if (status === 'ready_to_publish') return 'Listo para publicar';
             if (status === 'completed') return 'Completado';
             if (status === 'failed') return 'Fallido';
             return status || 'Desconocido';
@@ -603,8 +607,12 @@
         function jobStatusClass(status) {
             if (status === 'completed') return 'connected';
             if (status === 'rendered') return 'warning';
+            if (status === 'rendered_local') return 'warning';
+            if (status === 'ready_to_publish') return 'warning';
             if (status === 'failed') return 'error';
             if (status === 'draft') return 'disconnected';
+            if (status === 'desktop_draft') return 'disconnected';
+            if (status === 'editing_desktop') return 'warning';
             return 'disconnected';
         }
 

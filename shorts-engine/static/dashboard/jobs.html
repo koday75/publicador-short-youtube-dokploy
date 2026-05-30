@@ -669,6 +669,10 @@
             const normalized = String(status || '').toLowerCase();
             if (normalized === 'completed') return 'Completado';
             if (normalized === 'rendered') return 'Renderizado';
+            if (normalized === 'rendered_local') return 'Renderizado local';
+            if (normalized === 'desktop_draft') return 'Borrador de escritorio';
+            if (normalized === 'editing_desktop') return 'Editando en escritorio';
+            if (normalized === 'ready_to_publish') return 'Listo para publicar';
             if (normalized === 'processing') return 'Procesando';
             if (normalized === 'failed') return 'Fallido';
             if (normalized === 'draft') return 'Borrador';
@@ -682,6 +686,10 @@
             const normalized = String(status || '').toLowerCase();
             if (normalized === 'completed') return 'completed';
             if (normalized === 'rendered') return 'rendered';
+            if (normalized === 'rendered_local') return 'rendered';
+            if (normalized === 'desktop_draft') return 'draft';
+            if (normalized === 'editing_desktop') return 'processing';
+            if (normalized === 'ready_to_publish') return 'rendered';
             if (normalized === 'processing') return 'processing';
             if (normalized === 'failed') return 'failed';
             if (normalized === 'draft') return 'draft';

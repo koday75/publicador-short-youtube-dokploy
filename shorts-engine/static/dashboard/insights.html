@@ -522,16 +522,24 @@
             const normalized = String(status || '').toLowerCase();
             if (normalized === 'completed') return 'connected';
             if (normalized === 'rendered') return 'warning';
+            if (normalized === 'rendered_local') return 'warning';
+            if (normalized === 'ready_to_publish') return 'warning';
             if (normalized === 'failed') return 'error';
             if (normalized === 'draft') return 'disconnected';
+            if (normalized === 'desktop_draft') return 'disconnected';
+            if (normalized === 'editing_desktop') return 'warning';
             return 'disconnected';
         }
 
         function statusLabel(status) {
             const normalized = String(status || '').toLowerCase();
             if (normalized === 'draft') return 'Borrador';
+            if (normalized === 'desktop_draft') return 'Borrador de escritorio';
+            if (normalized === 'editing_desktop') return 'Editando en escritorio';
             if (normalized === 'processing') return 'Procesando';
             if (normalized === 'rendered') return 'Renderizado';
+            if (normalized === 'rendered_local') return 'Renderizado local';
+            if (normalized === 'ready_to_publish') return 'Listo para publicar';
             if (normalized === 'completed') return 'Completado';
             if (normalized === 'failed') return 'Fallido';
             return status || 'Desconocido';
