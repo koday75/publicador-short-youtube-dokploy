@@ -7,48 +7,61 @@
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <div class="app-shell">
+    <div class="desktop-shell" id="desktopShell">
       <aside class="sidebar">
-        <div class="brand">
-          <div class="brand-mark">CC</div>
-          <div>
-            <h1>ChannelClip Studio</h1>
-            <p>Editor Windows conectado a la web</p>
+        <div class="sidebar-top">
+          <div class="brand">
+            <div class="brand-mark">CC</div>
+            <div class="brand-copy">
+              <h1>ChannelClip Studio</h1>
+              <p>Editor Windows conectado a la web</p>
+            </div>
           </div>
+          <button id="sidebarToggleBtn" class="icon-button" type="button" aria-label="Contraer o expandir el menú">
+            ☰
+          </button>
         </div>
 
-        <section class="panel compact">
-          <h2>Conexion</h2>
-          <label>
-            Servidor
-            <input id="serverUrlInput" type="url" placeholder="https://channelclip.estrellitastudio.es" />
-          </label>
-          <label>
-            Token de escritorio
-            <input id="tokenInput" type="password" placeholder="DESKTOP_API_TOKEN" />
-          </label>
-          <div class="row">
-            <button id="saveConnectionBtn" class="primary">Guardar conexion</button>
-            <button id="testConnectionBtn">Probar</button>
-          </div>
-          <p id="connectionStatus" class="hint">Configura la conexion para empezar.</p>
-        </section>
+        <nav class="sidebar-nav" aria-label="Navegación principal">
+          <button class="nav-link active" type="button" data-view="channels">
+            <span class="nav-icon">▦</span>
+            <span class="nav-text">Canales</span>
+          </button>
+          <button class="nav-link" type="button" data-view="jobs">
+            <span class="nav-icon">✎</span>
+            <span class="nav-text">Trabajos del canal</span>
+          </button>
+          <button class="nav-link" type="button" data-view="library">
+            <span class="nav-icon">🖼</span>
+            <span class="nav-text">Biblioteca del canal</span>
+          </button>
+          <button class="nav-link" type="button" data-view="connection">
+            <span class="nav-icon">⚙</span>
+            <span class="nav-text">Conexión al servidor</span>
+          </button>
+        </nav>
 
-        <section class="panel grow">
+        <section class="panel sidebar-status">
           <div class="section-heading">
-            <h2>Canales</h2>
-            <button id="reloadChannelsBtn" class="ghost">Recargar</button>
+            <div>
+              <h2>Estado rápido</h2>
+              <p class="hint">Conexión y contexto actual.</p>
+            </div>
           </div>
-          <div id="channelsList" class="list empty">Sin canales cargados.</div>
+          <p id="connectionStatus" class="hint">Configura la conexión para empezar.</p>
+          <div class="status-pills">
+            <span id="sidebarChannelCount" class="badge muted">0 canales</span>
+            <span id="sidebarJobCount" class="badge muted">0 trabajos</span>
+          </div>
         </section>
       </aside>
 
       <main class="workspace">
         <header class="workspace-header">
           <div>
-            <p class="eyebrow">Aplicacion de escritorio</p>
+            <p id="currentViewLabel" class="eyebrow">Canales</p>
             <h2 id="workspaceTitle">Selecciona un canal</h2>
-            <p id="workspaceSubtitle">Crea o abre trabajos y sincronizalos con la app web.</p>
+            <p id="workspaceSubtitle">Crea o abre trabajos y sincronízalos con la app web.</p>
           </div>
           <div class="header-actions">
             <button id="createJobBtn" class="primary" disabled>Nuevo trabajo</button>
@@ -56,99 +69,192 @@
           </div>
         </header>
 
-        <div class="content-grid">
-          <section class="panel jobs-panel">
-            <div class="section-heading">
-              <h2>Trabajos del canal</h2>
-              <button id="reloadJobsBtn" class="ghost" disabled>Actualizar</button>
-            </div>
-            <div id="jobsList" class="list empty">Selecciona un canal para ver sus trabajos.</div>
-          </section>
-
-          <section class="panel editor-panel">
-            <div id="emptyEditor" class="empty-state">
-              <h2>Editor preparado</h2>
-              <p>Abre un trabajo existente o crea uno nuevo. Aqui empezaremos a construir el editor profesional de Windows.</p>
-            </div>
-
-            <form id="projectForm" class="project-form hidden">
-              <div class="form-grid">
-                <label>
-                  Titulo
-                  <input id="projectTitleInput" type="text" placeholder="Titulo del video" />
-                </label>
-                <label>
-                  Formato
-                  <select id="videoFormatInput">
-                    <option value="vertical">Short 9:16</option>
-                    <option value="horizontal">Video YouTube 16:9</option>
-                    <option value="square">Cuadrado 1:1</option>
-                  </select>
-                </label>
-                <label>
-                  Nicho
-                  <input id="nicheInput" type="text" placeholder="Curiosidades, historia, tecnologia..." />
-                </label>
-                <label>
-                  Musica de fondo
-                  <input id="musicInput" type="text" placeholder="Archivo de musica o vacio" />
-                </label>
-                <label>
-                  Motor TTS
-                  <input id="ttsEngineInput" type="text" placeholder="edge_tts, gtts..." />
-                </label>
-                <label>
-                  Voz
-                  <input id="voiceInput" type="text" placeholder="es-ES-AlvaroNeural" />
-                </label>
-              </div>
-
-              <div class="section-heading scenes-heading">
+        <section class="view-section active" data-view="channels">
+          <div class="section-grid channels-grid">
+            <section class="panel">
+              <div class="section-heading">
                 <div>
-                  <h2>Escenas</h2>
-                  <p class="hint">Texto, archivo visual y opciones basicas por escena.</p>
+                  <h2>Canales del servidor</h2>
+                  <p class="hint">Selecciona un canal para cargar sus trabajos, escenas y biblioteca.</p>
                 </div>
-                <button id="addSceneBtn" type="button" class="primary">Anadir escena</button>
+                <span id="channelCount" class="badge muted">0 canales</span>
               </div>
-              <div id="scenesList" class="scenes-list"></div>
+              <div id="channelsList" class="list empty">Sin canales cargados.</div>
+            </section>
 
+            <section class="panel">
+              <div class="section-heading">
+                <div>
+                  <h2>Canal activo</h2>
+                  <p class="hint">Resumen rápido del canal seleccionado.</p>
+                </div>
+              </div>
+              <div id="activeChannelSummary" class="summary-stack empty-state">
+                <h2>Sin canal seleccionado</h2>
+                <p>Elige un canal en la lista para ver su resumen y abrir sus trabajos.</p>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view-section" data-view="jobs">
+          <div class="section-grid jobs-grid">
+            <section class="panel jobs-panel">
+              <div class="section-heading">
+                <div>
+                  <h2>Trabajos del canal</h2>
+                  <p class="hint">Ordena, abre y sincroniza los trabajos de este canal.</p>
+                </div>
+                <button id="reloadJobsBtn" class="ghost" disabled>Actualizar</button>
+              </div>
+              <div id="jobsList" class="list empty">Selecciona un canal para ver sus trabajos.</div>
+            </section>
+
+            <section class="panel editor-panel">
+              <div id="emptyEditor" class="empty-state">
+                <div>
+                  <h2>Editor preparado</h2>
+                  <p>Abre un trabajo existente o crea uno nuevo para empezar a construir el proyecto local.</p>
+                </div>
+              </div>
+
+              <form id="projectForm" class="project-form hidden">
+                <div class="form-grid">
+                  <label>
+                    Título
+                    <input id="projectTitleInput" type="text" placeholder="Título del video" />
+                  </label>
+                  <label>
+                    Formato
+                    <select id="videoFormatInput">
+                      <option value="vertical">Short 9:16</option>
+                      <option value="horizontal">Video YouTube 16:9</option>
+                      <option value="square">Cuadrado 1:1</option>
+                    </select>
+                  </label>
+                  <label>
+                    Nicho
+                    <input id="nicheInput" type="text" placeholder="Curiosidades, historia, tecnología..." />
+                  </label>
+                  <label>
+                    Música de fondo
+                    <input id="musicInput" type="text" placeholder="Archivo de música o vacío" />
+                  </label>
+                  <label>
+                    Motor TTS
+                    <input id="ttsEngineInput" type="text" placeholder="edge_tts, gtts..." />
+                  </label>
+                  <label>
+                    Voz
+                    <input id="voiceInput" type="text" placeholder="es-ES-AlvaroNeural" />
+                  </label>
+                </div>
+
+                <div class="section-heading scenes-heading">
+                  <div>
+                    <h2>Escenas</h2>
+                    <p class="hint">Texto, archivo visual y opciones básicas por escena.</p>
+                  </div>
+                  <button id="addSceneBtn" type="button" class="primary">Añadir escena</button>
+                </div>
+                <div id="scenesList" class="scenes-list"></div>
+              </form>
+            </section>
+
+            <section class="panel sync-panel">
+              <h2>Sincronización</h2>
+              <div id="syncSummary" class="sync-card">
+                <strong>Sin trabajo abierto</strong>
+                <span>La app guardará los cambios en el servidor cuando pulses guardar.</span>
+              </div>
+
+              <div class="upload-box">
+                <h3>Vídeo renderizado</h3>
+                <p>Cuando el editor local genere el MP4, súbelo al trabajo para publicarlo desde la web.</p>
+                <button id="selectRenderBtn" disabled>Elegir vídeo</button>
+                <p id="selectedRenderPath" class="hint">Ningún vídeo seleccionado.</p>
+                <button id="uploadRenderBtn" class="primary" disabled>Subir render al servidor</button>
+              </div>
+
+              <div class="roadmap">
+                <h3>Siguiente salto</h3>
+                <ul>
+                  <li>Timeline con pistas.</li>
+                  <li>Preview local.</li>
+                  <li>Render con FFmpeg.</li>
+                  <li>Sincronización de assets.</li>
+                </ul>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view-section" data-view="library">
+          <div class="section-grid library-grid">
+            <section class="panel library-panel">
               <div class="section-heading library-heading">
                 <div>
                   <h2>Biblioteca del canal</h2>
-                  <p class="hint">Imágenes, audios y videos cargados desde el servidor para este canal.</p>
+                  <p class="hint">Imágenes, audios y vídeos cargados desde el servidor para este canal.</p>
                 </div>
                 <span id="assetsCount" class="badge muted">0 archivos</span>
               </div>
               <div id="assetsList" class="assets-list"></div>
-            </form>
-          </section>
+            </section>
+          </div>
+        </section>
 
-          <section class="panel sync-panel">
-            <h2>Sincronizacion</h2>
-            <div id="syncSummary" class="sync-card">
-              <strong>Sin trabajo abierto</strong>
-              <span>La app guardara los cambios en el servidor cuando pulses guardar.</span>
-            </div>
+        <section class="view-section" data-view="connection">
+          <div class="section-grid connection-grid">
+            <section class="panel compact connection-panel">
+              <div class="section-heading">
+                <div>
+                  <h2>Conexión con el servidor</h2>
+                  <p class="hint">Guarda la URL y el token para conectar la aplicación de escritorio.</p>
+                </div>
+              </div>
+              <label>
+                Servidor
+                <input id="serverUrlInput" type="url" placeholder="https://channelclip.estrellitastudio.es" />
+              </label>
+              <label>
+                Token de escritorio
+                <input id="tokenInput" type="password" placeholder="DESKTOP_API_TOKEN" />
+              </label>
+              <div class="row">
+                <button id="saveConnectionBtn" class="primary" type="button">Guardar conexión</button>
+                <button id="testConnectionBtn" type="button">Probar</button>
+              </div>
+            </section>
 
-            <div class="upload-box">
-              <h3>Video renderizado</h3>
-              <p>Cuando el editor local genere el MP4, subelo al trabajo para publicarlo desde la web.</p>
-              <button id="selectRenderBtn" disabled>Elegir video</button>
-              <p id="selectedRenderPath" class="hint">Ningun video seleccionado.</p>
-              <button id="uploadRenderBtn" class="primary" disabled>Subir render al servidor</button>
-            </div>
-
-            <div class="roadmap">
-              <h3>Siguiente salto</h3>
-              <ul>
-                <li>Timeline con pistas.</li>
-                <li>Preview local.</li>
-                <li>Render con FFmpeg.</li>
-                <li>Sincronizacion de assets.</li>
-              </ul>
-            </div>
-          </section>
-        </div>
+            <section class="panel">
+              <div class="section-heading">
+                <div>
+                  <h2>Diagnóstico</h2>
+                  <p class="hint">Verifica si el servidor está leyendo las credenciales de escritorio.</p>
+                </div>
+              </div>
+              <div class="diagnostics-stack">
+                <div class="diagnostic-card">
+                  <strong>Conexión actual</strong>
+                  <span id="diagnosticConnection" class="hint">Sin comprobar todavía.</span>
+                </div>
+                <div class="diagnostic-card">
+                  <strong>Canales cargados</strong>
+                  <span id="diagnosticChannelCount" class="hint">0</span>
+                </div>
+                <div class="diagnostic-card">
+                  <strong>Trabajo activo</strong>
+                  <span id="diagnosticJobLabel" class="hint">Ninguno</span>
+                </div>
+                <div class="diagnostic-card">
+                  <strong>Modo de uso</strong>
+                  <span class="hint">La navegación lateral organiza la app por tareas para que el flujo sea más profesional.</span>
+                </div>
+              </div>
+            </section>
+          </div>
+        </section>
       </main>
     </div>
 
