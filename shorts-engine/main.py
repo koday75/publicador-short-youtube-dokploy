@@ -3520,6 +3520,37 @@ def ensure_desktop_channel(channel_id: int) -> dict:
         raise HTTPException(status_code=404, detail="Canal no encontrado")
     return channel
 
+
+def build_media_public_url(file_path: str | None) -> str | None:
+    if not file_path:
+        return None
+    normalized = str(file_path).replace("\\", "/").lstrip("./")
+    if normalized.startswith(f"{BASE_DIR}/"):
+        return f"/static/{normalized[len(BASE_DIR) + 1:]}"
+    if normalized.startswith("storage/"):
+        return f"/static/{normalized[len('storage/'):]}"
+    return f"/static/{normalized}"
+
+
+def serialize_desktop_media_item(media: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "id": media.get("id"),
+        "channel_id": media.get("channel_id"),
+        "filename": media.get("filename"),
+        "original_name": media.get("original_name"),
+        "file_type": media.get("file_type"),
+        "file_path": media.get("file_path"),
+        "url": build_media_public_url(media.get("file_path")),
+        "size_bytes": media.get("size_bytes"),
+        "created_at": media.get("created_at"),
+        "asset_id": media.get("asset_id"),
+        "prompt": media.get("prompt"),
+        "niche": media.get("niche"),
+        "model": media.get("model"),
+        "asset_tag": media.get("asset_tag"),
+        "is_ai": media.get("is_ai"),
+    }
+
 @app.get("/api/desktop/channels")
 async def api_desktop_channels(client: str = Depends(get_desktop_client)):
     channels = db.list_youtube_channels()
@@ -3643,6 +3674,18 @@ async def api_desktop_get_project(job_id: str, client: str = Depends(get_desktop
         raise HTTPException(status_code=404, detail="Trabajo no encontrado")
     channel = db.get_youtube_channel(job.get("channel_id")) if job.get("channel_id") else None
     return {"status": "success", "project": serialize_desktop_project(job, channel)}
+
+
+@app.get("/api/desktop/channels/{channel_id}/media")
+async def api_desktop_channel_media(channel_id: int, limit: int = Query(200, ge=1, le=500), client: str = Depends(get_desktop_client)):
+    ensure_desktop_channel(channel_id)
+    media_items = db.get_gallery(limit=limit, channel_id=channel_id)
+    return {
+        "status": "success",
+        "channel_id": channel_id,
+        "count": len(media_items),
+        "assets": [serialize_desktop_media_item(media) for media in media_items],
+    }
 
 @app.post("/api/desktop/jobs/{job_id}/assets")
 async def api_desktop_upload_asset(

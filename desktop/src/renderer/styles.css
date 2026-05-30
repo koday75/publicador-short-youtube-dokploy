@@ -316,6 +316,74 @@ label {
   gap: 1rem;
 }
 
+.library-heading {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--line);
+}
+
+.assets-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 0.8rem;
+}
+
+.asset-card {
+  display: grid;
+  gap: 0.6rem;
+  padding: 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(13, 18, 24, 0.74);
+}
+
+.asset-preview {
+  display: grid;
+  place-items: center;
+  min-height: 110px;
+  overflow: hidden;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(98, 168, 255, 0.18), rgba(70, 214, 181, 0.10));
+}
+
+.asset-preview img,
+.asset-preview video {
+  width: 100%;
+  height: 100%;
+  max-height: 160px;
+  object-fit: cover;
+  border-radius: 10px;
+}
+
+.asset-icon {
+  font-size: 2rem;
+  color: var(--accent);
+}
+
+.asset-meta {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.asset-meta strong {
+  font-size: 0.9rem;
+}
+
+.asset-meta span {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.asset-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.asset-actions button {
+  flex: 1;
+  padding: 0.52rem 0.7rem;
+}
+
 .scene-card {
   display: grid;
   grid-template-columns: 54px minmax(0, 1fr);

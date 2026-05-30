@@ -8,6 +8,8 @@ const state = {
   jobs: [],
   selectedJobId: null,
   project: null,
+  assets: [],
+  activeSceneIndex: 0,
   selectedRenderFile: null
 };
 
@@ -35,6 +37,8 @@ const els = {
   voiceInput: document.getElementById("voiceInput"),
   addSceneBtn: document.getElementById("addSceneBtn"),
   scenesList: document.getElementById("scenesList"),
+  assetsCount: document.getElementById("assetsCount"),
+  assetsList: document.getElementById("assetsList"),
   syncSummary: document.getElementById("syncSummary"),
   selectRenderBtn: document.getElementById("selectRenderBtn"),
   uploadRenderBtn: document.getElementById("uploadRenderBtn"),
@@ -216,6 +220,7 @@ function renderProject() {
     <span>Trabajo: ${escapeHtml(project.job_id || project.id)}</span>
   `;
   renderScenes();
+  renderAssets();
 }
 
 function renderScenes() {
@@ -226,7 +231,7 @@ function renderScenes() {
   }
 
   els.scenesList.innerHTML = scenes.map((scene, index) => `
-    <article class="scene-card" data-scene-index="${index}">
+    <article class="scene-card ${index === state.activeSceneIndex ? "active" : ""}" data-scene-index="${index}">
       <div class="scene-index">${index + 1}</div>
       <div class="scene-fields">
         <label>
@@ -235,7 +240,13 @@ function renderScenes() {
         </label>
         <div class="scene-options">
           <label>
-            Archivo visual
+            Asset del servidor
+            <select data-field="media_asset_choice">
+              ${assetOptions(scene.media_filename || "")}
+            </select>
+          </label>
+          <label>
+            Archivo visual manual
             <input data-field="media_filename" type="text" value="${escapeHtml(scene.media_filename || "")}" placeholder="imagen.png o video.mp4" />
           </label>
           <label>
@@ -259,6 +270,61 @@ function renderScenes() {
       </div>
     </article>
   `).join("");
+}
+
+function assetOptions(selectedFilename) {
+  const options = [
+    `<option value="">Elegir asset del servidor...</option>`,
+    ...state.assets.map((asset) => {
+      const label = `${asset.original_name || asset.filename} (${asset.file_type || "media"})`;
+      return `<option value="${escapeHtml(asset.filename || "")}" ${String(asset.filename || "") === String(selectedFilename || "") ? "selected" : ""}>${escapeHtml(label)}</option>`;
+    })
+  ];
+  return options.join("");
+}
+
+function renderAssets() {
+  if (!els.assetsList || !els.assetsCount) return;
+
+  const assets = state.assets || [];
+  els.assetsCount.textContent = `${assets.length} archivo${assets.length === 1 ? "" : "s"}`;
+
+  if (!state.selectedChannelId) {
+    els.assetsList.className = "assets-list empty";
+    els.assetsList.textContent = "Selecciona un canal para ver sus assets.";
+    return;
+  }
+
+  if (!assets.length) {
+    els.assetsList.className = "assets-list empty";
+    els.assetsList.textContent = "Aun no hay assets en este canal.";
+    return;
+  }
+
+  els.assetsList.className = "assets-list";
+  els.assetsList.innerHTML = assets.map((asset) => {
+    const url = asset.url || "";
+    const fileType = String(asset.file_type || "other").toLowerCase();
+    const preview = fileType === "image"
+      ? `<img src="${escapeHtml(url)}" alt="${escapeHtml(asset.original_name || asset.filename || "asset")}" loading="lazy" />`
+      : fileType === "video"
+        ? `<video src="${escapeHtml(url)}" muted playsinline preload="metadata"></video>`
+        : `<div class="asset-icon">${fileType === "audio" ? "♪" : "◫"}</div>`;
+
+    return `
+      <article class="asset-card" data-asset-filename="${escapeHtml(asset.filename || "")}">
+        <div class="asset-preview">${preview}</div>
+        <div class="asset-meta">
+          <strong>${escapeHtml(asset.original_name || asset.filename || "Asset")}</strong>
+          <span>${escapeHtml((asset.file_type || "other").toUpperCase())} · ${escapeHtml(asset.created_at || "")}</span>
+        </div>
+        <div class="asset-actions">
+          <button type="button" class="ghost" data-action="use-asset">Usar en escena</button>
+          <button type="button" class="ghost" data-action="copy-asset">Copiar nombre</button>
+        </div>
+      </article>
+    `;
+  }).join("");
 }
 
 function subtitleOptions(selectedValue) {
@@ -315,6 +381,25 @@ function newScene() {
   };
 }
 
+function setActiveSceneIndex(index) {
+  const sceneCount = state.project?.scenes?.length || 0;
+  if (!sceneCount) {
+    state.activeSceneIndex = 0;
+    return;
+  }
+  state.activeSceneIndex = Math.max(0, Math.min(Number(index) || 0, sceneCount - 1));
+}
+
+function applyAssetToActiveScene(filename) {
+  const sceneCard = els.scenesList.querySelector(`[data-scene-index="${state.activeSceneIndex}"]`);
+  if (!sceneCard) return false;
+  const filenameInput = sceneCard.querySelector('[data-field="media_filename"]');
+  const assetSelect = sceneCard.querySelector('[data-field="media_asset_choice"]');
+  if (filenameInput) filenameInput.value = filename;
+  if (assetSelect) assetSelect.value = filename;
+  return true;
+}
+
 async function loadChannels() {
   els.connectionStatus.textContent = "Cargando canales...";
   const payload = await apiFetch("/api/desktop/channels");
@@ -329,10 +414,12 @@ async function selectChannel(channelId) {
   state.selectedJobId = null;
   state.project = null;
   state.selectedRenderFile = null;
+  state.assets = [];
   renderChannels();
   renderWorkspaceHeader();
   renderProject();
   await loadJobs();
+  await loadAssets();
 }
 
 async function loadJobs() {
@@ -348,8 +435,9 @@ async function createJob() {
   const channel = selectedChannel();
   if (!channel) return;
 
-  const title = window.prompt("Titulo del nuevo trabajo");
-  if (!title) return;
+  const now = new Date();
+  const stamp = now.toISOString().replace(/[-:]/g, "").slice(0, 13);
+  const title = `Trabajo ${channel.internal_name || channel.youtube_channel_title || channel.id} ${stamp}`;
 
   const payload = await apiFetch("/api/desktop/jobs", {
     method: "POST",
@@ -374,9 +462,11 @@ async function openJob(jobId) {
   state.selectedJobId = jobId;
   state.project = payload.project;
   state.selectedRenderFile = null;
+  state.activeSceneIndex = 0;
   els.selectedRenderPath.textContent = "Ningun video seleccionado.";
   renderJobs();
   renderProject();
+  await loadAssets(payload.project?.channel_id || state.selectedChannelId);
 }
 
 async function saveProject() {
@@ -393,6 +483,26 @@ async function saveProject() {
   await loadJobs();
   renderProject();
   showToast("Trabajo guardado en el servidor.");
+}
+
+async function loadAssets(channelId = state.selectedChannelId) {
+  if (!channelId) {
+    state.assets = [];
+    renderAssets();
+    return;
+  }
+
+  try {
+    const payload = await apiFetch(`/api/desktop/channels/${encodeURIComponent(channelId)}/media?limit=200`);
+    state.assets = payload.assets || [];
+  } catch (error) {
+    if (!String(error.message || "").includes("404")) {
+      throw error;
+    }
+    state.assets = [];
+  }
+  renderAssets();
+  renderScenes();
 }
 
 async function selectRenderFile() {
@@ -434,6 +544,7 @@ function addScene() {
   if (!state.project) return;
   state.project.scenes = Array.isArray(state.project.scenes) ? state.project.scenes : [];
   state.project.scenes.push(newScene());
+  setActiveSceneIndex(state.project.scenes.length - 1);
   renderScenes();
 }
 
@@ -540,6 +651,57 @@ function bindEvents() {
     if (!button) return;
     const card = event.target.closest("[data-scene-index]");
     deleteScene(Number(card.dataset.sceneIndex));
+  });
+
+  els.scenesList.addEventListener("focusin", (event) => {
+    const card = event.target.closest("[data-scene-index]");
+    if (card) {
+      setActiveSceneIndex(card.dataset.sceneIndex);
+      renderScenes();
+    }
+  });
+
+  els.scenesList.addEventListener("change", (event) => {
+    const sceneCard = event.target.closest("[data-scene-index]");
+    if (!sceneCard) return;
+    const sceneIndex = Number(sceneCard.dataset.sceneIndex);
+    if (event.target.matches('[data-field="media_asset_choice"]')) {
+      const filenameInput = sceneCard.querySelector('[data-field="media_filename"]');
+      if (filenameInput) {
+        filenameInput.value = event.target.value || filenameInput.value || "";
+      }
+    }
+    setActiveSceneIndex(sceneIndex);
+  });
+
+  els.scenesList.addEventListener("click", (event) => {
+    const sceneCard = event.target.closest("[data-scene-index]");
+    if (sceneCard) {
+      setActiveSceneIndex(sceneCard.dataset.sceneIndex);
+      renderScenes();
+    }
+  });
+
+  els.assetsList.addEventListener("click", async (event) => {
+    const card = event.target.closest("[data-asset-filename]");
+    if (!card) return;
+    const filename = card.dataset.assetFilename;
+    if (!filename) return;
+
+    const copyButton = event.target.closest('[data-action="copy-asset"]');
+    const useButton = event.target.closest('[data-action="use-asset"]');
+
+    if (copyButton) {
+      await navigator.clipboard.writeText(filename);
+      showToast("Nombre del asset copiado.");
+      return;
+    }
+
+    if (useButton || card) {
+      if (applyAssetToActiveScene(filename)) {
+        showToast(`Asset usado en la escena ${state.activeSceneIndex + 1}.`);
+      }
+    }
   });
 
   els.selectRenderBtn.addEventListener("click", async () => {
