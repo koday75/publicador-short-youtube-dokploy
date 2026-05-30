@@ -25,7 +25,7 @@ const els = {
   tokenInput: document.getElementById("tokenInput"),
   saveConnectionBtn: document.getElementById("saveConnectionBtn"),
   testConnectionBtn: document.getElementById("testConnectionBtn"),
-  reloadChannelsBtn: document.getElementById("reloadChannelsBtn"),
+  reloadJobsBtn: document.getElementById("reloadJobsBtn"),
   connectionStatus: document.getElementById("connectionStatus"),
   channelCount: document.getElementById("channelCount"),
   sidebarChannelCount: document.getElementById("sidebarChannelCount"),
@@ -39,7 +39,6 @@ const els = {
   workspaceSubtitle: document.getElementById("workspaceSubtitle"),
   createJobBtn: document.getElementById("createJobBtn"),
   saveProjectBtn: document.getElementById("saveProjectBtn"),
-  reloadJobsBtn: document.getElementById("reloadJobsBtn"),
   jobsList: document.getElementById("jobsList"),
   emptyEditor: document.getElementById("emptyEditor"),
   projectForm: document.getElementById("projectForm"),
@@ -75,7 +74,7 @@ function absoluteServerUrl(path) {
 function showToast(message, isError = false) {
   if (!els.toast) return;
   els.toast.textContent = message;
-  els.toast.style.borderColor = isError ? "rgba(255, 103, 103, 0.65)" : "rgba(99, 201, 180, 0.5)";
+  els.toast.style.borderColor = isError ? "rgba(255, 103, 103, 0.65)" : "rgba(255, 120, 109, 0.48)";
   els.toast.classList.remove("hidden");
   window.clearTimeout(showToast.timer);
   showToast.timer = window.setTimeout(() => els.toast.classList.add("hidden"), 3800);
@@ -104,20 +103,19 @@ function loadLocalConfig() {
 function loadSidebarState() {
   try {
     const collapsed = localStorage.getItem(SIDEBAR_KEY) === "1";
-    if (collapsed && els.desktopShell) {
+    if (collapsed) {
       els.desktopShell.classList.add("sidebar-collapsed");
     }
   } catch {
-    // no-op
+    // noop
   }
 }
 
 function saveSidebarState() {
   try {
-    const collapsed = els.desktopShell?.classList.contains("sidebar-collapsed") ? "1" : "0";
-    localStorage.setItem(SIDEBAR_KEY, collapsed);
+    localStorage.setItem(SIDEBAR_KEY, els.desktopShell.classList.contains("sidebar-collapsed") ? "1" : "0");
   } catch {
-    // no-op
+    // noop
   }
 }
 
@@ -167,34 +165,13 @@ function viewLabel(view) {
     channels: "Canales",
     jobs: "Trabajos del canal",
     library: "Biblioteca del canal",
-    connection: "Conexión al servidor"
+    connection: "Conexion al servidor"
   };
   return labels[view] || "Canales";
 }
 
 function selectedChannel() {
   return state.channels.find((channel) => Number(channel.id) === Number(state.selectedChannelId));
-}
-
-function setActiveView(view) {
-  state.activeView = view || "channels";
-  if (els.desktopShell) {
-    els.desktopShell.dataset.view = state.activeView;
-  }
-
-  for (const button of els.navButtons) {
-    const isActive = button.dataset.view === state.activeView;
-    button.classList.toggle("active", isActive);
-    button.setAttribute("aria-pressed", String(isActive));
-  }
-
-  for (const section of els.viewSections) {
-    section.classList.toggle("active", section.dataset.view === state.activeView);
-  }
-
-  if (els.currentViewLabel) {
-    els.currentViewLabel.textContent = viewLabel(state.activeView);
-  }
 }
 
 function renderSidebarStats() {
@@ -213,14 +190,11 @@ function renderSidebarStats() {
     els.diagnosticChannelCount.textContent = `${channelCount}`;
   }
   if (els.diagnosticJobLabel) {
-    const label = state.project ? (state.project.title || state.project.job_id || state.project.id || "Trabajo") : "Ninguno";
-    els.diagnosticJobLabel.textContent = label;
+    els.diagnosticJobLabel.textContent = state.project ? (state.project.title || state.project.job_id || state.project.id || "Trabajo") : "Ninguno";
   }
 }
 
 function renderActiveChannelSummary() {
-  if (!els.activeChannelSummary) return;
-
   const channel = selectedChannel();
   if (!channel) {
     els.activeChannelSummary.className = "summary-stack empty-state";
@@ -234,22 +208,20 @@ function renderActiveChannelSummary() {
   const summary = [
     ["Nombre interno", channel.internal_name || channel.name || `Canal ${channel.id}`],
     ["Canal de YouTube", channel.youtube_channel_title || "No conectado"],
-    ["ID de canal", channel.youtube_channel_id || "—"],
-    ["Handle / URL", channel.handle || channel.youtube_channel_handle || "—"],
-    ["Correo conectado", channel.connected_email || channel.email || "—"],
+    ["ID de canal", channel.youtube_channel_id || "-"],
+    ["Handle / URL", channel.handle || channel.youtube_channel_handle || "-"],
+    ["Correo conectado", channel.connected_email || channel.email || "-"],
     ["Estado", channel.is_connected ? "Conectado" : "Pendiente"]
   ];
 
   els.activeChannelSummary.className = "summary-stack";
   els.activeChannelSummary.innerHTML = summary
-    .map(
-      ([label, value]) => `
-        <div class="summary-item">
-          <span>${escapeHtml(label)}</span>
-          <strong>${escapeHtml(value)}</strong>
-        </div>
-      `
-    )
+    .map(([label, value]) => `
+      <div class="summary-item">
+        <span>${escapeHtml(label)}</span>
+        <strong>${escapeHtml(value)}</strong>
+      </div>
+    `)
     .join("");
 }
 
@@ -273,7 +245,7 @@ function renderChannels() {
             <span>${escapeHtml(channel.name || channel.youtube_channel_title || `Canal ${channel.id}`)}</span>
             <span class="badge ${channel.is_connected ? "" : "muted"}">${connected}</span>
           </div>
-          <p class="hint">${escapeHtml(channel.description || channel.youtube_channel_title || "Sin descripción")}</p>
+          <p class="hint">${escapeHtml(channel.description || channel.youtube_channel_title || "Sin descripcion")}</p>
         </article>
       `;
     })
@@ -293,7 +265,7 @@ function renderJobs() {
 
   if (!state.jobs.length) {
     els.jobsList.className = "list empty";
-    els.jobsList.textContent = "Este canal todavía no tiene trabajos.";
+    els.jobsList.textContent = "Este canal todavia no tiene trabajos.";
     renderSidebarStats();
     return;
   }
@@ -322,7 +294,7 @@ function renderWorkspaceHeader() {
   const channel = selectedChannel();
   if (!channel) {
     els.workspaceTitle.textContent = "Selecciona un canal";
-    els.workspaceSubtitle.textContent = "Crea o abre trabajos y sincronízalos con la app web.";
+    els.workspaceSubtitle.textContent = "Crea o abre trabajos y sincronizalos con la app web.";
     els.createJobBtn.disabled = true;
     els.reloadJobsBtn.disabled = true;
     renderSidebarStats();
@@ -338,6 +310,22 @@ function renderWorkspaceHeader() {
   renderActiveChannelSummary();
 }
 
+function setActiveView(view) {
+  state.activeView = view || "channels";
+
+  for (const button of els.navButtons) {
+    const isActive = button.dataset.view === state.activeView;
+    button.classList.toggle("active", isActive);
+    button.setAttribute("aria-pressed", String(isActive));
+  }
+
+  for (const section of els.viewSections) {
+    section.classList.toggle("active", section.dataset.view === state.activeView);
+  }
+
+  els.currentViewLabel.textContent = viewLabel(state.activeView);
+}
+
 function renderProject() {
   if (!state.project) {
     els.emptyEditor.classList.remove("hidden");
@@ -345,8 +333,9 @@ function renderProject() {
     els.saveProjectBtn.disabled = true;
     els.selectRenderBtn.disabled = true;
     els.uploadRenderBtn.disabled = true;
-    els.syncSummary.innerHTML = "<strong>Sin trabajo abierto</strong><span>La app guardará los cambios en el servidor cuando pulses guardar.</span>";
-    els.diagnosticJobLabel.textContent = "Ninguno";
+    els.syncSummary.innerHTML = "<strong>Sin trabajo abierto</strong><span>La app guardara los cambios en el servidor cuando pulses guardar.</span>";
+    els.selectedRenderPath.textContent = "Ningun video seleccionado.";
+    renderSidebarStats();
     return;
   }
 
@@ -367,12 +356,12 @@ function renderProject() {
     <span>Estado: ${statusLabel(project.status)}</span>
     <span>Trabajo: ${escapeHtml(project.job_id || project.id)}</span>
   `;
-  els.diagnosticJobLabel.textContent = project.title || project.job_id || project.id || "Trabajo";
   renderScenes();
+  renderSidebarStats();
 }
 
 function assetOptions(selectedFilename) {
-  const options = [`<option value="">Elegir archivo del servidor...</option>`];
+  const options = ['<option value="">Elegir archivo del servidor...</option>'];
   for (const asset of state.assets) {
     const label = `${asset.original_name || asset.filename} (${asset.file_type || "media"})`;
     options.push(
@@ -389,68 +378,62 @@ function subtitleOptions(selectedValue) {
     [5, "Centro"],
     [7, "Abajo"]
   ]
-    .map(
-      ([optionValue, label]) => `<option value="${optionValue}" ${optionValue === value ? "selected" : ""}>${label}</option>`
-    )
+    .map(([optionValue, label]) => `<option value="${optionValue}" ${optionValue === value ? "selected" : ""}>${label}</option>`)
     .join("");
 }
 
 function renderScenes() {
   const scenes = Array.isArray(state.project?.scenes) ? state.project.scenes : [];
   if (!scenes.length) {
-    els.scenesList.innerHTML = '<div class="empty">Este trabajo no tiene escenas todavía.</div>';
+    els.scenesList.innerHTML = '<div class="empty">Este trabajo no tiene escenas todavia.</div>';
     return;
   }
 
   els.scenesList.innerHTML = scenes
-    .map(
-      (scene, index) => `
-        <article class="scene-card ${index === state.activeSceneIndex ? "active" : ""}" data-scene-index="${index}">
-          <div class="scene-index">${index + 1}</div>
-          <div class="scene-fields">
+    .map((scene, index) => `
+      <article class="scene-card ${index === state.activeSceneIndex ? "active" : ""}" data-scene-index="${index}">
+        <div class="scene-index">${index + 1}</div>
+        <div class="scene-fields">
+          <label>
+            Texto de la escena
+            <textarea data-field="text">${escapeHtml(scene.text || "")}</textarea>
+          </label>
+          <div class="scene-options">
             <label>
-              Texto de la escena
-              <textarea data-field="text">${escapeHtml(scene.text || "")}</textarea>
+              Archivo del servidor
+              <select data-field="media_asset_choice">
+                ${assetOptions(scene.media_filename || "")}
+              </select>
             </label>
-            <div class="scene-options">
-              <label>
-                Archivo del servidor
-                <select data-field="media_asset_choice">
-                  ${assetOptions(scene.media_filename || "")}
-                </select>
-              </label>
-              <label>
-                Archivo visual manual
-                <input data-field="media_filename" type="text" value="${escapeHtml(scene.media_filename || "")}" placeholder="imagen.png o video.mp4" />
-              </label>
-              <label>
-                Posición subtítulo
-                <select data-field="subtitle_pos">
-                  ${subtitleOptions(scene.subtitle_pos)}
-                </select>
-              </label>
-              <label>
-                Tamaño subtítulo
-                <input data-field="subtitle_size" type="number" min="12" max="120" value="${Number(scene.subtitle_size || 48)}" />
-              </label>
-            </div>
-            <div class="row">
-              <label class="check-row">
-                <input data-field="show_text" type="checkbox" ${scene.show_text === false ? "" : "checked"} />
-                Mostrar texto en pantalla
-              </label>
-              <button type="button" class="danger" data-action="delete-scene">Eliminar escena</button>
-            </div>
+            <label>
+              Archivo visual manual
+              <input data-field="media_filename" type="text" value="${escapeHtml(scene.media_filename || "")}" placeholder="imagen.png o video.mp4" />
+            </label>
+            <label>
+              Posicion subtitulo
+              <select data-field="subtitle_pos">
+                ${subtitleOptions(scene.subtitle_pos)}
+              </select>
+            </label>
+            <label>
+              Tamano subtitulo
+              <input data-field="subtitle_size" type="number" min="12" max="120" value="${Number(scene.subtitle_size || 48)}" />
+            </label>
           </div>
-        </article>
-      `
-    )
+          <div class="row">
+            <label class="check-row">
+              <input data-field="show_text" type="checkbox" ${scene.show_text === false ? "" : "checked"} />
+              Mostrar texto en pantalla
+            </label>
+            <button type="button" class="danger" data-action="delete-scene">Eliminar escena</button>
+          </div>
+        </div>
+      </article>
+    `)
     .join("");
 }
 
 function renderAssets() {
-  if (!els.assetsList || !els.assetsCount) return;
-
   const assets = state.assets || [];
   els.assetsCount.textContent = `${assets.length} archivo${assets.length === 1 ? "" : "s"}`;
 
@@ -462,7 +445,7 @@ function renderAssets() {
 
   if (!assets.length) {
     els.assetsList.className = "assets-list empty";
-    els.assetsList.textContent = "Aún no hay archivos en este canal.";
+    els.assetsList.textContent = "Aun no hay archivos en este canal.";
     return;
   }
 
@@ -471,12 +454,11 @@ function renderAssets() {
     .map((asset) => {
       const url = absoluteServerUrl(asset.url || "");
       const fileType = String(asset.file_type || "other").toLowerCase();
-      const preview =
-        fileType === "image"
-          ? `<img src="${escapeHtml(url)}" alt="${escapeHtml(asset.original_name || asset.filename || "asset")}" loading="lazy" />`
-          : fileType === "video"
-            ? `<video src="${escapeHtml(url)}" muted playsinline preload="metadata"></video>`
-            : `<div class="asset-icon">${fileType === "audio" ? "♫" : "◌"}</div>`;
+      const preview = fileType === "image"
+        ? `<img src="${escapeHtml(url)}" alt="${escapeHtml(asset.original_name || asset.filename || "asset")}" loading="lazy" />`
+        : fileType === "video"
+          ? `<video src="${escapeHtml(url)}" muted playsinline preload="metadata"></video>`
+          : `<div class="asset-icon">${fileType === "audio" ? "♫" : "◌"}</div>`;
 
       return `
         <article class="asset-card" data-asset-filename="${escapeHtml(asset.filename || "")}">
@@ -514,7 +496,7 @@ function readProjectFromForm() {
 
   return {
     channel_id: state.selectedChannelId,
-    title: els.projectTitleInput.value.trim() || "Trabajo sin título",
+    title: els.projectTitleInput.value.trim() || "Trabajo sin titulo",
     niche: els.nicheInput.value.trim() || "default",
     video_format: els.videoFormatInput.value || "vertical",
     status: state.project.status || "editing_desktop",
@@ -552,8 +534,12 @@ function applyAssetToActiveScene(filename) {
   if (!sceneCard) return false;
   const filenameInput = sceneCard.querySelector('[data-field="media_filename"]');
   const assetSelect = sceneCard.querySelector('[data-field="media_asset_choice"]');
-  if (filenameInput) filenameInput.value = filename;
-  if (assetSelect) assetSelect.value = filename;
+  if (filenameInput) {
+    filenameInput.value = filename;
+  }
+  if (assetSelect) {
+    assetSelect.value = filename;
+  }
   return true;
 }
 
@@ -565,7 +551,7 @@ async function loadChannels() {
   renderChannels();
   renderWorkspaceHeader();
   renderSidebarStats();
-  els.connectionStatus.textContent = `Conexión correcta. ${state.channels.length} canal${state.channels.length === 1 ? "" : "es"} cargado${state.channels.length === 1 ? "" : "s"}.`;
+  els.connectionStatus.textContent = `Conexion correcta. ${state.channels.length} canal${state.channels.length === 1 ? "" : "es"} cargado${state.channels.length === 1 ? "" : "s"}.`;
   els.diagnosticConnection.textContent = "Servidor conectado correctamente.";
 
   if (!state.selectedChannelId && state.channels.length === 1) {
@@ -579,7 +565,7 @@ async function selectChannel(channelId) {
   state.project = null;
   state.selectedRenderFile = null;
   state.assets = [];
-  els.selectedRenderPath.textContent = "Ningún vídeo seleccionado.";
+  els.selectedRenderPath.textContent = "Ningun video seleccionado.";
   els.uploadRenderBtn.disabled = true;
   renderChannels();
   renderWorkspaceHeader();
@@ -608,8 +594,7 @@ async function createJob() {
   const channel = selectedChannel();
   if (!channel) return;
 
-  const now = new Date();
-  const stamp = now.toISOString().replace(/[-:]/g, "").slice(0, 13);
+  const stamp = new Date().toISOString().replace(/[-:]/g, "").slice(0, 13);
   const title = `Trabajo ${channel.internal_name || channel.youtube_channel_title || channel.id} ${stamp}`;
 
   const payload = await apiFetch("/api/desktop/jobs", {
@@ -637,7 +622,7 @@ async function openJob(jobId) {
   state.project = payload.project;
   state.selectedRenderFile = null;
   state.activeSceneIndex = 0;
-  els.selectedRenderPath.textContent = "Ningún vídeo seleccionado.";
+  els.selectedRenderPath.textContent = "Ningun video seleccionado.";
   renderJobs();
   renderProject();
   await loadAssets(payload.project?.channel_id || state.selectedChannelId);
@@ -677,6 +662,7 @@ async function loadAssets(channelId = state.selectedChannelId) {
     }
     state.assets = [];
   }
+
   renderAssets();
   renderScenes();
 }
@@ -703,7 +689,7 @@ async function uploadRender() {
 
   await openJob(payload.job_id);
   await loadJobs();
-  showToast("Vídeo subido. Ya queda listo para publicar desde la web.");
+  showToast("Video subido. Ya queda listo para publicar desde la web.");
 }
 
 async function fileFromPath(filePath) {
@@ -727,7 +713,7 @@ function addScene() {
 function deleteScene(index) {
   if (!state.project?.scenes) return;
   state.project.scenes.splice(index, 1);
-  setActiveSceneIndex(Math.min(state.activeSceneIndex, (state.project.scenes.length || 1) - 1));
+  setActiveSceneIndex(Math.min(state.activeSceneIndex, Math.max((state.project.scenes.length || 1) - 1, 0)));
   renderScenes();
 }
 
@@ -741,8 +727,8 @@ function escapeHtml(value) {
 }
 
 function bindEvents() {
-  els.sidebarToggleBtn?.addEventListener("click", () => {
-    els.desktopShell?.classList.toggle("sidebar-collapsed");
+  els.sidebarToggleBtn.addEventListener("click", () => {
+    els.desktopShell.classList.toggle("sidebar-collapsed");
     saveSidebarState();
   });
 
@@ -754,14 +740,14 @@ function bindEvents() {
 
   els.saveConnectionBtn.addEventListener("click", () => {
     saveLocalConfig();
-    showToast("Conexión guardada.");
+    showToast("Conexion guardada.");
   });
 
   els.testConnectionBtn.addEventListener("click", async () => {
     try {
       saveLocalConfig();
       await loadChannels();
-      showToast("Conexión comprobada correctamente.");
+      showToast("Conexion comprobada correctamente.");
     } catch (error) {
       try {
         const infoResponse = await fetch(`${state.serverUrl}/api/desktop/auth-info`);
@@ -771,22 +757,11 @@ function bindEvents() {
           info.desktop_api_key_configured ? "DESKTOP_API_KEY" : "",
           info.x_api_key_configured ? "X_API_KEY" : "",
           info.dashboard_password_fallback_available ? "DASHBOARD_PASSWORD" : ""
-        ]
-          .filter(Boolean)
-          .join(", ") || "ninguna";
+        ].filter(Boolean).join(", ") || "ninguna";
         showToast(`${error.message} Variables detectadas en el servidor: ${configured}.`, true);
       } catch {
         showToast(error.message, true);
       }
-    }
-  });
-
-  els.reloadChannelsBtn.addEventListener("click", async () => {
-    try {
-      saveLocalConfig();
-      await loadChannels();
-    } catch (error) {
-      showToast(error.message, true);
     }
   });
 
@@ -863,14 +838,13 @@ function bindEvents() {
   els.scenesList.addEventListener("change", (event) => {
     const sceneCard = event.target.closest("[data-scene-index]");
     if (!sceneCard) return;
-    const sceneIndex = Number(sceneCard.dataset.sceneIndex);
     if (event.target.matches('[data-field="media_asset_choice"]')) {
       const filenameInput = sceneCard.querySelector('[data-field="media_filename"]');
       if (filenameInput) {
         filenameInput.value = event.target.value || filenameInput.value || "";
       }
     }
-    setActiveSceneIndex(sceneIndex);
+    setActiveSceneIndex(sceneCard.dataset.sceneIndex);
   });
 
   els.assetsList.addEventListener("click", async (event) => {
@@ -921,10 +895,11 @@ renderChannels();
 renderProject();
 renderSidebarStats();
 renderActiveChannelSummary();
+renderAssets();
 
 if (state.serverUrl && state.token) {
   loadChannels().catch((error) => {
-    els.connectionStatus.textContent = "No se pudo conectar automáticamente.";
+    els.connectionStatus.textContent = "No se pudo conectar automaticamente.";
     showToast(error.message, true);
   });
 }

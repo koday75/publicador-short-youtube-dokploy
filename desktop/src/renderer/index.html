@@ -14,41 +14,39 @@
             <div class="brand-mark">CC</div>
             <div class="brand-copy">
               <h1>ChannelClip Studio</h1>
-              <p>Editor Windows conectado a la web</p>
+              <p>Editor local conectado a la web</p>
             </div>
           </div>
-          <button id="sidebarToggleBtn" class="icon-button" type="button" aria-label="Contraer o expandir el menú">
-            ☰
+          <button id="sidebarToggleBtn" class="icon-button" type="button" aria-label="Contraer o expandir el menu">
+            <span class="hamburger"></span>
           </button>
         </div>
 
-        <nav class="sidebar-nav" aria-label="Navegación principal">
+        <nav class="sidebar-nav" aria-label="Navegacion principal">
           <button class="nav-link active" type="button" data-view="channels">
-            <span class="nav-icon">▦</span>
+            <span class="nav-icon">01</span>
             <span class="nav-text">Canales</span>
           </button>
           <button class="nav-link" type="button" data-view="jobs">
-            <span class="nav-icon">✎</span>
+            <span class="nav-icon">02</span>
             <span class="nav-text">Trabajos del canal</span>
           </button>
           <button class="nav-link" type="button" data-view="library">
-            <span class="nav-icon">🖼</span>
+            <span class="nav-icon">03</span>
             <span class="nav-text">Biblioteca del canal</span>
           </button>
           <button class="nav-link" type="button" data-view="connection">
-            <span class="nav-icon">⚙</span>
-            <span class="nav-text">Conexión al servidor</span>
+            <span class="nav-icon">04</span>
+            <span class="nav-text">Conexion al servidor</span>
           </button>
         </nav>
 
-        <section class="panel sidebar-status">
-          <div class="section-heading">
-            <div>
-              <h2>Estado rápido</h2>
-              <p class="hint">Conexión y contexto actual.</p>
-            </div>
+        <section class="sidebar-card">
+          <div class="sidebar-card-header">
+            <span class="sidebar-card-eyebrow">Estado</span>
+            <span class="status-dot"></span>
           </div>
-          <p id="connectionStatus" class="hint">Configura la conexión para empezar.</p>
+          <p id="connectionStatus" class="sidebar-card-copy">Configura la conexion para empezar.</p>
           <div class="status-pills">
             <span id="sidebarChannelCount" class="badge muted">0 canales</span>
             <span id="sidebarJobCount" class="badge muted">0 trabajos</span>
@@ -58,35 +56,54 @@
 
       <main class="workspace">
         <header class="workspace-header">
-          <div>
+          <div class="workspace-header-copy">
             <p id="currentViewLabel" class="eyebrow">Canales</p>
             <h2 id="workspaceTitle">Selecciona un canal</h2>
-            <p id="workspaceSubtitle">Crea o abre trabajos y sincronízalos con la app web.</p>
+            <p id="workspaceSubtitle">Crea o abre trabajos y sincronizalos con la app web.</p>
           </div>
-          <div class="header-actions">
+
+          <div class="workspace-header-actions">
             <button id="createJobBtn" class="primary" disabled>Nuevo trabajo</button>
             <button id="saveProjectBtn" disabled>Guardar trabajo</button>
           </div>
         </header>
 
+        <section class="workspace-ribbon">
+          <article class="ribbon-card">
+            <span class="ribbon-label">Modo</span>
+            <strong>Editor de escritorio</strong>
+          </article>
+          <article class="ribbon-card">
+            <span class="ribbon-label">Canales</span>
+            <strong id="channelCount">0 canales</strong>
+          </article>
+          <article class="ribbon-card">
+            <span class="ribbon-label">Conexion</span>
+            <strong id="diagnosticConnection">Sin comprobar todavia</strong>
+          </article>
+          <article class="ribbon-card">
+            <span class="ribbon-label">Trabajo activo</span>
+            <strong id="diagnosticJobLabel">Ninguno</strong>
+          </article>
+        </section>
+
         <section class="view-section active" data-view="channels">
           <div class="section-grid channels-grid">
-            <section class="panel">
+            <section class="panel hero-panel">
               <div class="section-heading">
                 <div>
                   <h2>Canales del servidor</h2>
-                  <p class="hint">Selecciona un canal para cargar sus trabajos, escenas y biblioteca.</p>
+                  <p class="hint">Selecciona un canal para cargar sus trabajos, escenas y archivos.</p>
                 </div>
-                <span id="channelCount" class="badge muted">0 canales</span>
               </div>
               <div id="channelsList" class="list empty">Sin canales cargados.</div>
             </section>
 
-            <section class="panel">
+            <section class="panel detail-panel">
               <div class="section-heading">
                 <div>
                   <h2>Canal activo</h2>
-                  <p class="hint">Resumen rápido del canal seleccionado.</p>
+                  <p class="hint">Resumen rapido del canal seleccionado.</p>
                 </div>
               </div>
               <div id="activeChannelSummary" class="summary-stack empty-state">
@@ -103,7 +120,7 @@
               <div class="section-heading">
                 <div>
                   <h2>Trabajos del canal</h2>
-                  <p class="hint">Ordena, abre y sincroniza los trabajos de este canal.</p>
+                  <p class="hint">Abre un proyecto, sigue su estado y cambia rapido entre trabajos.</p>
                 </div>
                 <button id="reloadJobsBtn" class="ghost" disabled>Actualizar</button>
               </div>
@@ -119,10 +136,10 @@
               </div>
 
               <form id="projectForm" class="project-form hidden">
-                <div class="form-grid">
+                <div class="form-grid project-meta-grid">
                   <label>
-                    Título
-                    <input id="projectTitleInput" type="text" placeholder="Título del video" />
+                    Titulo
+                    <input id="projectTitleInput" type="text" placeholder="Titulo del video" />
                   </label>
                   <label>
                     Formato
@@ -134,11 +151,11 @@
                   </label>
                   <label>
                     Nicho
-                    <input id="nicheInput" type="text" placeholder="Curiosidades, historia, tecnología..." />
+                    <input id="nicheInput" type="text" placeholder="Curiosidades, historia, tecnologia..." />
                   </label>
                   <label>
-                    Música de fondo
-                    <input id="musicInput" type="text" placeholder="Archivo de música o vacío" />
+                    Musica de fondo
+                    <input id="musicInput" type="text" placeholder="Archivo de musica o vacio" />
                   </label>
                   <label>
                     Motor TTS
@@ -150,29 +167,36 @@
                   </label>
                 </div>
 
-                <div class="section-heading scenes-heading">
+                <div class="editor-stage-header">
                   <div>
                     <h2>Escenas</h2>
-                    <p class="hint">Texto, archivo visual y opciones básicas por escena.</p>
+                    <p class="hint">Texto, archivo visual y opciones basicas por escena.</p>
                   </div>
-                  <button id="addSceneBtn" type="button" class="primary">Añadir escena</button>
+                  <button id="addSceneBtn" type="button" class="primary">Anadir escena</button>
                 </div>
+
                 <div id="scenesList" class="scenes-list"></div>
               </form>
             </section>
 
             <section class="panel sync-panel">
-              <h2>Sincronización</h2>
+              <div class="section-heading">
+                <div>
+                  <h2>Control del proyecto</h2>
+                  <p class="hint">Sincronizacion, subida del render y siguiente salto del editor.</p>
+                </div>
+              </div>
+
               <div id="syncSummary" class="sync-card">
                 <strong>Sin trabajo abierto</strong>
-                <span>La app guardará los cambios en el servidor cuando pulses guardar.</span>
+                <span>La app guardara los cambios en el servidor cuando pulses guardar.</span>
               </div>
 
               <div class="upload-box">
-                <h3>Vídeo renderizado</h3>
-                <p>Cuando el editor local genere el MP4, súbelo al trabajo para publicarlo desde la web.</p>
-                <button id="selectRenderBtn" disabled>Elegir vídeo</button>
-                <p id="selectedRenderPath" class="hint">Ningún vídeo seleccionado.</p>
+                <h3>Video renderizado</h3>
+                <p>Cuando el editor local genere el MP4, subelo al trabajo para publicarlo desde la web.</p>
+                <button id="selectRenderBtn" disabled>Elegir video</button>
+                <p id="selectedRenderPath" class="hint">Ningun video seleccionado.</p>
                 <button id="uploadRenderBtn" class="primary" disabled>Subir render al servidor</button>
               </div>
 
@@ -182,7 +206,7 @@
                   <li>Timeline con pistas.</li>
                   <li>Preview local.</li>
                   <li>Render con FFmpeg.</li>
-                  <li>Sincronización de assets.</li>
+                  <li>Sincronizacion de assets.</li>
                 </ul>
               </div>
             </section>
@@ -192,10 +216,10 @@
         <section class="view-section" data-view="library">
           <div class="section-grid library-grid">
             <section class="panel library-panel">
-              <div class="section-heading library-heading">
+              <div class="section-heading">
                 <div>
                   <h2>Biblioteca del canal</h2>
-                  <p class="hint">Imágenes, audios y vídeos cargados desde el servidor para este canal.</p>
+                  <p class="hint">Imagenes, audios y videos cargados desde el servidor para este canal.</p>
                 </div>
                 <span id="assetsCount" class="badge muted">0 archivos</span>
               </div>
@@ -209,8 +233,8 @@
             <section class="panel compact connection-panel">
               <div class="section-heading">
                 <div>
-                  <h2>Conexión con el servidor</h2>
-                  <p class="hint">Guarda la URL y el token para conectar la aplicación de escritorio.</p>
+                  <h2>Conexion con el servidor</h2>
+                  <p class="hint">Guarda la URL y el token para conectar la aplicacion de escritorio.</p>
                 </div>
               </div>
               <label>
@@ -222,34 +246,30 @@
                 <input id="tokenInput" type="password" placeholder="DESKTOP_API_TOKEN" />
               </label>
               <div class="row">
-                <button id="saveConnectionBtn" class="primary" type="button">Guardar conexión</button>
+                <button id="saveConnectionBtn" class="primary" type="button">Guardar conexion</button>
                 <button id="testConnectionBtn" type="button">Probar</button>
               </div>
             </section>
 
-            <section class="panel">
+            <section class="panel diagnostics-panel">
               <div class="section-heading">
                 <div>
-                  <h2>Diagnóstico</h2>
-                  <p class="hint">Verifica si el servidor está leyendo las credenciales de escritorio.</p>
+                  <h2>Diagnostico</h2>
+                  <p class="hint">Verifica si el servidor esta leyendo las credenciales del cliente de escritorio.</p>
                 </div>
               </div>
               <div class="diagnostics-stack">
                 <div class="diagnostic-card">
-                  <strong>Conexión actual</strong>
-                  <span id="diagnosticConnection" class="hint">Sin comprobar todavía.</span>
+                  <strong>Conexion actual</strong>
+                  <span>Usa el boton Probar para validar el token y cargar los canales.</span>
                 </div>
                 <div class="diagnostic-card">
                   <strong>Canales cargados</strong>
                   <span id="diagnosticChannelCount" class="hint">0</span>
                 </div>
                 <div class="diagnostic-card">
-                  <strong>Trabajo activo</strong>
-                  <span id="diagnosticJobLabel" class="hint">Ninguno</span>
-                </div>
-                <div class="diagnostic-card">
-                  <strong>Modo de uso</strong>
-                  <span class="hint">La navegación lateral organiza la app por tareas para que el flujo sea más profesional.</span>
+                  <strong>Workflow</strong>
+                  <span>Canales a la izquierda, trabajo en el centro y sincronizacion en el lateral derecho.</span>
                 </div>
               </div>
             </section>
