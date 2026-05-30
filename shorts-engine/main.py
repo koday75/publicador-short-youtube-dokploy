@@ -105,7 +105,9 @@ async def get_current_user(request: Request):
     raise HTTPException(status_code=401, detail="No autenticado")
 
 async def get_desktop_client(request: Request):
-    token = (request.headers.get("X-Desktop-Token") or request.headers.get("X-API-Key") or "").strip()
+    auth_header = (request.headers.get("Authorization") or "").strip()
+    bearer_token = auth_header[7:].strip() if auth_header.lower().startswith("bearer ") else ""
+    token = (request.headers.get("X-Desktop-Token") or request.headers.get("X-API-Key") or bearer_token or "").strip()
     expected = (os.getenv("DESKTOP_API_TOKEN") or DASHBOARD_PASSWORD).strip()
     if token and expected and token == expected:
         return "desktop_client"

@@ -81,6 +81,8 @@ async function apiFetch(path, options = {}) {
 
   const headers = {
     "X-Desktop-Token": state.token,
+    "X-API-Key": state.token,
+    "Authorization": `Bearer ${state.token}`,
     ...(options.headers || {})
   };
 
