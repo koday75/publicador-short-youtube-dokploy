@@ -22,7 +22,7 @@
     ],
     "win": {
       "target": "nsis",
-      "icon": "../icono.ico"
+      "icon": "build/icon.ico"
     }
   },
   "devDependencies": {
