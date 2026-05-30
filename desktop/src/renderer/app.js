@@ -50,6 +50,14 @@ function normalizeServerUrl(value) {
   return String(value || "").trim().replace(/\/+$/, "");
 }
 
+function absoluteServerUrl(path) {
+  const normalizedPath = String(path || "").trim();
+  if (!normalizedPath) return "";
+  if (/^https?:\/\//i.test(normalizedPath)) return normalizedPath;
+  if (!state.serverUrl) return normalizedPath;
+  return `${state.serverUrl}${normalizedPath.startsWith("/") ? normalizedPath : `/${normalizedPath}`}`;
+}
+
 function showToast(message, isError = false) {
   els.toast.textContent = message;
   els.toast.style.borderColor = isError ? "rgba(255, 107, 107, 0.65)" : "rgba(70, 214, 181, 0.5)";
@@ -303,7 +311,7 @@ function renderAssets() {
 
   els.assetsList.className = "assets-list";
   els.assetsList.innerHTML = assets.map((asset) => {
-    const url = asset.url || "";
+    const url = absoluteServerUrl(asset.url || "");
     const fileType = String(asset.file_type || "other").toLowerCase();
     const preview = fileType === "image"
       ? `<img src="${escapeHtml(url)}" alt="${escapeHtml(asset.original_name || asset.filename || "asset")}" loading="lazy" />`
