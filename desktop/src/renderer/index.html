@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ChannelClip Studio</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">CC</div>
+          <div>
+            <h1>ChannelClip Studio</h1>
+            <p>Editor Windows conectado a la web</p>
+          </div>
+        </div>
+
+        <section class="panel compact">
+          <h2>Conexion</h2>
+          <label>
+            Servidor
+            <input id="serverUrlInput" type="url" placeholder="https://channelclip.estrellitastudio.es" />
+          </label>
+          <label>
+            Token de escritorio
+            <input id="tokenInput" type="password" placeholder="DESKTOP_API_TOKEN" />
+          </label>
+          <div class="row">
+            <button id="saveConnectionBtn" class="primary">Guardar conexion</button>
+            <button id="testConnectionBtn">Probar</button>
+          </div>
+          <p id="connectionStatus" class="hint">Configura la conexion para empezar.</p>
+        </section>
+
+        <section class="panel grow">
+          <div class="section-heading">
+            <h2>Canales</h2>
+            <button id="reloadChannelsBtn" class="ghost">Recargar</button>
+          </div>
+          <div id="channelsList" class="list empty">Sin canales cargados.</div>
+        </section>
+      </aside>
+
+      <main class="workspace">
+        <header class="workspace-header">
+          <div>
+            <p class="eyebrow">Aplicacion de escritorio</p>
+            <h2 id="workspaceTitle">Selecciona un canal</h2>
+            <p id="workspaceSubtitle">Crea o abre trabajos y sincronizalos con la app web.</p>
+          </div>
+          <div class="header-actions">
+            <button id="createJobBtn" class="primary" disabled>Nuevo trabajo</button>
+            <button id="saveProjectBtn" disabled>Guardar trabajo</button>
+          </div>
+        </header>
+
+        <div class="content-grid">
+          <section class="panel jobs-panel">
+            <div class="section-heading">
+              <h2>Trabajos del canal</h2>
+              <button id="reloadJobsBtn" class="ghost" disabled>Actualizar</button>
+            </div>
+            <div id="jobsList" class="list empty">Selecciona un canal para ver sus trabajos.</div>
+          </section>
+
+          <section class="panel editor-panel">
+            <div id="emptyEditor" class="empty-state">
+              <h2>Editor preparado</h2>
+              <p>Abre un trabajo existente o crea uno nuevo. Aqui empezaremos a construir el editor profesional de Windows.</p>
+            </div>
+
+            <form id="projectForm" class="project-form hidden">
+              <div class="form-grid">
+                <label>
+                  Titulo
+                  <input id="projectTitleInput" type="text" placeholder="Titulo del video" />
+                </label>
+                <label>
+                  Formato
+                  <select id="videoFormatInput">
+                    <option value="vertical">Short 9:16</option>
+                    <option value="horizontal">Video YouTube 16:9</option>
+                    <option value="square">Cuadrado 1:1</option>
+                  </select>
+                </label>
+                <label>
+                  Nicho
+                  <input id="nicheInput" type="text" placeholder="Curiosidades, historia, tecnologia..." />
+                </label>
+                <label>
+                  Musica de fondo
+                  <input id="musicInput" type="text" placeholder="Archivo de musica o vacio" />
+                </label>
+                <label>
+                  Motor TTS
+                  <input id="ttsEngineInput" type="text" placeholder="edge_tts, gtts..." />
+                </label>
+                <label>
+                  Voz
+                  <input id="voiceInput" type="text" placeholder="es-ES-AlvaroNeural" />
+                </label>
+              </div>
+
+              <div class="section-heading scenes-heading">
+                <div>
+                  <h2>Escenas</h2>
+                  <p class="hint">Texto, archivo visual y opciones basicas por escena.</p>
+                </div>
+                <button id="addSceneBtn" type="button" class="primary">Anadir escena</button>
+              </div>
+              <div id="scenesList" class="scenes-list"></div>
+            </form>
+          </section>
+
+          <section class="panel sync-panel">
+            <h2>Sincronizacion</h2>
+            <div id="syncSummary" class="sync-card">
+              <strong>Sin trabajo abierto</strong>
+              <span>La app guardara los cambios en el servidor cuando pulses guardar.</span>
+            </div>
+
+            <div class="upload-box">
+              <h3>Video renderizado</h3>
+              <p>Cuando el editor local genere el MP4, subelo al trabajo para publicarlo desde la web.</p>
+              <button id="selectRenderBtn" disabled>Elegir video</button>
+              <p id="selectedRenderPath" class="hint">Ningun video seleccionado.</p>
+              <button id="uploadRenderBtn" class="primary" disabled>Subir render al servidor</button>
+            </div>
+
+            <div class="roadmap">
+              <h3>Siguiente salto</h3>
+              <ul>
+                <li>Timeline con pistas.</li>
+                <li>Preview local.</li>
+                <li>Render con FFmpeg.</li>
+                <li>Sincronizacion de assets.</li>
+              </ul>
+            </div>
+          </section>
+        </div>
+      </main>
+    </div>
+
+    <div id="toast" class="toast hidden"></div>
+    <script src="./app.js"></script>
+  </body>
+</html>

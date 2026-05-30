@@ -1,0 +1,32 @@
+{
+  "name": "channelclip-desktop",
+  "version": "0.1.0",
+  "description": "Aplicacion Windows para editar trabajos de ChannelClip y sincronizarlos con el servidor.",
+  "main": "src/main.js",
+  "private": true,
+  "scripts": {
+    "dev": "electron .",
+    "start": "electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder"
+  },
+  "build": {
+    "appId": "es.estrellitastudio.channelclip.desktop",
+    "productName": "ChannelClip Studio",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "../icono.ico"
+    }
+  },
+  "devDependencies": {
+    "electron": "^31.7.7",
+    "electron-builder": "^24.13.3"
+  }
+}

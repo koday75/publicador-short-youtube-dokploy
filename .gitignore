@@ -13,3 +13,7 @@ shorts-engine/temp_subs.srt
 .DS_Store
 .vscode/
 .idea/
+desktop/node_modules/
+desktop/dist/
+desktop/out/
+desktop/.vite/
