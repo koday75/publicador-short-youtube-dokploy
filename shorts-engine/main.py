@@ -108,10 +108,31 @@ async def get_desktop_client(request: Request):
     auth_header = (request.headers.get("Authorization") or "").strip()
     bearer_token = auth_header[7:].strip() if auth_header.lower().startswith("bearer ") else ""
     token = (request.headers.get("X-Desktop-Token") or request.headers.get("X-API-Key") or bearer_token or "").strip()
-    expected = (os.getenv("DESKTOP_API_TOKEN") or DASHBOARD_PASSWORD).strip()
-    if token and expected and token == expected:
+    accepted_tokens = {
+        candidate.strip().strip('"').strip("'")
+        for candidate in [
+            os.getenv("DESKTOP_API_TOKEN"),
+            os.getenv("DESKTOP_API_KEY"),
+            os.getenv("X_API_KEY"),
+            os.getenv("X-API-Key"),
+            DASHBOARD_PASSWORD,
+        ]
+        if candidate and candidate.strip()
+    }
+    if token and token in accepted_tokens:
         return "desktop_client"
     raise HTTPException(status_code=401, detail="Cliente de escritorio no autorizado")
+
+@app.get("/api/desktop/auth-info")
+async def api_desktop_auth_info():
+    return {
+        "status": "ok",
+        "desktop_api_token_configured": bool((os.getenv("DESKTOP_API_TOKEN") or "").strip()),
+        "desktop_api_key_configured": bool((os.getenv("DESKTOP_API_KEY") or "").strip()),
+        "x_api_key_configured": bool((os.getenv("X_API_KEY") or os.getenv("X-API-Key") or "").strip()),
+        "dashboard_password_fallback_available": bool((DASHBOARD_PASSWORD or "").strip()),
+        "accepted_headers": ["X-Desktop-Token", "X-API-Key", "Authorization: Bearer"],
+    }
 
 # Dashboard UI Routes
 async def render_dashboard_file(request: Request, filename: str):

@@ -92,6 +92,9 @@ async function apiFetch(path, options = {}) {
 
   if (!response.ok) {
     const detail = typeof payload === "object" ? payload.detail || JSON.stringify(payload) : payload;
+    if (response.status === 401) {
+      throw new Error(`${detail || "Cliente no autorizado"}. Prueba /api/desktop/auth-info para comprobar si el servidor ve DESKTOP_API_TOKEN.`);
+    }
     throw new Error(detail || `Error HTTP ${response.status}`);
   }
 
@@ -461,7 +464,19 @@ function bindEvents() {
       await loadChannels();
       showToast("Conexion comprobada correctamente.");
     } catch (error) {
-      showToast(error.message, true);
+      try {
+        const infoResponse = await fetch(`${state.serverUrl}/api/desktop/auth-info`);
+        const info = await infoResponse.json();
+        const configured = [
+          info.desktop_api_token_configured ? "DESKTOP_API_TOKEN" : "",
+          info.desktop_api_key_configured ? "DESKTOP_API_KEY" : "",
+          info.x_api_key_configured ? "X_API_KEY" : "",
+          info.dashboard_password_fallback_available ? "DASHBOARD_PASSWORD" : ""
+        ].filter(Boolean).join(", ") || "ninguna";
+        showToast(`${error.message} Variables detectadas en servidor: ${configured}.`, true);
+      } catch {
+        showToast(error.message, true);
+      }
     }
   });
 
