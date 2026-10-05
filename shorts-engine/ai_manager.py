@@ -152,11 +152,17 @@ class AIManager:
             "openrouter": "https://openrouter.ai/api/v1/chat/completions",
         }
         models = {
-            "deepseek": "deepseek-chat",
-            "openrouter": "meta-llama/llama-3.1-405b",
+            # Configurables desde Ajustes (clave <PROVEEDOR>_MODEL); si no hay nada, el valor por defecto.
+            "deepseek": (self.db.get_setting("DEEPSEEK_MODEL") or "deepseek-chat").strip(),
+            "openrouter": (self.db.get_setting("OPENROUTER_MODEL")
+                           or "google/gemini-2.5-flash").strip(),
         }
 
         headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+        if provider == "openrouter":
+            # OpenRouter pide identificarse; sin esto algunas llamadas se rechazan.
+            headers["HTTP-Referer"] = "https://channelclip.estrellitastudio.es"
+            headers["X-Title"] = "Shorts Engine"
 
         messages = []
         if system_prompt:
