@@ -2488,6 +2488,108 @@ async def api_generate_description(req: GenerateDescriptionRequest, user: str = 
             "max_chars": int(req.max_chars or 700)}
 
 
+# --- Titulo y etiquetas para publicar, escritos por la IA (boton de la pagina Publicar) ---
+
+PROMPT_TITULO_ETIQUETAS = (
+    "Eres el editor de un canal de YouTube sobre misterios, casos sin resolver y datos "
+    "sorprendentes. A partir del material que te doy, escribe el TITULO y las ETIQUETAS del video.\n"
+    "Reglas obligatorias:\n"
+    "- El titulo va en {idioma}: un emoji al principio y el texto en mayusculas (dejando en "
+    "minusculas articulos y preposiciones), con el gancho del caso. Maximo 95 caracteres.\n"
+    "- Las etiquetas: entre 8 y 12, cortas, en minusculas, separadas por comas y SIN el simbolo #, "
+    "relevantes para el tema (por ejemplo: misterio, casos sin resolver, corea del sur, true crime).\n"
+    "- NO inventes ningun dato que no aparezca en el material.\n"
+    '- Devuelve SOLO un JSON valido con esta forma exacta: {{"titulo": "...", "etiquetas": "una, otra"}}\n'
+    "Nada de markdown ni comentarios."
+)
+
+
+class GenerateTitleTagsRequest(BaseModel):
+    job_id: Optional[str] = None
+    title: Optional[str] = None
+    text: Optional[str] = None
+    scenes: Optional[List[dict]] = None
+    language: Optional[str] = "es"
+    provider: Optional[str] = None
+
+
+def material_para_publicacion(job_id: Optional[str], title: Optional[str], text: Optional[str],
+                             scenes: Optional[List[dict]]) -> tuple[str, str]:
+    """Devuelve (titulo, material) a partir de un trabajo, de las escenas o del texto que llegue."""
+    titulo = (title or "").strip()
+    lineas: List[str] = []
+    if scenes:
+        for escena in scenes:
+            if isinstance(escena, dict) and (escena.get("text") or "").strip():
+                lineas.append(str(escena["text"]).strip())
+    if not lineas and job_id:
+        job = db.get_job(job_id)
+        if not job:
+            raise HTTPException(status_code=404, detail="Trabajo no encontrado")
+        titulo = titulo or (job.get("title") or "")
+        try:
+            guardadas = json.loads(job.get("scenes_json") or "[]")
+        except Exception:
+            guardadas = []
+        lineas = [str(e.get("text")).strip() for e in guardadas
+                  if isinstance(e, dict) and (e.get("text") or "").strip()]
+    if not lineas and (text or "").strip():
+        lineas = [text.strip()]
+    bloques = ([f"Titulo del trabajo: {titulo}"] if titulo else []) + lineas
+    return titulo, "\n\n".join(bloques).strip()
+
+
+def json_suelto(texto: str) -> dict:
+    """Lee el primer objeto JSON de una respuesta de la IA (aunque venga con ``` o prosa)."""
+    t = (texto or "").strip().replace("```json", "").replace("```", "").strip()
+    i, j = t.find("{"), t.rfind("}")
+    if i != -1 and j > i:
+        try:
+            return json.loads(t[i:j + 1])
+        except Exception:
+            return {}
+    return {}
+
+
+@app.post("/api/ai/publish-fields")
+async def api_generate_title_tags(req: GenerateTitleTagsRequest,
+                                 user: str = Depends(get_current_user)):
+    """Escribe el titulo y las etiquetas del video para la pagina de publicar."""
+    _, material = material_para_publicacion(req.job_id, req.title, req.text, req.scenes)
+    if not material:
+        raise HTTPException(status_code=400, detail="No hay material: pasa job_id, scenes o text.")
+
+    idioma = {"es": "espanol de Espana", "en": "ingles natural"}.get(
+        (req.language or "es").strip().lower(), "espanol de Espana")
+    prompt = PROMPT_TITULO_ETIQUETAS.format(idioma=idioma)
+
+    try:
+        respuesta = ai_manager.optimize_text(material, req.provider, prompt)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"No se pudieron generar el titulo y las etiquetas: {e}")
+
+    datos = json_suelto(respuesta or "")
+    titulo = str(datos.get("titulo") or datos.get("title") or "").strip().strip('"')[:100]
+    etiquetas = datos.get("etiquetas") or datos.get("tags") or ""
+    if isinstance(etiquetas, list):
+        etiquetas = ", ".join(str(x) for x in etiquetas)
+    etiquetas = ", ".join(x.strip().lstrip("#") for x in str(etiquetas).split(",") if x.strip())
+    if not titulo and not etiquetas:
+        # la IA no devolvio JSON: al menos no dejamos al usuario sin nada
+        raise HTTPException(status_code=502,
+                            detail="La IA no devolvio el titulo ni las etiquetas en formato valido.")
+
+    log_job_event(
+        req.job_id or "publicacion",
+        "title_tags_generated",
+        "Titulo y etiquetas generados por IA para publicar.",
+        status="info",
+        details={"titulo": titulo[:120], "etiquetas": etiquetas[:200],
+                 "provider": req.provider or "auto"},
+    )
+    return {"titulo": titulo, "etiquetas": etiquetas}
+
+
 def build_leonardo_model_catalog(channel_id: int | None = None) -> dict[str, list[dict]]:
     try:
         platform_models = leonardo_manager.list_platform_models()
