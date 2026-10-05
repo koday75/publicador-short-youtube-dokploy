@@ -371,7 +371,9 @@
                             <option value="en">Inglés</option>
                         </select>
                         <button id="translate-description-button" class="btn" type="button" onclick="translatePublishField('publish-description', 'translate-description-language', 'translate-description-button', 'translate-description-status')">Traducir descripción</button>
+                        <button id="ai-description-button" class="btn btn-secondary" type="button" onclick="generatePublishDescription()" title="Escribe la descripción a partir del guion del trabajo">✨ Descripción con IA</button>
                         <span id="translate-description-status" class="translate-status"></span>
+                        <span id="ai-description-status" class="translate-status"></span>
                     </div>
                 </div>
 
@@ -539,6 +541,41 @@
         function formatTags(value) {
             if (Array.isArray(value)) return value.join(', ');
             return value || '';
+        }
+
+        async function generatePublishDescription() {
+            const btn = document.getElementById('ai-description-button');
+            const status = document.getElementById('ai-description-status');
+            const area = document.getElementById('publish-description');
+            const titulo = document.getElementById('publish-title');
+            if (!btn || !area) return;
+            const previo = area.value;
+            const jobId = (currentJob && (currentJob.job_id || currentJob.id)) ||
+                          getQueryParam('job_id') || getQueryParam('job') || null;
+            btn.disabled = true;
+            if (status) status.textContent = 'Generando…';
+            try {
+                const resp = await fetch('/api/ai/description', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        job_id: jobId,
+                        title: titulo ? titulo.value : null,
+                        text: previo || null,
+                        language: 'es',
+                        max_chars: 700
+                    })
+                });
+                const datos = await resp.json();
+                if (!resp.ok) throw new Error(datos.detail || ('error ' + resp.status));
+                area.value = datos.description;
+                if (status) status.textContent = 'Listo: ' + datos.chars + ' caracteres. Revísala antes de publicar.';
+            } catch (err) {
+                if (!area.value && previo) area.value = previo;
+                if (status) status.textContent = 'Error: ' + err.message;
+            } finally {
+                btn.disabled = false;
+            }
         }
 
         function toggleAdvanced() {

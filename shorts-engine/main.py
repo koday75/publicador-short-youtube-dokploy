@@ -2400,6 +2400,94 @@ async def api_translate_scene(req: SceneTranslateRequest, user: str = Depends(ge
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# --- Descripcion para publicar, escrita por la IA (boton de la pagina Publicar) ---
+
+PROMPT_DESCRIPCION = (
+    "Eres el guionista de un canal de YouTube sobre misterios, casos sin resolver y datos "
+    "sorprendentes. Escribe la DESCRIPCION del video a partir del material que te doy.\n"
+    "Reglas obligatorias:\n"
+    "- Escribe en {idioma}, en tono de narrador cercano.\n"
+    "- Empieza con un gancho de una o dos frases que resuma el tema sin desvelar el final.\n"
+    "- Si el material trae varios puntos o datos, listalos en lineas separadas y numeradas.\n"
+    "- Termina con una frase corta invitando a suscribirse.\n"
+    "- NO inventes ningun dato que no aparezca en el material (ni nombres, ni fechas, ni cifras).\n"
+    "- Si el material incluye una fuente, copiala tal cual en la ultima linea.\n"
+    "- Nada de markdown (sin **, sin #, sin [ ]). Emojis con moderacion.\n"
+    "- Maximo {max_chars} caracteres en total.\n"
+    "Devuelve SOLO la descripcion, sin comentarios ni comillas."
+)
+
+
+class GenerateDescriptionRequest(BaseModel):
+    job_id: Optional[str] = None
+    title: Optional[str] = None
+    text: Optional[str] = None
+    scenes: Optional[List[dict]] = None
+    language: Optional[str] = "es"
+    provider: Optional[str] = None
+    max_chars: Optional[int] = 700
+    source_url: Optional[str] = None
+
+
+@app.post("/api/ai/description")
+async def api_generate_description(req: GenerateDescriptionRequest, user: str = Depends(get_current_user)):
+    """Genera una descripcion breve para publicar, a partir del trabajo o del texto que se le pase."""
+    titulo = (req.title or "").strip()
+    lineas: List[str] = []
+
+    if req.scenes:
+        for escena in req.scenes:
+            if isinstance(escena, dict) and (escena.get("text") or "").strip():
+                lineas.append(str(escena["text"]).strip())
+
+    if not lineas and req.job_id:
+        job = db.get_job(req.job_id)
+        if not job:
+            raise HTTPException(status_code=404, detail="Trabajo no encontrado")
+        titulo = titulo or (job.get("title") or "")
+        try:
+            escenas = json.loads(job.get("scenes_json") or "[]")
+        except Exception:
+            escenas = []
+        lineas = [str(e.get("text")).strip() for e in escenas
+                  if isinstance(e, dict) and (e.get("text") or "").strip()]
+
+    if not lineas and (req.text or "").strip():
+        lineas = [req.text.strip()]
+
+    bloques = ([f"Titulo del trabajo: {titulo}"] if titulo else []) + lineas
+    material = "\n\n".join(bloques).strip()
+    if not material:
+        raise HTTPException(status_code=400,
+                            detail="No hay material: pasa job_id, scenes o text.")
+
+    fuente = (req.source_url or "").strip()
+    if fuente:
+        material += f"\n\nFuente original (copiala tal cual al final): {fuente}"
+
+    idioma = {"es": "espanol de Espana", "en": "ingles natural"}.get(
+        (req.language or "es").strip().lower(), "espanol de Espana")
+    prompt = PROMPT_DESCRIPCION.format(idioma=idioma, max_chars=int(req.max_chars or 700))
+
+    try:
+        descripcion = (ai_manager.optimize_text(material, req.provider, prompt) or "").strip()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"No se pudo generar la descripcion: {e}")
+
+    if not descripcion:
+        raise HTTPException(status_code=502, detail="La IA devolvio una descripcion vacia.")
+
+    log_job_event(
+        req.job_id or "descripcion",
+        "description_generated",
+        "Descripcion generada por IA para publicar.",
+        status="info",
+        details={"chars": len(descripcion), "provider": req.provider or "auto"},
+    )
+    return {"description": descripcion, "chars": len(descripcion),
+            "max_chars": int(req.max_chars or 700)}
+
+
 def build_leonardo_model_catalog(channel_id: int | None = None) -> dict[str, list[dict]]:
     try:
         platform_models = leonardo_manager.list_platform_models()
